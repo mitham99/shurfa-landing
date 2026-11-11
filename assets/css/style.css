@@ -38,7 +38,7 @@
 
 /* ---------- 2) الأساسيات ---------- */
 *, *::before, *::after { box-sizing: border-box; }
-html { overflow-x: clip; scroll-behavior: smooth; scroll-padding-top: 84px; -webkit-text-size-adjust: 100%; }
+html { overflow-x: hidden; overflow-x: clip; scroll-behavior: smooth; scroll-padding-top: 84px; -webkit-text-size-adjust: 100%; }
 body {
   margin: 0;
   font-family: var(--font-body);
@@ -571,6 +571,14 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .site-footer { padding-bottom: 90px; }
 }
 
+
+/* التابلت: التبويبات الأربعة ظاهرة كلها بدون تمرير جانبي */
+@media (min-width: 641px) and (max-width: 960px) {
+  .ex-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; overflow: visible; margin-inline: 0; padding: 0; }
+  .ex-tab { flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 8px 16px; }
+  .t-txt b { font-size: 14px; }
+}
+
 /* تقليل الحركة عند تفضيل المستخدم */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
@@ -591,4 +599,158 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 @media (max-width: 640px) {
   .header-actions .btn-partner { display: none; }
+}
+
+/* =========================================================
+   تحسينات شاشة الهاتف (≤ 640px)
+   نفس تصميم الكمبيوتر، بأحجام ومسافات مناسبة للهاتف
+   ========================================================= */
+@media (max-width: 640px) {
+  :root { --gutter: 16px; --section-y: 56px; }
+  body { font-size: 15.5px; line-height: 1.7; }
+  .header-inner { height: 64px; }
+  .brand-mark { width: 30px; height: 30px; }
+  .brand-name { font-size: 20px; }
+  html { scroll-padding-top: 72px; }
+  .main-nav { top: 66px; }
+
+  /* الواجهة الرئيسية */
+  .hero { padding-top: 92px; padding-bottom: 40px; }
+  .eyebrow { font-size: 12.5px; padding: 6px 12px; }
+  .hero h1 { font-size: clamp(28px, 8.4vw, 34px); line-height: 1.3; margin-block: 16px 12px; }
+  .lead { font-size: 15.5px; }
+  .hero-ctas { margin-top: 22px; gap: 10px; width: 100%; }
+  .btn-lg { padding: 13px 22px; font-size: 15.5px; }
+  .hero-points { margin-top: 20px; gap: 8px 16px; font-size: 13px; }
+  .hero-visual { min-height: 0; padding-block: 24px 8px; }
+  .hero-visual .phone { zoom: .78; }
+  .arch-frame { width: 250px; height: 390px; border-radius: 125px 125px 22px 22px; }
+  .halo { width: 260px; height: 260px; }
+  .float-chip { font-size: 11.5px; padding: 7px 10px; gap: 7px; border-radius: 12px; }
+  .float-chip b { font-size: 12px; }
+  .c-ico { width: 26px; height: 26px; border-radius: 8px; }
+  .c-ico .ico { width: 15px; height: 15px; }
+  .chip-2, .chip-3 { display: none; }
+  .chip-1 { top: 10%; inset-inline-end: 0; }
+  .chip-4 { bottom: 8%; inset-inline-start: 0; }
+
+  /* اكتشف شُرفة: التبويبات كشبكة 2×2 بدل التمرير الجانبي */
+  .explore { padding-block: 48px; }
+  .ex-head { margin-bottom: 20px; }
+  .ex-head h2 { font-size: clamp(26px, 7.6vw, 30px); }
+  .ex-head p { font-size: 15px; }
+  .ex-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; overflow: visible; margin-inline: 0; padding: 0; margin-bottom: 12px; }
+  .ex-tab { flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 12px 8px 14px; border-radius: 16px; }
+  .ex-tab:hover { transform: none; }
+  .t-ico { width: 36px; height: 36px; border-radius: 11px; }
+  .t-ico .ico { width: 20px; height: 20px; }
+  .t-txt b { font-size: 13.5px; }
+  .t-prog { inset-inline: 14px; bottom: 6px; }
+
+  .ex-stage { margin-inline: 0; border-radius: 22px; }
+  .ex-panel { padding: 24px 18px 26px; gap: 20px; }
+  .ex-panel::after { width: 360px; height: 360px; inset-inline-end: -140px; }
+  .ex-num { font-size: 12.5px; }
+  .ex-copy h3 { font-size: clamp(24px, 7vw, 28px); margin-block: 8px 10px; }
+  .ex-copy > p { font-size: 15px; }
+  .ex-steps { margin-top: 16px; gap: 8px; }
+  .ex-steps li { font-size: 14.5px; }
+  .ex-steps span { width: 26px; height: 26px; font-size: 12.5px; }
+  .ex-tags { margin-top: 14px; }
+  .ex-tags li { font-size: 12.5px; padding: 6px 10px; }
+  .ex-ctas { margin-block: 20px 8px; }
+  .ex-ctas .btn { flex: 1; }
+  .ex-panel .fine { font-size: 12.5px; }
+
+  /* عناصر بصرية داخل اللوحات بحجم مناسب */
+  .ex-visual .phone { zoom: .78; }
+  .tk { width: 100%; max-width: 300px; transform: rotate(-3deg); }
+  .tk-main { padding: 16px; }
+  .tk-main strong { font-size: 19px; margin-block: 4px 12px; }
+  .tk-meta { gap: 6px; font-size: 11px; }
+  .tk-stub { padding: 12px; }
+  .tk-lg .mock-qr { width: 64px; }
+  .ex-float { font-size: 13px; padding: 8px 12px 8px 10px; }
+  .band-figure { width: 230px; }
+  .sf-notif { margin-top: -16px; padding: 10px 12px; max-width: 100%; }
+  .sf-notif small { font-size: 12px; }
+  .n-ico { width: 34px; height: 34px; }
+
+  .pkg-presets { display: flex; width: 100%; margin-top: 16px; }
+  .preset { flex: 1; padding: 8px 6px; font-size: 13px; text-align: center; }
+  .pkg-chips { gap: 6px; margin-top: 12px; }
+  .pkg-chip { padding: 7px 11px; font-size: 13px; border-radius: 12px; }
+  .pkg-hint { font-size: 13px; }
+
+  .flow3 { gap: 4px; margin-top: 18px; }
+  .f-step { width: auto; flex: 1; }
+  .f-ico { width: 42px; height: 42px; border-radius: 14px; }
+  .f-ico .ico { width: 20px; height: 20px; }
+  .f-step b { font-size: 11.5px; }
+  .f-line { flex: 0 0 18px; margin-bottom: 24px; }
+
+  .ex-eco { display: block; font-size: 13px; text-align: center; margin-top: 16px; }
+  .ex-eco .ico { display: inline-block; vertical-align: -3px; margin: 0 0 0 6px; width: 16px; height: 16px; }
+
+  /* ابدأ الآن + التحميل */
+  .dl-copy h2 { font-size: clamp(28px, 8.2vw, 32px); margin-block: 12px; }
+  .dl-copy > p { font-size: 16px; }
+  .stores { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 24px; width: 100%; }
+  .store { padding: 0; background: none; border: 0; }
+  .store-btn { min-width: 0; width: 100%; padding: 10px 8px; gap: 8px; border-radius: 14px; }
+  .store-btn .ico { width: 22px; height: 22px; }
+  .store-btn small { font-size: 10px; }
+  .store-btn b { font-size: 14.5px; }
+  .store-note { font-size: 12.5px; }
+  .dl-visual { display: none; }
+
+  .start-steps { margin-top: 40px; padding-top: 28px; }
+  .start-steps h3 { font-size: 18px; margin-bottom: 14px; }
+  .start-steps ol { gap: 8px; }
+  .start-steps li { padding: 14px; gap: 10px; border-radius: 16px; }
+  .start-steps .ico { width: 22px; height: 22px; }
+  .start-steps b { font-size: 14px; }
+  .s-n { font-size: 22px; top: 10px; inset-inline-end: 12px; }
+
+  /* التذييل */
+  .site-footer { padding-top: 44px; font-size: 14px; }
+  .footer-grid { grid-template-columns: 1fr 1fr; gap: 24px 16px; padding-bottom: 32px; }
+  .f-brand { grid-column: 1 / -1; }
+  .footer-bottom { justify-content: center; text-align: center; font-size: 12.5px; }
+
+  /* الشريط الثابت: يراعي حافة الشاشة في أجهزة آيفون الحديثة */
+  .mobile-cta { inset-inline: 10px; bottom: max(10px, env(safe-area-inset-bottom)); padding: 8px 8px 8px 14px; border-radius: 16px; }
+  .mobile-cta b { font-size: 15px; }
+  .mobile-cta small { font-size: 11px; }
+
+  /* لمنع تكبير آيفون التلقائي عند الكتابة في الحقول */
+  input, select, textarea { font-size: 16px !important; }
+}
+
+/* شاشات الهواتف الصغيرة جدًا */
+@media (max-width: 360px) {
+  .hero h1 { font-size: 27px; }
+  .t-txt b { font-size: 12.5px; }
+  .store-btn b { font-size: 13px; }
+  .store-btn .ico { display: none; }
+  .hero-visual .phone, .ex-visual .phone { zoom: .72; }
+}
+@media (max-width: 640px) {
+  .preset { white-space: nowrap; font-size: 12.5px; padding: 8px 4px; }
+}
+@media (max-width: 360px) {
+  .preset { font-size: 11.5px; }
+}
+/* زر «انضم كشريك» يبقى ظاهرًا في ترويسة الهاتف بحجم مصغّر */
+@media (max-width: 640px) {
+  .header-actions { gap: 6px; }
+  .header-actions .btn-partner { display: inline-flex; width: auto; height: 40px; padding: 0 12px; font-size: 12.5px; gap: 5px; }
+  .header-actions .btn-partner span { display: inline; }
+  .header-actions .btn-partner .ico { width: 16px; height: 16px; }
+  .header-actions .btn-primary.btn-sm { width: 40px; height: 40px; }
+  .nav-toggle { width: 40px; height: 40px; }
+}
+@media (max-width: 340px) {
+  .header-actions .btn-partner span { display: none; }
+  .header-actions .btn-partner { width: 40px; padding: 0; }
 }
