@@ -90,7 +90,7 @@
   }
 
   const LABELS = {
-    business_name: "اسم الجهة", business_type: "نوع النشاط", city: "الولاية / المدينة", website: "الموقع / الحساب",
+    business_name: "اسم الجهة", business_type: "نوع النشاط", city: "الولاية / المدينة", event_interest: "الفعالية المهتم بها", website: "الموقع / الحساب",
     contact_name: "اسم المسؤول", phone: "الهاتف", email: "البريد الإلكتروني", participation: "المشاركة المطلوبة", message: "نبذة"
   };
 

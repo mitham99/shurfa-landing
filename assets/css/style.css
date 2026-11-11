@@ -800,3 +800,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 @media (max-width: 640px) {
   #tab-packages .ex-visual { display: none; }
 }
+
+/* الصفحة الحالية في القائمة (مثل «الفعاليات» داخل صفحة فعالية) */
+.main-nav a.is-current { background: rgba(26, 46, 40, .07); font-weight: 600; }

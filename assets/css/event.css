@@ -1,0 +1,42 @@
+/* =========================================================
+   شُرفة — صفحات الفعاليات (مثل sohar-festival.html)
+   تُحمَّل بعد style.css. انسخ صفحة المهرجان كنقطة بداية لأي فعالية جديدة.
+   ========================================================= */
+
+/* مسار التنقل: شُرفة ‹ الفعاليات ‹ اسم الفعالية */
+.crumbs { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 14px; padding: 6px 14px; border-radius: 999px; background: rgba(255, 255, 255, .75); box-shadow: var(--shadow-sm); font-size: 13.5px; color: var(--muted); }
+.crumbs a { display: inline-flex; align-items: center; gap: 5px; font-weight: 500; transition: color .2s; }
+.crumbs a:hover { color: var(--green); text-decoration: underline; text-underline-offset: 3px; }
+.crumbs .ico { width: 15px; height: 15px; }
+.crumbs b { color: var(--green); font-weight: 600; }
+
+/* رابط جواز المهرجان ← جواز السياحة الرقمي */
+.ex-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; font-size: 13.5px; font-weight: 600; color: var(--gold); }
+.ex-link .ico { width: 15px; height: 15px; transition: transform .25s var(--ease); }
+.ex-link:hover .ico { transform: translateX(-4px); }
+
+/* المنظومة الرقمية للمهرجان */
+.fest-sys { margin-top: 22px; padding: 22px; border-radius: 22px; background: var(--cream); }
+.fest-sys h3 { display: flex; align-items: center; gap: 8px; font-size: 17px; margin-bottom: 14px; }
+.fest-sys h3 .ico { color: var(--brick); }
+.fest-sys ul { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.fest-sys li { display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 16px; background: #fff; }
+.fest-sys li span { width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; background: var(--green); color: var(--gold); margin-bottom: 4px; }
+.fest-sys li span .ico { width: 19px; height: 19px; }
+.fest-sys li b { font-family: var(--font-head); font-size: 15px; }
+.fest-sys li small { font-size: 13px; color: var(--muted); line-height: 1.55; }
+
+@media (max-width: 960px) {
+  .fest-sys ul { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 640px) {
+  .crumbs { font-size: 12px; padding: 5px 12px; gap: 6px; margin-bottom: 10px; }
+  .fest-sys { padding: 16px; margin-top: 16px; }
+  .fest-sys h3 { font-size: 15.5px; margin-bottom: 10px; }
+  .fest-sys ul { gap: 8px; }
+  .fest-sys li { padding: 11px; border-radius: 13px; }
+  .fest-sys li span { width: 32px; height: 32px; border-radius: 10px; }
+  .fest-sys li b { font-size: 14px; }
+  .fest-sys li small { font-size: 11.5px; }
+  .ex-link { font-size: 12px; }
+}

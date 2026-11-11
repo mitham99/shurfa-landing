@@ -28,7 +28,8 @@
   };
 
   /* ---------- أختام الجواز (عرض توضيحي) ---------- */
-  const PASSPORT_STAMPS = [
+  // يمكن لأي صفحة تعريف أختامها الخاصة عبر window.SHURFA_PASSPORT_STAMPS (انظر data.js)
+  const PASSPORT_STAMPS = window.SHURFA_PASSPORT_STAMPS || [
     { name: "الدخول", icon: "i-ticket" },
     { name: "مطعم",   icon: "i-food" },
     { name: "مقهى",   icon: "i-coffee" },
@@ -148,8 +149,9 @@
       new IntersectionObserver(([e]) => { dlVisible = e.isIntersecting; update(); }, { threshold: 0.1 }).observe(download);
 
       // تمييز الرابط النشط
-      const links = $$("a:not([data-tab])", nav);
-      const sections = links.map((a) => $(a.getAttribute("href"))).filter(Boolean);
+      // الروابط الداخلية فقط (#قسم)؛ روابط الصفحات الأخرى لا تُراقب
+      const links = $$("a:not([data-tab])", nav).filter((a) => /^#.+/.test(a.getAttribute("href") || ""));
+      const sections = links.map((a) => document.getElementById(a.getAttribute("href").slice(1))).filter(Boolean);
       const spy = new IntersectionObserver((entries) => {
         entries.forEach((e) => {
           if (!e.isIntersecting) return;
@@ -439,6 +441,9 @@
   setupHeader();
   setupMockQR();
   setupPackages();
-  setupTabs(setupPassport());
+  const startPassport = setupPassport();
+  setupTabs(startPassport);
+  // في الصفحات التي لا تحتوي تبويبات (مثل الرئيسية) يبدأ عرض الجواز عند ظهوره
+  if (!document.getElementById("explore")) onVisible($("#ppStamps"), startPassport);
   setupReveal();
 })();
