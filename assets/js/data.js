@@ -25,7 +25,7 @@ window.SHURFA_DATA = {
       status: "available",
       url: "sohar-festival.html",
       image: "",
-      icon: "i-calendar",
+      icon: "i-festival",
       colors: { from: "#1A2E28", to: "#2E5148", accent: "#F5A623" },
       tags: ["التذاكر", "الباقات", "جواز المهرجان", "سوار الأمان"]
     }

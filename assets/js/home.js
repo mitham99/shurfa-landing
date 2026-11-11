@@ -8,6 +8,11 @@
   const DATA = window.SHURFA_DATA || { events: [], services: [], partnerTypes: [], partners: [] };
   const $ = (s, el = document) => el.querySelector(s);
   const icon = (id) => `<svg class="ico" aria-hidden="true"><use href="#${id}"/></svg>`;
+  // أيقونة الهوية (b-) إن وُجدت، وإلا الأيقونة الخطية البسيطة
+  const bicon = (id) => {
+    const b = "b-" + String(id || "").replace(/^i-/, "");
+    return document.getElementById(b) ? `<svg class="ico" aria-hidden="true"><use href="#${b}"/></svg>` : icon(id);
+  };
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
   const EVENT_STATUS = {
@@ -35,7 +40,7 @@
       const href = ev.url && ev.status !== "ended" ? esc(ev.url) : "";
       const cover = ev.image
         ? `<img src="${esc(ev.image)}" alt="${esc(ev.name)}" loading="lazy">`
-        : `<span class="ev-art">${icon(ev.icon || "i-calendar")}</span>`;
+        : `<span class="ev-art">${bicon(ev.icon || "i-calendar")}</span>`;
       const tags = (ev.tags || []).map((t) => `<li>${esc(t)}</li>`).join("");
       const btn = href
         ? `<a class="btn btn-primary btn-sm ev-btn" href="${href}">استكشف الفعالية${icon("i-arrow")}</a>`
@@ -95,7 +100,7 @@
     grid.innerHTML = (DATA.services || []).map((s) => {
       const st = SERVICE_STATUS[s.status] || SERVICE_STATUS.soon;
       const inner = `
-        <span class="svc-ico">${icon(s.icon)}</span>
+        <span class="svc-ico">${bicon(s.icon)}</span>
         <span class="st ${st.cls}">${st.label}</span>
         <h3>${esc(s.name)}</h3>
         <p>${esc(s.desc)}</p>
@@ -135,7 +140,7 @@
       const shown = f === "all" ? types : types.filter((t) => t.id === f);
       grid.innerHTML = shown.map((t) => `
         <div class="ptype-card">
-          <span class="pt-ico">${icon(t.icon)}</span>
+          <span class="pt-ico">${bicon(t.icon)}</span>
           <div><b>${esc(t.name)}</b><p>${esc(t.desc)}</p></div>
           <span class="pt-soon">يُعلن عن الشركاء قريبًا</span>
         </div>`).join("");

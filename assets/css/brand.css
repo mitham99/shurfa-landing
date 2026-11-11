@@ -1,0 +1,42 @@
+/* =========================================================
+   هوية شُرفة — الشعار والأيقونات فقط
+   (الخط والألوان والأزرار والنقشة تبقى من style.css كما هي)
+   المرجع: Brand/دليل هوية شُرفة-.pdf
+   ========================================================= */
+
+/* ---------- الشعار ---------- */
+/* القفل الأفقي: الكلمة يمين المونوغرام. الكلمة بخط IBM Plex Sans Arabic وزن 600 كما في الدليل */
+.brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand-word { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; font-weight: 600; font-size: 31px; line-height: 1; color: var(--green); padding-bottom: 4px; }
+.brand-mono { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
+.brand-light .brand-word { color: #fff; }
+.brand-img, .brand-fallback { display: none !important; }
+
+/* التبدّل: اللوحي = القفل الأفقي مصغّرًا (32 بكسل)، الهاتف = المونوغرام منفردًا */
+@media (max-width: 1439px) {
+  .site-header .brand-mono { width: 34px; height: 34px; }
+  .site-header .brand-word { font-size: 27px; }
+  .site-header .brand { gap: 8px; }
+}
+@media (max-width: 767px) {
+  .site-header .brand-mono { width: 32px; height: 32px; }
+  .site-header .brand-word { display: none; }
+}
+
+/* المونوغرام داخل الشاشات التوضيحية */
+.dl-logo { width: 88px; height: 88px; }
+.pp-emblem { width: 38px; height: 38px; }
+
+/* ---------- أيقونات الهوية (Shurfah Icon Pack V2) ---------- */
+/* مصممة على شبكة 48 بكسل وتُستخدم بأحجام 24 بكسل فأكبر.
+   اللون الأساسي يتبع لون النص (currentColor)، ولون التمييز يُضبط بالمتغير --ia */
+.s-ico .ico, .t-ico .ico, .p-ico .ico, .o-ico .ico, .svc-ico .ico, .pt-ico .ico, .sf-ico .ico, .e-ico .ico, .f-ico .ico { width: 28px; height: 28px; }
+.ev-art .ico { width: 72px !important; height: 72px !important; }
+.btn .ico { --ia: currentColor; }
+
+/* على الخلفيات الملونة أو الداكنة يتحول لون التمييز ليبقى ظاهرًا */
+.ex-tab.is-active .t-ico { --ia: rgba(255, 255, 255, .85); }
+.f-step.active .f-ico { --ia: #fff; }
+.is-wide .o-ico, .sf.active .sf-ico { --ia: rgba(255, 255, 255, .85); }
+.pt-ico, .fest-sys li span, .ev-art { --ia: var(--cream); }
+.dark .f-ico { --ia: var(--gold); }
