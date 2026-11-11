@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=7">
+  <link rel="stylesheet" href="assets/css/style.css?v=10">
 </head>
 <body>
 
@@ -85,7 +85,6 @@
       <a href="#explore" data-tab="packages">الباقات</a>
       <a href="#explore" data-tab="passport">الجواز الرقمي</a>
       <a href="#explore" data-tab="safety">سوار الأمان</a>
-      <a href="#start">كيف تبدأ</a>
       <a class="nav-partner" href="partners.html"><svg class="ico"><use href="#i-handshake"/></svg>انضم كشريك</a>
     </nav>
 
@@ -180,22 +179,22 @@
     <div class="ex-tabs reveal" role="tablist" aria-label="خدمات شُرفة">
       <button class="ex-tab is-active" role="tab" aria-selected="true" aria-controls="tab-tickets" data-tab="tickets" style="--ac:var(--gold)">
         <span class="t-ico"><svg class="ico"><use href="#i-ticket"/></svg></span>
-        <span class="t-txt"><b>حجز التذاكر</b><small>تذكرتك رقميًا</small></span>
+        <span class="t-txt"><b>حجز التذاكر</b><small>تذكرتك رقميًا</small><em class="t-short">التذاكر</em></span>
         <span class="t-prog"><i></i></span>
       </button>
       <button class="ex-tab" role="tab" aria-selected="false" aria-controls="tab-packages" data-tab="packages" style="--ac:var(--brick)">
         <span class="t-ico"><svg class="ico"><use href="#i-box"/></svg></span>
-        <span class="t-txt"><b>الباقات المخصصة</b><small>جمّع تجربتك</small></span>
+        <span class="t-txt"><b>الباقات المخصصة</b><small>جمّع تجربتك</small><em class="t-short">الباقات</em></span>
         <span class="t-prog"><i></i></span>
       </button>
       <button class="ex-tab" role="tab" aria-selected="false" aria-controls="tab-passport" data-tab="passport" style="--ac:var(--purple)">
         <span class="t-ico"><svg class="ico"><use href="#i-passport"/></svg></span>
-        <span class="t-txt"><b>جواز السياحة الرقمي</b><small>أختام ومكافآت</small></span>
+        <span class="t-txt"><b>جواز السياحة الرقمي</b><small>أختام ومكافآت</small><em class="t-short">الجواز</em></span>
         <span class="t-prog"><i></i></span>
       </button>
       <button class="ex-tab" role="tab" aria-selected="false" aria-controls="tab-safety" data-tab="safety" style="--ac:var(--teal)">
         <span class="t-ico"><svg class="ico"><use href="#i-band"/></svg></span>
-        <span class="t-txt"><b>سوار الأمان</b><small>راحة بال للعائلة</small></span>
+        <span class="t-txt"><b>سوار الأمان</b><small>راحة بال للعائلة</small><em class="t-short">السوار</em></span>
         <span class="t-prog"><i></i></span>
       </button>
     </div>
@@ -206,7 +205,7 @@
       <article class="ex-panel is-active" id="tab-tickets" role="tabpanel" data-tab="tickets" style="--ac:var(--gold);--ac-ink:var(--green)">
         <div class="ex-copy">
           <span class="ex-num">01 · حجز التذاكر</span>
-          <h3>تذكرتك للمهرجان،<br>في مكان واحد</h3>
+          <h3>تذكرتك للمهرجان، <br>في مكان واحد</h3>
           <p>احجز تذاكر الدخول إلكترونيًا واحتفظ بها داخل التطبيق.</p>
           <ol class="ex-steps">
             <li><span>1</span>اختر عدد التذاكر</li>
@@ -265,7 +264,7 @@
       <article class="ex-panel" id="tab-passport" role="tabpanel" data-tab="passport" style="--ac:var(--gold);--ac-ink:var(--green)">
         <div class="ex-copy">
           <span class="ex-num">03 · جواز السياحة الرقمي</span>
-          <h3>كل تجربة<br>تستحق مكافأة</h3>
+          <h3>كل تجربة <br>تستحق مكافأة</h3>
           <p>كل نشاط مؤهل يضيف ختمًا ونقاطًا إلى جوازك، تستبدلها بمكافآت وعروض وفق شروط البرنامج.</p>
           <div class="flow3" id="flow3">
             <div class="f-step"><span class="f-ico"><svg class="ico"><use href="#i-spark"/></svg></span><b>شارك</b></div>
@@ -401,16 +400,6 @@
       </div>
     </div>
 
-    <div class="start-steps" id="start">
-      <h3 class="reveal">ابدأ في خمس خطوات</h3>
-      <ol>
-        <li class="reveal" data-delay="1"><span class="s-n">1</span><svg class="ico"><use href="#i-download"/></svg><b>حمّل التطبيق</b></li>
-        <li class="reveal" data-delay="1"><span class="s-n">2</span><svg class="ico"><use href="#i-user"/></svg><b>أنشئ حسابك</b></li>
-        <li class="reveal" data-delay="2"><span class="s-n">3</span><svg class="ico"><use href="#i-ticket"/></svg><b>اختر تذكرتك أو باقتك</b></li>
-        <li class="reveal" data-delay="3"><span class="s-n">4</span><svg class="ico"><use href="#i-spark"/></svg><b>استمتع داخل المهرجان</b></li>
-        <li class="reveal" data-delay="4"><span class="s-n">5</span><svg class="ico"><use href="#i-gift"/></svg><b>اجمع النقاط والمكافآت</b></li>
-      </ol>
-    </div>
   </div>
 </section>
 
@@ -467,8 +456,8 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- الإعدادات: روابط التحميل والتواصل — عدّلها في هذا الملف فقط -->
-<script src="assets/js/config.js?v=7"></script>
+<script src="assets/js/config.js?v=10"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" defer></script>
-<script src="assets/js/main.js?v=7" defer></script>
+<script src="assets/js/main.js?v=10" defer></script>
 </body>
 </html>
