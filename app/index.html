@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; base-uri 'self'; object-src 'none'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1A2E28">
+  <meta name="robots" content="noindex">
+  <title>جوازي الرقمي | شُرفة</title>
+  <link rel="icon" href="../assets/img/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+  <header class="app-top">
+    <a class="app-brand" href="../index.html" aria-label="شُرفة — الرئيسية"><img src="../assets/img/brand/monogram-160.png" alt="">شُرفة</a>
+    <a class="app-event" href="../squ-eat.html"><img src="../assets/img/events/squ-eat-logo.jpg" alt="">SQU إيييت</a>
+  </header>
+
+  <main class="app-wrap">
+    <!-- النظام غير مُعدّ بعد -->
+    <section class="card" id="notReady" hidden>
+      <h2>الجواز الرقمي قيد التجهيز</h2>
+      <p class="sub">نجهّز النظام لمهرجان SQU إيييت. عد إلى هذه الصفحة قريبًا.</p>
+      <a class="btn btn-primary btn-block" href="../squ-eat.html">تفاصيل المهرجان</a>
+    </section>
+
+    <!-- التسجيل -->
+    <section id="registerView" hidden>
+      <div class="card hero-card">
+        <h2>احصل على جوازك الرقمي</h2>
+        <p class="sub">سجّل مرة واحدة، واعرض رمزك عند كل كشك ليُضاف ختم في بطاقته. اجمع الأختام واحصل على مكافأة كل كشك.</p>
+      </div>
+      <form class="card" id="regForm" novalidate>
+        <div id="regMsg"></div>
+        <label class="field"><span>الاسم</span><input name="name" type="text" required maxlength="60" autocomplete="name" placeholder="مثال: أحمد"></label>
+        <label class="field"><span>رقم الهاتف</span><input name="phone" type="tel" required inputmode="tel" dir="ltr" autocomplete="tel" placeholder="9xxxxxxx"></label>
+        <label class="field"><span>أنت</span>
+          <select name="type">
+            <option value="student">طالب/ة في الجامعة</option>
+            <option value="intl">طالب/ة دولي/ة</option>
+            <option value="staff">موظف/ة في الجامعة</option>
+            <option value="visitor">زائر/ة</option>
+          </select>
+        </label>
+        <label class="consent"><input type="checkbox" name="consent" required><span>أوافق على استخدام اسمي ورقمي لتشغيل الجواز الرقمي في هذه الفعالية فقط. <a href="privacy.html">سياسة الخصوصية</a></span></label>
+        <button class="btn btn-primary btn-block" type="submit" id="regBtn">أنشئ جوازي</button>
+      </form>
+    </section>
+
+    <!-- الجواز -->
+    <section id="passView" hidden>
+      <div class="card hero-card">
+        <h2 id="hello">أهلًا</h2>
+        <p class="sub">اعرض هذا الرمز للكشك عند كل شراء ليُضاف ختم في بطاقته.</p>
+        <div class="pass-qr" id="passQr"></div>
+        <div class="pass-code" id="passCode"></div>
+        <p class="pass-hint">احتفظ بهذه الصفحة أو صوّرها — الرمز خاص بك.</p>
+      </div>
+
+      <div class="card">
+        <div class="btns" style="justify-content:space-between;align-items:center;margin-bottom:10px">
+          <h2>بطاقاتي</h2>
+          <button class="btn btn-ghost btn-sm" id="refreshBtn" type="button">تحديث</button>
+        </div>
+        <div id="myCards"><p class="empty">لا توجد أختام بعد — ابدأ من أي كشك مشارك.</p></div>
+      </div>
+
+      <div class="card">
+        <h2>الأكشاك المشاركة وعروضها</h2>
+        <p class="sub">لكل كشك بطاقته الخاصة؛ الأختام لا تُجمع بين الأكشاك.</p>
+        <div class="stall-list" id="stallList"><p class="empty">جارٍ التحميل…</p></div>
+      </div>
+
+      <button class="btn btn-danger btn-block" id="forgetBtn" type="button">إزالة الجواز من هذا الجهاز</button>
+    </section>
+  </main>
+
+  <footer class="app-foot">شُرفة · <a href="privacy.html">الخصوصية</a> · <a href="team.html">تسجيل فريق في بطولة الورقة</a></footer>
+
+  <script src="../assets/js/config.js?v=50"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="app.js?v=1"></script>
+  <script src="visitor.js?v=1"></script>
+</body>
+</html>

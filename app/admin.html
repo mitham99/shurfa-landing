@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://*.supabase.co; base-uri 'self'; object-src 'none'; form-action 'self'">
+  <meta name="referrer" content="no-referrer">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>لوحة المنظم | شُرفة</title>
+  <link rel="icon" href="../assets/img/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+  <header class="app-top">
+    <span class="app-brand"><img src="../assets/img/brand/monogram-160.png" alt="">شُرفة · لوحة المنظم</span>
+    <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button" hidden>خروج</button>
+  </header>
+
+  <main class="app-wrap wide">
+    <section class="card" id="notReady" hidden>
+      <h2>النظام غير مُعدّ</h2>
+      <p class="sub">أضف رابط Supabase والمفتاح العام في <code>assets/js/config.js</code>.</p>
+    </section>
+
+    <!-- الدخول -->
+    <form class="card" id="loginView" hidden novalidate style="max-width:440px;margin-inline:auto">
+      <h2>دخول المنظم</h2>
+      <p class="sub">بحساب المنظم الذي أُنشئ في Supabase.</p>
+      <div id="loginMsg"></div>
+      <label class="field"><span>البريد الإلكتروني</span><input name="email" type="email" required autocomplete="username" dir="ltr"></label>
+      <label class="field"><span>كلمة المرور</span><input name="password" type="password" required autocomplete="current-password" dir="ltr"></label>
+      <button class="btn btn-primary btn-block" type="submit" id="loginBtn">دخول</button>
+    </form>
+
+    <!-- اللوحة -->
+    <section id="dash" hidden>
+      <div class="tabs" role="tablist">
+        <button class="tab on" data-tab="overview">نظرة عامة</button>
+        <button class="tab" data-tab="stalls">الأكشاك</button>
+        <button class="tab" data-tab="visitors">الزوار</button>
+        <button class="tab" data-tab="teams">فرق البطولة</button>
+        <button class="tab" data-tab="links">روابط وQR للطباعة</button>
+      </div>
+
+      <div data-panel="overview">
+        <div class="stats" id="stats"></div>
+        <div class="card">
+          <div class="btns" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h2>أداء الأكشاك</h2><button class="btn btn-ghost btn-sm" id="reloadBtn" type="button">تحديث</button></div>
+          <div class="table-wrap"><table id="stallStats"></table></div>
+        </div>
+      </div>
+
+      <div data-panel="stalls" hidden>
+        <form class="card" id="stallForm" novalidate>
+          <h2>إضافة كشك</h2>
+          <p class="sub">يظهر رمز الكشك (PIN) مرة واحدة فقط بعد الإضافة — سلّمه لمسؤول الكشك.</p>
+          <div id="stallMsg"></div>
+          <div class="row2">
+            <label class="field"><span>اسم الكشك</span><input name="name" required maxlength="60"></label>
+            <label class="field"><span>النوع</span><select name="kind"><option value="food">طعام</option><option value="cafe">مقهى</option><option value="sweets">حلويات</option><option value="games">ألعاب</option><option value="other">أخرى</option></select></label>
+          </div>
+          <div class="row2">
+            <label class="field"><span>عدد الزيارات قبل المكافأة</span><input name="required" type="number" min="1" max="20" value="3" required></label>
+            <label class="field"><span>الفاصل بين ختمين (دقائق)</span><input name="cooldown" type="number" min="0" max="1440" value="30"></label>
+          </div>
+          <div class="row2">
+            <label class="field"><span>المكافأة الأولى</span><input name="reward1" required maxlength="40" placeholder="مثال: مجانًا أو خصم 30%"></label>
+            <label class="field"><span>مكافأة ثانية (اختياري)</span><input name="reward2" maxlength="40" placeholder="مثال: مجانًا"></label>
+          </div>
+          <button class="btn btn-primary" type="submit" id="stallBtn">إضافة الكشك</button>
+        </form>
+        <div class="card" id="pinCard" hidden>
+          <h2 id="pinTitle">رمز الكشك</h2>
+          <p class="sub">انسخه الآن؛ لن يظهر مرة أخرى. يمكن إنشاء رمز جديد لاحقًا.</p>
+          <div class="pin-box" id="pinBox"></div>
+        </div>
+        <div class="card"><h2>الأكشاك</h2><div class="table-wrap"><table id="stallTable"></table></div></div>
+      </div>
+
+      <div data-panel="visitors" hidden>
+        <div class="card">
+          <div class="btns" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h2>الزوار المسجلون</h2><button class="btn btn-gold btn-sm" id="exportVisitors" type="button">تصدير Excel (CSV)</button></div>
+          <p class="sub">تُعرض آخر 1000 تسجيل. البيانات لاستخدام هذه الفعالية فقط.</p>
+          <div class="table-wrap"><table id="visitorTable"></table></div>
+        </div>
+      </div>
+
+      <div data-panel="teams" hidden>
+        <div class="card">
+          <div class="btns" style="justify-content:space-between;align-items:center;margin-bottom:8px"><h2>فرق بطولة الورقة</h2><button class="btn btn-gold btn-sm" id="exportTeams" type="button">تصدير Excel (CSV)</button></div>
+          <div class="table-wrap"><table id="teamTable"></table></div>
+        </div>
+      </div>
+
+      <div data-panel="links" hidden>
+        <div class="stats">
+          <div class="card qr-print"><h2>جواز الزوار</h2><div id="qrVisitor"></div><small id="lnkVisitor" dir="ltr"></small><p class="sub">اطبعه عند المدخل وعلى الأكشاك.</p></div>
+          <div class="card qr-print"><h2>تسجيل فرق البطولة</h2><div id="qrTeam"></div><small id="lnkTeam" dir="ltr"></small></div>
+          <div class="card qr-print"><h2>واجهة الأكشاك</h2><div id="qrStall"></div><small id="lnkStall" dir="ltr"></small><p class="sub">لمسؤولي الأكشاك فقط (تحتاج PIN).</p></div>
+        </div>
+        <button class="btn btn-primary" type="button" id="printBtn">طباعة</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="../assets/js/config.js?v=50"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="app.js?v=1"></script>
+  <script src="admin.js?v=1"></script>
+</body>
+</html>
