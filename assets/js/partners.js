@@ -14,6 +14,7 @@
   const status = document.getElementById("formStatus");
   const submit = document.getElementById("formSubmit");
   const submitLabel = submit.innerHTML;
+  const startedAt = Date.now(); // الحماية من الإرسال الآلي السريع
 
   const MESSAGES = {
     valueMissing: "هذا الحقل مطلوب",
@@ -81,7 +82,7 @@
     const fd = new FormData(form);
     const data = {};
     for (const [k, v] of fd.entries()) {
-      if (k === "consent") continue;
+      if (k === "consent" || k === "company_website") continue;
       data[k] = data[k] ? `${data[k]}، ${v}` : String(v).trim();
     }
     data.consent = "نعم";
@@ -105,6 +106,9 @@
     e.preventDefault();
     setStatus("");
     if (!validateAll()) { setStatus("يرجى استكمال الحقول المطلوبة.", "error"); return; }
+    // بوت محتمل: حقل المصيدة ممتلئ أو تعبئة أسرع من 3 ثوانٍ → نتجاهل بصمت
+    const trap = form.querySelector('input[name="company_website"]');
+    if ((trap && trap.value) || Date.now() - startedAt < 3000) { showSuccess(); return; }
 
     const data = collect();
 

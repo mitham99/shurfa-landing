@@ -29,6 +29,17 @@ window.SHURFA_CONFIG = {
     email: ""
   },
 
+  /* النظام التجريبي (app/): قاعدة بيانات Supabase
+     • url: رابط المشروع (Project URL) مثل https://xxxx.supabase.co
+     • anonKey: المفتاح العام (anon public) فقط — ⚠ لا تضع أبدًا مفتاح service_role هنا
+     • eventId: الفعالية الافتراضية للنظام
+     إذا تُرك فارغًا تظهر صفحات النظام بحالة «قيد التجهيز». */
+  supabase: {
+    url: "https://bemejwbccqnujoyjnsht.supabase.co",
+    anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlbWVqd2JjY3FudWpveWpuc2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1MTA4NDYsImV4cCI6MjExMDA4Njg0Nn0.t_1WRheDvBTwdo8pVSA05vho0lcrwQdPFyXBx00yGy0",
+    eventId: "squ-eat"
+  },
+
   contact: {
     email: "",       // مثال: "hello@example.om"
     phone: "",       // مثال: "+968 XXXX XXXX"

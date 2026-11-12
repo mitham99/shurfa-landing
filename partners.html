@@ -2,6 +2,8 @@
 <html lang="ar" dir="rtl" class="no-js">
 <head>
   <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https:; form-action 'self' https:; base-uri 'self'; object-src 'none'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>شركاء شُرفة | انضم إلى منظومة الفعاليات والتجارب السياحية</title>
   <meta name="description" content="انضم إلى شُرفة كشريك: قدّم خدماتك لزوار الفعاليات والتجارب عبر الباقات وبطاقات الولاء في الجواز الرقمي والقسائم الرقمية.">
@@ -15,9 +17,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="assets/css/style.css?v=20">
-  <link rel="stylesheet" href="assets/css/partners.css?v=20">
-  <link rel="stylesheet" href="assets/css/brand.css?v=20">
+  <link rel="stylesheet" href="assets/css/style.css?v=50">
+  <link rel="stylesheet" href="assets/css/partners.css?v=50">
+  <link rel="stylesheet" href="assets/css/brand.css?v=50">
 </head>
 <body>
 
@@ -352,6 +354,9 @@
           </label>
         </fieldset>
 
+        <!-- حقل مصيدة للبوتات: مخفي عن الزوار، إذا امتلأ يُتجاهل الطلب -->
+        <div class="hp-field" aria-hidden="true"><label>اترك هذا الحقل فارغًا<input type="text" name="company_website" tabindex="-1" autocomplete="off"></label></div>
+
         <label class="consent">
           <input type="checkbox" name="consent" required>
           <span>أوافق على تواصل فريق شُرفة معي بخصوص هذا الطلب *</span>
@@ -390,6 +395,7 @@
       <ul>
         <li><a href="sohar-festival.html">مهرجان صحار</a></li>
         <li><a href="dhahirah-festival.html">مهرجان الظاهرة السياحي</a></li>
+        <li><a href="squ-eat.html">SQU إيييت</a></li>
         <li><a href="index.html#events">كل الفعاليات</a></li>
       </ul>
       <h4 class="mt">الشركاء</h4>
@@ -423,8 +429,8 @@
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <!-- الإعدادات: روابط التحميل والتواصل في config.js — والفعاليات والخدمات والشركاء في data.js -->
-<script src="assets/js/config.js?v=20"></script>
-<script src="assets/js/main.js?v=20" defer></script>
-<script src="assets/js/partners.js?v=20" defer></script>
+<script src="assets/js/config.js?v=50"></script>
+<script src="assets/js/main.js?v=50" defer></script>
+<script src="assets/js/partners.js?v=50" defer></script>
 </body>
 </html>

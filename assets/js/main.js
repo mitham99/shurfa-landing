@@ -12,7 +12,8 @@
 
   /* ---------- محتوى الباقات (عدّل هنا) ----------
      art: لون خلفية البطاقة. image: مسار صورة اختيارية (مثل assets/img/pkg-food.jpg) */
-  const PACKAGE_ITEMS = [
+  // يمكن لصفحة الفعالية تعريف باقاتها عبر window.SHURFA_PACKAGES = { items, presets }
+  const PACKAGE_ITEMS = (window.SHURFA_PACKAGES && window.SHURFA_PACKAGES.items) || [
     { id: "entry",   name: "دخول المهرجان",   note: "أساس كل باقة",          icon: "i-ticket", art: "linear-gradient(135deg,#1A2E28,#2E5148)", locked: true },
     { id: "concert", name: "حفلة غنائية",     note: "عند توفرها",            icon: "i-music",  art: "linear-gradient(135deg,#7B5BA7,#5F4486)" },
     { id: "meal",    name: "وجبة أو عشاء",    note: "من المطاعم المشاركة",   icon: "i-food",   art: "linear-gradient(135deg,#E4573D,#C7432B)" },
@@ -21,7 +22,7 @@
     { id: "games",   name: "ألعاب وأنشطة",    note: "ترفيه للعائلة",         icon: "i-game",   art: "linear-gradient(135deg,#2CA6A4,#1F8583)" }
   ];
 
-  const PRESETS = {
+  const PRESETS = (window.SHURFA_PACKAGES && window.SHURFA_PACKAGES.presets) || {
     family:  { title: "باقة العائلة",   hint: "دخول المهرجان + وجبة عائلية + مشروبات + ألعاب للأطفال.",       items: ["entry", "meal", "coffee", "games"] },
     friends: { title: "باقة الأصدقاء",  hint: "دخول المهرجان + حفلة عند توفرها + مشروبات وحلويات.",           items: ["entry", "concert", "coffee", "sweets"] },
     custom:  { title: "باقتي المخصصة",  hint: "اختر الخدمات التي تناسب اهتماماتك وميزانيتك — اضغط لإضافتها.", items: ["entry"] }
@@ -77,7 +78,7 @@
     const anyLink = Object.values(stores).some(Boolean);
 
     $$("[data-store]").forEach((a) => {
-      const url = stores[a.dataset.store];
+      const url = /^https:\/\//i.test(stores[a.dataset.store] || "") ? stores[a.dataset.store] : "";
       if (url) {
         a.href = url;
       } else {
@@ -115,19 +116,33 @@
       instagram: ["i-insta", "إنستغرام"], x: ["i-x", "إكس"], tiktok: ["i-tiktok", "تيك توك"],
       snapchat: ["i-snap", "سناب شات"], youtube: ["i-yt", "يوتيوب"]
     };
-    const social = Object.entries(CONFIG.social || {}).filter(([, url]) => url);
+    // القيم تأتي من config.js؛ نهرّبها ونقبل روابط https فقط (حماية من إدخال كود)
+    const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+    const safeUrl = (u) => /^https:\/\/[^\s"'<>]+$/i.test(String(u || "")) ? esc(u) : "";
+    const social = Object.entries(CONFIG.social || {}).filter(([, url]) => safeUrl(url));
     $("#socialList").innerHTML = social.length
-      ? social.map(([k, url]) => `<a href="${url}" target="_blank" rel="noopener" aria-label="${SOCIAL_META[k]?.[1] || k}">${icon(SOCIAL_META[k]?.[0] || "i-link")}</a>`).join("")
+      ? social.map(([k, url]) => `<a href="${safeUrl(url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(SOCIAL_META[k]?.[1] || k)}">${icon(SOCIAL_META[k]?.[0] || "i-link")}</a>`).join("")
       : "";
 
     const c = CONFIG.contact || {};
     const items = [];
-    if (c.email) items.push(`<li>${icon("i-mail")}<a href="mailto:${c.email}">${c.email}</a></li>`);
-    if (c.phone) items.push(`<li>${icon("i-phone")}<a href="tel:${c.phone.replace(/\s/g, "")}" dir="ltr">${c.phone}</a></li>`);
-    if (c.location) items.push(`<li>${icon("i-pin")}<span>${c.location}</span></li>`);
+    const email = /^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(c.email || "") ? esc(c.email) : "";
+    const phone = /^[+0-9\s-]{6,20}$/.test(c.phone || "") ? esc(c.phone) : "";
+    if (email) items.push(`<li>${icon("i-mail")}<a href="mailto:${email}">${email}</a></li>`);
+    if (phone) items.push(`<li>${icon("i-phone")}<a href="tel:${phone.replace(/\s/g, "")}" dir="ltr">${phone}</a></li>`);
+    if (c.location) items.push(`<li>${icon("i-pin")}<span>${esc(c.location)}</span></li>`);
     $("#contactList").innerHTML = items.length || social.length
       ? items.join("")
       : `<li class="soon">معلومات التواصل وحسابات التواصل الاجتماعي ستُضاف قريبًا.</li>`;
+  }
+
+  /* ---------- صورة السوار: يظهر الرسم البديل إن لم تتوفر الصورة (بدون onerror داخل HTML) ---------- */
+  function setupImageFallbacks() {
+    $$(".band-img").forEach((img) => {
+      const fail = () => img.closest(".band-figure")?.classList.add("no-img");
+      if (img.complete && !img.naturalWidth) fail();
+      img.addEventListener("error", fail);
+    });
   }
 
   /* ---------- الترويسة والقائمة وزر الهاتف ---------- */
@@ -240,6 +255,9 @@
       count.textContent = chosen.length;
     };
 
+    // أسماء أزرار الباقات من بيانات الفعالية إن وُجدت
+    $$(".preset").forEach((b) => { const pr = PRESETS[b.dataset.preset]; if (pr && pr.label) b.textContent = pr.label; });
+
     const setPreset = (key) => {
       current = key;
       selected = new Set(PRESETS[key].items);
@@ -304,6 +322,8 @@
     const fLines = flow ? $$(".f-line", flow) : [];
 
     const CARDS = PASSPORT_CARDS;
+    // أسماء تبويبات البطاقات من بيانات الفعالية إن وُجدت
+    tabs.forEach((t) => { const c = CARDS.find((x) => x.id === t.dataset.card); if (c && c.label) t.textContent = c.label; });
     const visits = Object.fromEntries(CARDS.map((c) => [c.id, 0]));
     let current = CARDS[0].id, autoTimer = null, flowTimer = null, momentIdx = 0;
 
@@ -505,6 +525,7 @@
   document.documentElement.classList.remove("no-js");
   setupStores();
   setupFooter();
+  setupImageFallbacks();
   setupHeader();
   setupMockQR();
   setupPackages();

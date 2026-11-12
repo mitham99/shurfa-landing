@@ -142,3 +142,49 @@
   .ev-page .hero-visual .phone { left: -95px; }
 }
 .ev-hero .dl-screen { background: linear-gradient(170deg, color-mix(in srgb, var(--ev-ink) 85%, #fff), var(--ev-ink) 70%); }
+
+
+/* =========================================================
+   حقائق سريعة تحت العنوان + برنامج المهرجان
+   ========================================================= */
+.ev-facts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+.ev-facts li { display: inline-flex; align-items: center; gap: 7px; padding: 7px 13px; border-radius: 12px; background: rgba(255, 255, 255, .78); box-shadow: var(--shadow-sm); font-size: 14px; font-weight: 500; }
+.ev-facts .ico { width: 17px; height: 17px; color: var(--ev-2); }
+
+.ev-program { background: var(--white); }
+.prog-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.prog-card { --pc: var(--ev-1); position: relative; display: flex; flex-direction: column; gap: 10px; padding: 26px; border-radius: 24px; overflow: hidden;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--pc) 12%, #fff), #fff 60%); border: 1px solid color-mix(in srgb, var(--pc) 22%, transparent); transition: transform .3s var(--ease), box-shadow .3s var(--ease); }
+.prog-card:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+.prog-ico { width: 54px; height: 54px; border-radius: 17px; display: grid; place-items: center; background: var(--pc); color: #fff; --ia: rgba(255, 255, 255, .8); }
+.prog-ico .ico { width: 28px; height: 28px; }
+.prog-card h3 { font-size: 20px; }
+.prog-card > p { color: var(--muted); font-size: 15px; line-height: 1.7; }
+.prog-rows { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.prog-rows li { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; border-radius: 12px; background: color-mix(in srgb, var(--pc) 10%, #fff); font-size: 14px; }
+.prog-rows b { font-weight: 600; color: var(--ev-ink); }
+.prog-rows span { color: var(--green); text-align: end; }
+.prog-note { margin-top: auto; padding-top: 4px; font-size: 13px; font-weight: 600; color: color-mix(in srgb, var(--pc) 75%, var(--green)); }
+
+@media (max-width: 1100px) { .prog-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 960px) { .ev-facts { justify-content: center; } }
+@media (max-width: 640px) {
+  .prog-grid { grid-template-columns: 1fr; gap: 12px; }
+  .prog-card { padding: 18px; border-radius: 18px; }
+  .prog-ico { width: 44px; height: 44px; border-radius: 14px; }
+  .prog-ico .ico { width: 22px; height: 22px; }
+  .prog-card h3 { font-size: 17px; }
+  .prog-card > p, .prog-rows li { font-size: 13.5px; }
+  .ev-facts li { font-size: 12.5px; padding: 6px 10px; }
+}
+@media (min-width: 961px) {
+  .ev-page .hero-visual .phone { left: -70px; }
+  .ev-page .ev-photo { transform: translateX(30px); }
+}
+/* العناوين الطويلة تلتف بدل أن تدفع عمود الصورة خارج الإطار */
+.ev-page .hero-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
+.ev-page .hero h1 .hl { white-space: normal; }
+@media (max-width: 960px) { .ev-page .hero-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.prog-link { align-self: flex-start; margin-top: 6px; }
+.prog-link .ico { width: 16px; height: 16px; }
