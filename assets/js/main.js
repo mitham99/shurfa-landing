@@ -28,16 +28,27 @@
   };
 
   /* ---------- أختام الجواز (عرض توضيحي) ---------- */
-  // يمكن لأي صفحة تعريف أختامها الخاصة عبر window.SHURFA_PASSPORT_STAMPS (انظر data.js)
-  const PASSPORT_STAMPS = window.SHURFA_PASSPORT_STAMPS || [
-    { name: "الدخول", icon: "i-ticket" },
-    { name: "مطعم",   icon: "i-food" },
-    { name: "مقهى",   icon: "i-coffee" },
-    { name: "حلويات", icon: "i-sweet" },
-    { name: "ألعاب",  icon: "i-game" },
-    { name: "حفلة",   icon: "i-music" }
+  /* ---------- بطاقات الولاء في الجواز الرقمي (عرض توضيحي) ----------
+     لكل شريك بطاقته: stamps = عدد الزيارات المختومة، ثم المكافآت (at = رقم الزيارة).
+     يمكن لأي صفحة تعريف بطاقاتها عبر window.SHURFA_PASSPORT_CARDS */
+  const PASSPORT_CARDS = window.SHURFA_PASSPORT_CARDS || [
+    { id: "food", name: "مطعم شريك", icon: "i-food", stamps: 6,
+      rewards: [
+        { at: 7, label: "خصم 30%", ordinal: "السابعة", note: "نسبة الخصم يحددها المطعم" },
+        { at: 8, label: "مجانًا", ordinal: "الثامنة", note: "الوجبة الثامنة مجانية" }
+      ] },
+    { id: "games", name: "لعبة شريكة", icon: "i-game", stamps: 3,
+      rewards: [
+        { at: 4, label: "مجانًا", ordinal: "الرابعة", note: "اللعبة الرابعة مجانية" }
+      ] }
   ];
-  const POINTS_PER_STAMP = 50; // قيمة توضيحية فقط
+  /* لحظات «يومياتي» التوضيحية: صورة من المكان + سطر عن الشعور */
+  const PASSPORT_MOMENTS = [
+    { place: "مهرجان صحار", note: "أمسية جميلة مع العائلة عند المسرح", feel: "الشعور: سعيد", a: "#2CA6A4", b: "#7B5BA7" },
+    { place: "مطعم شريك", note: "أول مرة نجرب الحلوى العُمانية هنا", feel: "الشعور: مستمتع", a: "#E4573D", b: "#F5A623" },
+    { place: "ركن الألعاب", note: "أول فوز للصغار اليوم", feel: "الشعور: فخور", a: "#7B5BA7", b: "#E4573D" },
+    { place: "مهرجان صحار", note: "الأضواء في المساء تستحق الصورة", feel: "الشعور: هادئ", a: "#1A2E28", b: "#2CA6A4" }
+  ];
 
   /* ---------- أدوات ---------- */
   const toast = (() => {
@@ -268,37 +279,82 @@
     setPreset("family");
   }
 
-  /* ---------- جواز السياحة الرقمي ---------- */
+  /* ---------- الجواز الرقمي: بطاقة ولاء لكل شريك + يومياتي ----------
+     لا توجد نقاط ولا تُجمع الأختام بين شركاء مختلفين:
+     كل شريك له بطاقته، وكل زيارة له = ختم في بطاقته فقط،
+     والشريك يحدد عدد الزيارات ونوع المكافأة. */
   function setupPassport() {
-    const stampsEl = $("#ppStamps");
-    if (!stampsEl) return () => {};
-    const pointsEl = $("#ppPoints");
-    const bar = $("#ppBar");
+    const slotsEl = $("#ppSlots");
+    if (!slotsEl) return () => {};
+    const tabs = $$(".pp-tabs [data-card]");
+    const cardEl = $("#ppCard");
+    const nameEl = $("#ppCardName");
+    const iconEl = $("#ppCardIcon");
     const next = $("#ppNext");
     const reward = $("#ppReward");
+    const rewardTitle = $("#ppRewardTitle");
+    const rewardSub = $("#ppRewardSub");
+    const journal = $("#ppJournal");
+    const journalList = $("#ppJournalList");
     const addBtn = $("#ppAdd");
+    const addLabel = addBtn ? addBtn.querySelector("span") : null;
     const resetBtn = $("#ppReset");
     const flow = $("#flow3");
-    const fSteps = $$(".f-step", flow);
-    const fLines = $$(".f-line", flow);
-    const total = PASSPORT_STAMPS.length;
-    let count = 0, points = 0, autoTimer = null, flowTimer = null;
+    const fSteps = flow ? $$(".f-step", flow) : [];
+    const fLines = flow ? $$(".f-line", flow) : [];
 
-    stampsEl.innerHTML = PASSPORT_STAMPS.map((s) => `<div class="stamp">${icon(s.icon)}<span>${s.name}</span></div>`).join("");
-    const stamps = $$(".stamp", stampsEl);
+    const CARDS = PASSPORT_CARDS;
+    const visits = Object.fromEntries(CARDS.map((c) => [c.id, 0]));
+    let current = CARDS[0].id, autoTimer = null, flowTimer = null, momentIdx = 0;
 
-    const animateNumber = (from, to) => {
-      if (reduceMotion) { pointsEl.textContent = to; return; }
-      const start = performance.now(), dur = 600;
-      const step = (t) => {
-        const p = Math.min(1, (t - start) / dur);
-        pointsEl.textContent = Math.round(from + (to - from) * (1 - Math.pow(1 - p, 3)));
-        if (p < 1) requestAnimationFrame(step);
-      };
-      requestAnimationFrame(step);
+    const card = () => CARDS.find((c) => c.id === current);
+    const total = (c) => c.stamps + c.rewards.length;
+    const rewardAt = (c, n) => c.rewards.find((r) => r.at === n);
+
+    const render = () => {
+      if (current === "journal") return;
+      const c = card(), v = visits[c.id], t = total(c);
+      nameEl.textContent = c.name;
+      iconEl.innerHTML = icon(c.icon);
+      slotsEl.style.setProperty("--cols", t <= 4 ? t : 4);
+      let html = "";
+      for (let n = 1; n <= t; n++) {
+        const r = rewardAt(c, n);
+        const done = v >= n, ready = v === n - 1;
+        if (r) {
+          const lbl = r.label.replace(/(\d+\s*%)/, '<span dir="ltr">$1</span>'); // يبقى «30%» بالترتيب الصحيح داخل النص العربي
+          html += `<div class="pp-slot is-reward${done ? " used" : ""}${ready ? " ready" : ""}"><b>${lbl}</b><small>${r.ordinal}</small></div>`;
+        } else {
+          html += `<div class="pp-slot${done ? " on" : ""}">${done ? icon("i-check") : `<span>${n}</span>`}</div>`;
+        }
+      }
+      slotsEl.innerHTML = html;
+
+      // ما الذي ينتظرك؟
+      const upcoming = c.rewards.find((r) => r.at > v);
+      if (!upcoming) {
+        next.textContent = "اكتملت البطاقة — تبدأ بطاقة جديدة مع زيارتك القادمة";
+      } else if (upcoming.at === v + 1) {
+        next.textContent = `زيارتك القادمة (${upcoming.ordinal}): ${upcoming.label}`;
+      } else {
+        const left = upcoming.at - 1 - v;
+        const leftTxt = left === 1 ? "بقيت زيارة واحدة" : left === 2 ? "بقيت زيارتان" : `بقيت ${left} زيارات`;
+        next.textContent = `${leftTxt}، ثم ${upcoming.label} في الزيارة ${upcoming.ordinal}`;
+      }
+      const ready = c.rewards.find((r) => r.at === v + 1);
+      const used = [...c.rewards].reverse().find((r) => r.at === v);
+      if (ready || used) {
+        const r = ready || used;
+        rewardTitle.textContent = ready ? `مكافأتك جاهزة: ${r.label}` : `حصلت على: ${r.label}`;
+        rewardSub.textContent = ready ? `على زيارتك ${r.ordinal} لدى ${c.name}` : r.note;
+        reward.classList.add("show");
+      } else {
+        reward.classList.remove("show");
+      }
     };
 
     const playFlow = () => {
+      if (!fSteps.length) return;
       clearTimeout(flowTimer);
       fSteps.forEach((s) => s.classList.remove("active", "done"));
       fLines.forEach((l) => l.classList.remove("fill"));
@@ -314,47 +370,58 @@
       run();
     };
 
-    const addStamp = () => {
-      if (count >= total) return;
-      stamps[count].classList.add("on");
-      count++;
-      const prev = points;
-      points += POINTS_PER_STAMP;
-      animateNumber(prev, points);
-      bar.style.width = `${(count / total) * 100}%`;
-      next.textContent = count < total ? `بقي ${total - count} أختام لفتح مكافأتك` : "اكتمل جوازك — مكافأتك متاحة!";
-      playFlow();
-      if (count === total) {
-        reward.classList.add("show");
-        addBtn.disabled = true;
-        addBtn.style.opacity = ".5";
+    const renderJournal = () => {
+      journalList.innerHTML = PASSPORT_MOMENTS.slice(0, momentIdx + 1).reverse().map((m) => `
+        <article class="pj-entry">
+          <div class="pj-photo" style="--a:${m.a};--b:${m.b}">${icon("i-camera")}</div>
+          <div class="pj-text"><b>${m.place}</b><p>«${m.note}»</p><span class="pj-feel">${m.feel}</span></div>
+        </article>`).join("");
+    };
+
+    const show = (id) => {
+      current = id;
+      tabs.forEach((t) => { const on = t.dataset.card === id; t.classList.toggle("is-active", on); t.setAttribute("aria-selected", String(on)); });
+      const isJournal = id === "journal";
+      cardEl.hidden = isJournal;
+      journal.hidden = !isJournal;
+      if (isJournal) { reward.classList.remove("show"); renderJournal(); }
+      if (addLabel) addLabel.textContent = isJournal ? "جرّب: أضف لحظة" : "جرّب: أضف زيارة";
+      render();
+    };
+
+    const addVisit = () => {
+      if (current === "journal") {
+        momentIdx = Math.min(momentIdx + 1, PASSPORT_MOMENTS.length - 1);
+        renderJournal();
+        return;
       }
+      const c = card();
+      visits[c.id] = visits[c.id] >= total(c) ? 1 : visits[c.id] + 1; // بعد اكتمال البطاقة تبدأ بطاقة جديدة
+      render();
+      playFlow();
     };
 
     const reset = () => {
       clearInterval(autoTimer);
-      count = 0; points = 0;
-      stamps.forEach((s) => s.classList.remove("on"));
-      pointsEl.textContent = "0";
-      bar.style.width = "0";
-      next.textContent = "أكمل الأختام لفتح مكافأتك";
-      reward.classList.remove("show");
-      addBtn.disabled = false;
-      addBtn.style.opacity = "";
+      CARDS.forEach((c) => { visits[c.id] = 0; });
+      momentIdx = 0;
       fSteps.forEach((s) => s.classList.remove("active", "done"));
       fLines.forEach((l) => l.classList.remove("fill"));
+      show(CARDS[0].id);
     };
 
-    addBtn.addEventListener("click", () => { clearInterval(autoTimer); addStamp(); });
-    resetBtn.addEventListener("click", reset);
+    tabs.forEach((t) => t.addEventListener("click", () => { clearInterval(autoTimer); show(t.dataset.card); }));
+    if (addBtn) addBtn.addEventListener("click", () => { clearInterval(autoTimer); addVisit(); });
+    if (resetBtn) resetBtn.addEventListener("click", reset);
+    show(CARDS[0].id);
 
-    // تشغيل تلقائي لأول ثلاثة أختام عند فتح تبويب الجواز لأول مرة
+    // تشغيل تلقائي: أربع زيارات للمطعم عند ظهور الجواز لأول مرة
     let started = false;
     return () => {
       if (started) return;
       started = true;
       let n = 0;
-      autoTimer = setInterval(() => { addStamp(); if (++n >= 3) clearInterval(autoTimer); }, 1000);
+      autoTimer = setInterval(() => { addVisit(); if (++n >= 4) clearInterval(autoTimer); }, 900);
     };
   }
 
@@ -444,6 +511,6 @@
   const startPassport = setupPassport();
   setupTabs(startPassport);
   // في الصفحات التي لا تحتوي تبويبات (مثل الرئيسية) يبدأ عرض الجواز عند ظهوره
-  if (!document.getElementById("explore")) onVisible($("#ppStamps"), startPassport);
+  if (!document.getElementById("explore")) onVisible($("#ppSlots"), startPassport);
   setupReveal();
 })();

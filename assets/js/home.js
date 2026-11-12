@@ -39,7 +39,7 @@
       const style = `--ev-from:${esc(c.from || "#1A2E28")};--ev-to:${esc(c.to || "#2E5148")};--ev-ac:${esc(c.accent || "#F5A623")}`;
       const href = ev.url && ev.status !== "ended" ? esc(ev.url) : "";
       const cover = ev.image
-        ? `<img src="${esc(ev.image)}" alt="${esc(ev.name)}" loading="lazy">`
+        ? `<img src="${esc(ev.image)}" alt="${esc(ev.name)}" loading="lazy"${ev.imagePosition ? ` style="object-position:${esc(ev.imagePosition)}"` : ""}>`
         : `<span class="ev-art">${bicon(ev.icon || "i-calendar")}</span>`;
       const tags = (ev.tags || []).map((t) => `<li>${esc(t)}</li>`).join("");
       const btn = href
@@ -47,7 +47,7 @@
         : `<span class="btn btn-sm ev-btn is-disabled">${ev.status === "ended" ? "انتهت الفعالية" : "تفاصيل قريبًا"}</span>`;
       return `
         <article class="event-card ${ev.status === "ended" ? "is-ended" : ""}" data-status="${esc(ev.status)}" style="${style}">
-          <div class="ev-cover">${cover}<span class="st ${st.cls}">${st.label}</span></div>
+          <div class="ev-cover">${cover}<span class="st ${st.cls}">${st.label}</span>${ev.logo ? `<span class="ev-card-logo"><img src="${esc(ev.logo)}" alt="شعار ${esc(ev.name)}" loading="lazy"></span>` : ""}</div>
           <div class="ev-body">
             <h3>${href ? `<a href="${href}">${esc(ev.name)}</a>` : esc(ev.name)}</h3>
             <p>${esc(ev.summary)}</p>

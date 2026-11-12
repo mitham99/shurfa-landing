@@ -803,3 +803,42 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 /* الصفحة الحالية في القائمة (مثل «الفعاليات» داخل صفحة فعالية) */
 .main-nav a.is-current { background: rgba(26, 46, 40, .07); font-weight: 600; }
+
+/* =========================================================
+   الجواز الرقمي — بطاقة ولاء لكل شريك + يومياتي
+   ========================================================= */
+.pp-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(255, 255, 255, .08); }
+.pp-tabs button { flex: 1; padding: 6px 4px; border-radius: 9px; font-size: 11.5px; font-weight: 600; color: rgba(255, 255, 255, .72); transition: background-color .25s, color .25s; }
+.pp-tabs button:hover { color: #fff; }
+.pp-tabs button.is-active { background: var(--gold); color: var(--green); }
+
+.pp-card { padding: 12px; border-radius: 16px; background: rgba(255, 255, 255, .08); }
+.pp-card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.pp-card-ico { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; background: var(--brick); color: #fff; flex-shrink: 0; }
+.pp-card-ico .ico { width: 18px; height: 18px; }
+.pp-card-head b { display: block; font-size: 13px; }
+.pp-card-head small { font-size: 10.5px; opacity: .7; }
+
+.pp-slots { display: grid; grid-template-columns: repeat(var(--cols, 4), 1fr); gap: 8px; }
+.pp-slot { aspect-ratio: 1; border-radius: 50%; display: grid; place-items: center; border: 1.5px dashed rgba(255, 255, 255, .3); color: rgba(255, 255, 255, .45); font-size: 12px; font-weight: 600; transition: all .35s var(--ease); }
+.pp-slot .ico { width: 16px; height: 16px; }
+.pp-slot.on { border: 2px solid var(--gold); color: var(--gold); background: radial-gradient(circle, rgba(245, 166, 35, .25), rgba(245, 166, 35, .05)); animation: stampIn .5s var(--ease); }
+.pp-slot.is-reward { border-radius: 12px; display: flex; flex-direction: column; justify-content: center; gap: 1px; text-align: center; line-height: 1.2; padding: 2px; border: 1.5px solid rgba(245, 166, 35, .45); background: rgba(245, 166, 35, .08); color: #fff; }
+.pp-slot.is-reward b { font-size: 10.5px; font-weight: 700; }
+.pp-slot.is-reward small { font-size: 8.5px; opacity: .7; font-weight: 500; }
+.pp-slot.is-reward.ready { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(245, 166, 35, .25); animation: ppPulse 1.6s ease-in-out infinite; }
+.pp-slot.is-reward.used { background: var(--gold); color: var(--green); border-color: var(--gold); }
+@keyframes ppPulse { 0%, 100% { box-shadow: 0 0 0 3px rgba(245, 166, 35, .25); } 50% { box-shadow: 0 0 0 6px rgba(245, 166, 35, .12); } }
+.pp-next { display: block; margin-top: 12px; font-size: 11px; line-height: 1.5; opacity: .85; }
+
+.pp-journal { display: flex; flex-direction: column; gap: 8px; }
+.pj-list { display: flex; flex-direction: column; gap: 8px; max-height: 236px; overflow: hidden; }
+.pj-entry { display: flex; gap: 10px; align-items: center; padding: 8px; border-radius: 14px; background: rgba(255, 255, 255, .08); animation: popIn .45s var(--ease) both; }
+.pj-photo { width: 58px; aspect-ratio: 1; border-radius: 10px; flex-shrink: 0; display: grid; place-items: center; color: rgba(255, 255, 255, .9); background: linear-gradient(135deg, var(--a), var(--b)); }
+.pj-photo .ico { width: 20px; height: 20px; }
+.pj-text b { display: block; font-size: 12px; }
+.pj-text p { font-size: 11px; line-height: 1.45; margin-block: 2px 4px; opacity: .85; }
+.pj-feel { display: inline-block; font-size: 9.5px; font-weight: 600; padding: 1px 8px; border-radius: 99px; background: rgba(245, 166, 35, .2); color: var(--gold); }
+.pj-add { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 8px; border-radius: 12px; border: 1.5px dashed rgba(255, 255, 255, .3); font-size: 11px; opacity: .8; }
+.pj-add .ico { width: 15px; height: 15px; }
+.pp-journal[hidden], .pp-card[hidden] { display: none; }
