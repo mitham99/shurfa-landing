@@ -266,12 +266,15 @@
   const staffStalls = () => ((S.me && S.me.stalls) || []).filter((s) => s.event === EV || true);
   const approvedStalls = () => staffStalls().filter((s) => s.status === "approved" && s.active !== false);
   const isStaff = () => staffStalls().length > 0;
-  const isOrg = () => !!(S.me && S.me.organizer);
+  const orgEvents = () => (S.me && S.me.org_events) || [];
+  const isOrg = () => orgEvents().length > 0;
+  const isAdmin = () => !!(S.me && S.me.shurfa_admin);
   const myName = () => (S.me && S.me.profile && S.me.profile.name) || "";
 
   function tabs() {
     const t = [["home", "الرئيسية", "home"], ["pass", "جوازي", "award"]];
-    if (isStaff() || isOrg()) t.push(["work", isStaff() && isOrg() ? "عملي" : isStaff() ? "كشكي" : "الإدارة", isStaff() ? "scan" : "chart"]);
+    if (isStaff() || isOrg()) t.push(["work", isStaff() && isOrg() ? "عملي" : isStaff() ? "كشكي" : "الاعتماد", "scan"]);
+    if (isAdmin()) t.push(["admin", "شُرفة", "shield"]);
     t.push(["events", "الفعاليات", "compass"], ["account", S.me ? "حسابي" : "دخول", "user"]);
     return t;
   }
@@ -288,7 +291,7 @@
     renderBar();
     window.scrollTo(0, 0);
     if (S.sub && SUB[S.sub.name]) { const h = SUB[S.sub.name](S.sub); if (typeof h === "string") scr.innerHTML = h; afterSub(S.sub); return; }
-    ({ home: renderHome, pass: renderPass, work: renderWork, events: renderEvents, account: renderAccount }[S.tab] || renderHome)();
+    ({ home: renderHome, pass: renderPass, work: renderWork, admin: renderAdmin, events: renderEvents, account: renderAccount }[S.tab] || renderHome)();
   }
   const head = (title, back = true, extra = "") => `<div class="phead">${back ? `<button class="iconbtn" data-a="back" aria-label="رجوع">${ic("back", 24, 2)}</button>` : ""}<h2>${esc(title)}</h2>${extra}</div>`;
   const loginBtn = () => `<button class="btn btn-dark btn-sm" data-a="login" style="width:auto;padding:0 16px">${ic("user", 18)} دخول</button>`;
@@ -327,8 +330,8 @@
       </section>
       <div class="sp"></div>
       ${canSell() || ref ? `<div class="pad">${passCard}</div><div class="sp"></div>` : ""}
-      ${isStaff() || isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--teal-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--teal-ink)">${ic(isStaff() ? "scan" : "chart", 22)}</span><span class="grow"><b>${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</b><span class="sub" style="display:block;color:var(--ink)">${isStaff() ? "امسح جوازات الزوار وأضف الأختام" : "الجوازات والشركاء ومؤشرات الفعالية"}</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
-      ${S.me && S.me.shurfa_admin ? `<div class="pad"><button class="card row" data-a="sub" data-name="platform" style="gap:14px;background:var(--purple-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--purple)">${ic("shield", 22)}</span><span class="grow"><b>إدارة شُرفة</b><span class="sub" style="display:block;color:var(--ink)">مراجعة طلبات المنظمين</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
+      ${isStaff() || isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--teal-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--teal-ink)">${ic(isStaff() ? "scan" : "chart", 22)}</span><span class="grow"><b>${isStaff() ? "واجهة الكشك" : "اعتماد الجوازات"}</b><span class="sub" style="display:block;color:var(--ink)">${isStaff() ? "امسح جوازات الزوار وأضف الأختام" : "امسح رمز الزائر بعد الدفع لتفعيل جوازه"}</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
+      ${S.me && S.me.shurfa_admin ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="admin" style="gap:14px;background:var(--purple-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--purple)">${ic("shield", 22)}</span><span class="grow"><b>إدارة شُرفة</b><span class="sub" style="display:block;color:var(--ink)">المنظمون والشركاء والمؤشرات</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
       <div id="railWrap"></div>
       ${services.length ? `<div class="pad"><h3 class="sec-t">خدمات الفعالية</h3></div>
       <div class="hscroll" style="padding-top:10px">${services.map((s) => `${s.href ? `<a class="svc" href="${esc(s.href)}">` : `<button class="svc" ${s.a}>`}
@@ -536,7 +539,7 @@
     const W = S.work;
     if (!(isStaff() && isOrg())) W.mode = isStaff() ? "stall" : "org";
     const sw = isStaff() && isOrg() ? `<div class="seg" role="group" aria-label="الواجهة" style="background:rgba(250,246,240,.12)">
-      <button data-a="work-mode" data-k="stall" aria-pressed="${W.mode === "stall"}" style="color:var(--cream)">كشكي</button><button data-a="work-mode" data-k="org" aria-pressed="${W.mode === "org"}" style="color:var(--cream)">الإدارة</button></div>` : "";
+      <button data-a="work-mode" data-k="stall" aria-pressed="${W.mode === "stall"}">كشكي</button><button data-a="work-mode" data-k="org" aria-pressed="${W.mode === "org"}">اعتماد الجوازات</button></div>` : "";
     if (W.mode === "org") return renderOrg(sw);
 
     const ok = approvedStalls();
@@ -601,34 +604,59 @@
     } finally { S.work.busy = false; }
   }
 
-  /* ---------- المنظم ---------- */
+  /* ---------- المنظم: اعتماد الجوازات لفعاليته فقط ---------- */
+  const orgEv = () => {
+    const list = orgEvents();
+    if (!S.work.orgEvent || !list.find((e) => e.id === S.work.orgEvent)) S.work.orgEvent = (list.find((e) => e.id === EV) || list[0] || {}).id;
+    return S.work.orgEvent;
+  };
   async function renderOrg(sw) {
-    const ev = evById(EV) || {};
+    const list = orgEvents(), id = orgEv(), ev = list.find((e) => e.id === id) || {};
     onScan = orgLookup;
     scr.innerHTML = `<div class="ohead">${sw}
-        <div><div style="font-size:12.5px;opacity:.85">منظم · ${esc(firstName(myName()))}</div><h2>${esc((ev.name || EV).split("—")[0].trim())}</h2></div></div>
+        <div><div style="font-size:12.5px;opacity:.85">منظم · ${esc(firstName(myName()))}</div><h2>${esc((ev.name || "").split("—")[0].trim())}</h2></div>
+        ${list.length > 1 ? `<select data-c="org-event" aria-label="الفعالية">${list.map((e) => `<option value="${esc(e.id)}" ${e.id === id ? "selected" : ""}>${esc(e.name)}</option>`).join("")}</select>` : ""}
+        <span style="font-size:13px;opacity:.9">امسح رمز الزائر بعد استلام المبلغ لتفعيل جوازه.</span></div>
       <div class="pad stack" style="padding-top:16px">
-        <h3 class="sec-t">تفعيل جواز بعد الدفع</h3>
         ${scanUI("امسح جواز الزائر", "لتأكيد الدفع وتفعيل الجواز")}
-        <div id="orgBody" class="stack"><div class="skel"></div><div class="skel"></div></div>
+        <div class="kpis3" id="orgAct" style="grid-template-columns:1fr 1fr"><div><b>–</b><span>فعّلتها اليوم</span></div><div><b>–</b><span>المجموع</span></div></div>
       </div>`;
-    loadOrg();
+    loadOrgActivity();
   }
-  async function loadOrg() {
+  async function loadOrgActivity() {
     try {
-      const [s, apps] = await Promise.all([A.urpc("admin_stats", { p_event: EV }), A.urpc("admin_list_applications", { p_event: EV })]);
-      const el = $("#orgBody"); if (!el) return;
-      const pend = apps.filter((a) => a.status === "pending");
+      const d = await A.urpc("org_my_activity", { p_event: orgEv() });
+      const el = $("#orgAct"); if (el) el.innerHTML = `<div><b class="num">${d.today}</b><span>فعّلتها اليوم</span></div><div><b class="num">${d.total}</b><span>المجموع</span></div>`;
+    } catch (e) { /* ignore */ }
+  }
+
+  /* ---------- إدارة شُرفة (تبويب خاص) ---------- */
+  function renderAdmin() {
+    const t = S.adminTab || "orgs";
+    scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>لوحة المنصة</h2></div>
+        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
+      <div class="pad stack" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
+    if (t === "orgs") loadPlatform();
+    else if (t === "partners") loadAdminPartners();
+    else loadAdminStats();
+  }
+  async function loadAdminPartners() {
+    const el = $("#pfBody"); if (!el) return;
+    try {
+      const apps = await A.urpc("admin_list_applications", { p_event: EV });
+      el.innerHTML = apps.length ? apps.map(appCard).join("") : `<div class="empty card">${ic("users", 36)}<b>لا توجد طلبات شركاء بعد</b><span>رابط تسجيل الشركاء: <b dir="ltr">${esc(location.origin + location.pathname)}?role=partner&amp;join=partner</b></span></div>`;
+    } catch (e) { el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
+  }
+  async function loadAdminStats() {
+    const el = $("#pfBody"); if (!el) return;
+    try {
+      const s = await A.urpc("admin_stats", { p_event: EV });
       el.innerHTML = `<div class="kpis3"><div><b class="num">${s.paid}</b><span>جوازات مفعّلة</span></div><div><b class="num">${s.pending_payment}</b><span>بانتظار الدفع</span></div><div><b class="num" style="font-size:18px">${s.revenue_baisa ? fmtPrice(s.revenue_baisa) : "0"}</b><span>المبيعات</span></div></div>
         <div class="kpis3"><div><b class="num">${s.visitors_today}</b><span>طلبات اليوم</span></div><div><b class="num">${s.stamps}</b><span>أختام</span></div><div><b class="num">${s.rewards}</b><span>مكافآت</span></div></div>
-        <div class="between"><h3 class="sec-t">طلبات الشركاء ${pend.length ? `<span class="st st-warn">${pend.length} جديد</span>` : ""}</h3><button class="linkbtn" data-a="org-refresh">تحديث</button></div>
-        ${apps.length ? apps.map(appCard).join("") : `<div class="card flat sub" style="text-align:center">لا توجد طلبات شركاء بعد. شارك رابط التسجيل: <b dir="ltr">${esc(location.origin + location.pathname)}?join=partner</b></div>`}
         <h3 class="sec-t">أداء الأكشاك المعتمدة</h3>
         <div class="card" style="padding:4px 16px">${(s.stalls || []).length ? s.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;background:var(--gold-soft);color:var(--gold-ink)">${ic(KIND_ICON[x.kind] || "star", 18)}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visitors} زائر · ${x.visits} زيارة · ${x.rewards} مكافأة</div></div>${x.active ? "" : '<span class="st st-mute">متوقف</span>'}</div>`).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
         <a class="btn btn-dark" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)} لوحة التحكم الكاملة</a>`;
-    } catch (e) {
-      const el = $("#orgBody"); if (el) el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`;
-    }
+    } catch (e) { el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
   }
   const STATUS_AR = { pending: ["قيد المراجعة", "st-warn"], approved: ["معتمد", "st-ok"], rejected: ["مرفوض", "st-err"] };
   const appCard = (a) => `<div class="card stack" style="gap:10px">
@@ -643,7 +671,7 @@
 
   async function orgLookup(code) {
     try {
-      const d = await A.urpc("admin_pass_lookup", { p_event: EV, p_code: code });
+      const d = await A.urpc("admin_pass_lookup", { p_event: orgEv(), p_code: code });
       if (d.status === "active") return showRes("ok", "check", "الجواز مفعّل", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · ${d.pay_method === "free" ? "مجاني" : "مدفوع"} ${d.paid_at ? esc(dayTime(d.paid_at)) : ""}`);
       showRes("warn", "lock", "بانتظار الدفع", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · المبلغ ${fmtPrice(d.amount_baisa || price())}`,
         `<div class="row" style="gap:8px;width:100%;margin-top:6px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="cash">استلمت نقدًا</button><button class="btn btn-line btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="transfer">تحويل بنكي</button></div>`);
@@ -679,6 +707,7 @@
     const roles = ['<span class="st st-purple">زائر</span>'];
     if (S.me.partner || isStaff()) roles.push('<span class="st st-warn">شريك</span>');
     if (isOrg()) roles.push('<span class="st st-teal">منظم</span>');
+    if (isAdmin()) roles.push('<span class="st st-purple">إدارة شُرفة</span>');
     scr.innerHTML = `${head("حسابي", false)}
       <div class="pad"><div class="card row"><span class="avatar lg">${esc(firstName(p.name).charAt(0))}</span><div class="grow"><b style="font-size:17px">${esc(p.name)}</b>
         <div class="sub" dir="ltr" style="text-align:right">${esc(S.me.email)}</div><div class="sub" dir="ltr" style="text-align:right">${esc(p.phone)}</div></div></div>
@@ -687,10 +716,10 @@
       <div class="pad"><div class="card" style="padding:0;overflow:hidden">
         <button class="menu-btn" data-a="go-tab" data-tab="pass">${ic("award", 20)}<span class="grow">جوازي الرقمي</span>${ic("fwd", 16, 2)}</button>
         <button class="menu-btn" data-a="sub" data-name="partner">${ic("users", 20)}<span class="grow">${S.me.partner ? "بيانات الشريك وبطاقة الولاء" : "انضم كشريك"}</span>${ic("fwd", 16, 2)}</button>
-        ${isStaff() || isOrg() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic(isStaff() ? "scan" : "chart", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</span>${ic("fwd", 16, 2)}</button>` : ""}
-        ${isOrg() ? `<a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>`
-          : `<button class="menu-btn" data-a="sub" data-name="orgapply">${ic("chart", 20)}<span class="grow">سجّل كمنظم فعالية</span>${S.me.org_request === "pending" ? '<span class="st st-warn">قيد المراجعة</span>' : ""}${ic("fwd", 16, 2)}</button>`}
-        ${S.me.shurfa_admin ? `<button class="menu-btn" data-a="sub" data-name="platform">${ic("shield", 20)}<span class="grow">إدارة شُرفة: طلبات المنظمين</span>${ic("fwd", 16, 2)}</button>` : ""}
+        ${isStaff() || isOrg() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic("scan", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : "اعتماد الجوازات"}</span>${ic("fwd", 16, 2)}</button>` : ""}
+        ${isOrg() ? "" : `<button class="menu-btn" data-a="sub" data-name="orgapply">${ic("chart", 20)}<span class="grow">سجّل كمنظم فعالية</span>${S.me.org_request === "pending" ? '<span class="st st-warn">قيد المراجعة</span>' : ""}${ic("fwd", 16, 2)}</button>`}
+        ${isAdmin() ? `<button class="menu-btn" data-a="go-tab" data-tab="admin">${ic("shield", 20)}<span class="grow">إدارة شُرفة</span>${ic("fwd", 16, 2)}</button>
+          <a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>` : ""}
         <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
       </div></div>
       <div class="sp"></div>
@@ -764,9 +793,6 @@
     orgapply() {
       return `${head("طلب منظم فعالية")}<div class="pad stack" id="oaBody"><div class="skel"></div><div class="skel"></div></div>`;
     },
-    platform() {
-      return `${head("إدارة شُرفة")}<div class="pad stack"><p class="sub">طلبات المنظمين. الاعتماد يفعّل لهم تبويب «الإدارة» لفعالياتهم.</p><div class="stack" id="pfBody"><div class="skel"></div></div></div><div class="sp"></div>`;
-    },
     packages() {
       const ev = evById(EV) || {}, pk = (ev.page && ev.page.packages) || { items: [], presets: {} };
       const item = (id) => pk.items.find((i) => i.id === id) || {};
@@ -787,7 +813,7 @@
   function afterSub(o) {
     if (o.name === "partner") loadPartnerForm();
     if (o.name === "orgapply") loadOrgApply();
-    if (o.name === "platform") loadPlatform();
+
   }
 
   /* ---------- طلب المنظم ---------- */
@@ -801,8 +827,8 @@
     const st = r.status;
     const statusBox = st ? `<div class="result ${st === "approved" ? "r-ok" : st === "rejected" ? "r-err" : "r-warn"}" style="padding:14px">
         <h3 style="font-size:17px">${st === "approved" ? "تم اعتمادك كمنظم" : st === "rejected" ? "لم يُعتمد الطلب" : "طلبك قيد مراجعة فريق شُرفة"}</h3>
-        <span class="sub" style="color:var(--ink)">${st === "approved" ? "تبويب «الإدارة» متاح لك الآن." : st === "rejected" ? (r.review_note ? "ملاحظة: " + esc(r.review_note) : "يمكنك تعديل البيانات وإعادة الإرسال.") : "سنراجع بيانات الجهة والفعالية ونفعّل لوحة الإدارة بعد الاعتماد."}</span>
-        ${st === "approved" ? `<button class="btn btn-dark btn-sm" data-a="org-open">${ic("chart", 18)} افتح الإدارة</button>` : ""}</div>` : "";
+        <span class="sub" style="color:var(--ink)">${st === "approved" ? "تبويب «الاعتماد» متاح لك الآن لمسح جوازات الزوار وتفعيلها." : st === "rejected" ? (r.review_note ? "ملاحظة: " + esc(r.review_note) : "يمكنك تعديل البيانات وإعادة الإرسال.") : "سنراجع بيانات الجهة والفعالية ونفعّل لك أداة اعتماد الجوازات بعد الموافقة."}</span>
+        ${st === "approved" ? `<button class="btn btn-dark btn-sm" data-a="org-open">${ic("scan", 18)} افتح اعتماد الجوازات</button>` : ""}</div>` : "";
     if (st === "approved") { box.innerHTML = statusBox; return; }
     const evOpts = evs.map((e) => `<label class="opt"><input type="radio" name="event" value="${esc(e.id)}" ${r.event === e.id || (!r.event && !r.event_name && e.id === EV) ? "checked" : ""}><span class="grow">${esc(e.name)}</span></label>`).join("");
     box.innerHTML = `${statusBox}
@@ -973,7 +999,7 @@
     else if (a === "pass-tab") { S.passTab = b.dataset.k; S.tab = "pass"; S.sub = null; render(); }
     else if (a === "work-mode") { S.work.mode = b.dataset.k; render(); }
     else if (a === "work-refresh") loadStaffStats();
-    else if (a === "org-refresh") loadOrg();
+    else if (a === "admin-tab") { S.adminTab = b.dataset.k; render(); }
     else if (a === "org-open") { S.me = await A.urpc("me"); S.tab = "work"; S.work.mode = "org"; S.sub = null; render(); }
     else if (a === "org-review") {
       const okv = b.dataset.ok === "1"; let note = null;
@@ -989,14 +1015,14 @@
     }
     else if (a === "activate") {
       b.disabled = true;
-      try { const d = await A.urpc("admin_activate_pass", { p_event: EV, p_code: b.dataset.code, p_method: b.dataset.m }); showRes("ok", "check", "تم تفعيل الجواز", `<b>${esc(d.name)}</b> · ${b.dataset.m === "cash" ? "نقدًا" : "تحويل بنكي"}`); loadOrg(); }
+      try { const d = await A.urpc("admin_activate_pass", { p_event: orgEv(), p_code: b.dataset.code, p_method: b.dataset.m }); showRes("ok", "check", "تم تفعيل الجواز", `<b>${esc(d.name)}</b> · ${b.dataset.m === "cash" ? "نقدًا" : "تحويل بنكي"}`); loadOrgActivity(); }
       catch (e) { b.disabled = false; toast(e.code === "already_active" ? "الجواز مفعّل مسبقًا." : errMsg(e), "err"); }
     }
     else if (a === "review") {
       const okv = b.dataset.ok === "1";
       let note = null;
       if (!okv) { note = prompt("سبب الرفض أو الإيقاف (يظهر للشريك):", ""); if (note === null) return; }
-      try { await A.urpc("admin_review_stall", { p_stall: b.dataset.id, p_approve: okv, p_note: note }); toast(okv ? "تم اعتماد الشريك" : "تم تحديث الحالة", "ok"); loadOrg(); }
+      try { await A.urpc("admin_review_stall", { p_stall: b.dataset.id, p_approve: okv, p_note: note }); toast(okv ? "تم اعتماد الشريك" : "تم تحديث الحالة", "ok"); loadAdminPartners(); }
       catch (e) { toast(errMsg(e), "err"); }
     }
     else if (a === "edit-profile") { S.authOpen = true; goAuth("profile"); }
@@ -1015,6 +1041,7 @@
 
   document.addEventListener("change", async (ev) => {
     const t = ev.target;
+    if (t.dataset.c === "org-event") { S.work.orgEvent = t.value; render(); return; }
     if (t.dataset.c === "work-stall") { S.work.stall = t.value; S.work.res = ""; A.local.set("work-stall", t.value); render(); }
     else if (t.dataset.c === "pt-logo" && t.files && t.files[0]) {
       const m = $("#ptMsg"); m.innerHTML = `<div class="msg info">جارٍ رفع الشعار…</div>`;
