@@ -134,10 +134,11 @@
   }
 
   function offerText(s) {
-    return `${s.required} ${s.required === 1 ? "زيارة" : s.required === 2 ? "زيارتان" : "زيارات"} ← ${s.reward1}` + (s.reward2 ? ` ← ${s.reward2}` : "");
+    const n = s.required, v = n === 1 ? "زيارة واحدة" : n === 2 ? "زيارتان" : n <= 10 ? `${n} زيارات` : `${n} زيارة`;
+    return `${v} ← ${s.reward1}` + (s.reward2 ? ` ← ${s.reward2}` : "");
   }
 
-  const KIND = { food: "طعام", cafe: "مقهى", sweets: "حلويات", games: "ألعاب", other: "أخرى" };
+  const KIND = { food: "مطعم / طعام", cafe: "مقهى", sweets: "حلويات", games: "ألعاب وأنشطة", other: "أخرى" };
 
   function csvDownload(filename, rows) {
     const escCsv = (v) => { const s = String(v ?? ""); return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
@@ -174,6 +175,7 @@
         const m = JSON.stringify(e.raw || "");
         if (/already.*registered|user_already_exists/i.test(m)) throw Object.assign(new Error("email_taken"), { code: "email_taken" });
         if (/weak_password|Password should/i.test(m)) throw Object.assign(new Error("weak_password"), { code: "weak_password" });
+        if (/sending.*email|smtp/i.test(m)) throw Object.assign(new Error("email_send_failed"), { code: "email_send_failed" });
         throw e;
       }
       if (d && d.access_token) return { session: auth._save(d, email) };
@@ -248,6 +250,14 @@
     weak_password: "كلمة المرور ضعيفة. استخدم 8 أحرف على الأقل.",
     same_password: "اختر كلمة مرور مختلفة عن السابقة.",
     password_mismatch: "كلمتا المرور غير متطابقتين.",
+    bad_card: "أكمل بطاقة الولاء: عدد الزيارات (1–20) والمكافأة الأولى.",
+    bad_logo: "الشعار يجب أن يكون صورة PNG أو JPG أو WEBP أقل من 1 ميغابايت.",
+    upload_failed: "تعذّر رفع الشعار. حاول مرة أخرى.",
+    pass_not_paid: "جواز الزائر غير مفعّل بعد (لم يكتمل الدفع).",
+    stall_not_approved: "الكشك غير معتمد بعد من المنظم.",
+    already_active: "الجواز مفعّل مسبقًا.",
+    bad_method: "طريقة دفع غير صحيحة.",
+    email_send_failed: "تعذّر إرسال رسالة التأكيد إلى بريدك حاليًا. حاول بعد قليل أو تواصل مع فريق شُرفة.",
     email_not_confirmed: "لم يتم تأكيد بريدك بعد. أدخل رمز التأكيد المرسل إليك."
   });
 
