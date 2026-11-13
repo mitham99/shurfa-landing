@@ -45,8 +45,25 @@
     clearTimeout(toastT); toastT = setTimeout(() => { t.className = "toast"; }, 3200);
   }
   const errMsg = (e) => A.errText(e && e.code);
-  const evById = (id) => (D.events || []).find((e) => e.id === id);
-  const img = (p) => (p ? "../" + p.replace(/^\/+/, "") : "");
+  const EVDB = {};   // محتوى الفعاليات من قاعدة البيانات (تعدّله إدارة شُرفة)
+  function evById(id) {
+    const base = (D.events || []).find((e) => e.id === id), db = EVDB[id];
+    if (!base && !db) return undefined;
+    const b = base || { id, page: {} }, x = db || {};
+    const m = Object.assign({}, b, {
+      id, name: x.name || b.name || id, summary: x.summary || b.summary || "", location: x.location || b.location || "",
+      date: x.date || b.date || "", status: x.status || b.status || "soon", image: x.image || b.image || "", logo: x.logo || b.logo || "",
+      colors: Object.assign({}, b.colors || {}, x.color_from ? { from: x.color_from } : {}, x.color_to ? { to: x.color_to } : {}),
+      hours: x.hours || "", sort: x.sort != null ? x.sort : 100, db: x
+    });
+    if (!m.page) m.page = {};
+    return m;
+  }
+  const allEvents = () => {
+    const ids = [...new Set([...(D.events || []).map((e) => e.id), ...Object.keys(EVDB)])];
+    return ids.map(evById).filter(Boolean).sort((a, b) => (a.sort - b.sort));
+  };
+  const img = (p) => (!p ? "" : /^https:\/\//.test(p) ? p : "../" + p.replace(/^\/+/, ""));
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
   const greet = () => { const h = new Date().getHours(); return h < 12 ? "صباح الخير" : "مساء الخير"; };
   const time = (d) => { try { return new Date(d).toLocaleTimeString("ar-OM-u-nu-latn", { hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; } };
@@ -71,14 +88,18 @@
      الدخول
      ========================================================= */
   function renderAuth() {
-    bar.hidden = true; scr.className = "screen no-tabs";
+    bar.hidden = true; scr.className = "screen no-tabs auth-screen"; $("#appbar").hidden = true; closeMenu();
     const ev = evById(EV), st = S.authStep;
-    const R = S.role || "visitor";
+    // في «أكمل بياناتك» الدور يُعرف من الحساب نفسه (إدارة/منظم/شريك) وليس من الجهاز
+    const profRole = () => !S.me ? (S.role || "visitor") : S.me.shurfa_admin ? "admin" : (S.me.org_events || []).length ? "organizer"
+      : (S.me.partner || (S.me.stalls || []).length) ? "partner" : (S.role || "visitor");
+    const R = st === "profile" ? profRole() : (S.role || "visitor");
     const evName = ev ? esc(ev.name.split("—")[0].trim()) : "";
     const TL = {
       visitor: ["أهلًا بك في شُرفة", "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام" + (evName ? " في " + evName : "") + "."],
       partner: ["بوابة الشركاء", "شريك" + (evName ? " في " + evName : "") + ": أدر كشكك وبطاقة الولاء وامسح جوازات الزوار."],
-      organizer: ["دخول المنظمين", "منظم" + (evName ? " في " + evName : "") + ": اعتمد جوازات الزوار بعد الدفع."]
+      organizer: ["دخول المنظمين", "منظم" + (evName ? " في " + evName : "") + ": اعتمد جوازات الزوار بعد الدفع."],
+      admin: ["إدارة شُرفة", "دخول فريق إدارة المنصة: اعتماد المنظمين والشركاء ومتابعة المؤشرات."]
     };
     const T = {
       who: ["سجّل دخولك إلى شُرفة", evName ? "اختر صفتك في " + evName + "." : "اختر صفتك والفعالية."],
@@ -89,18 +110,19 @@
       code: ["تأكيد البريد", R === "partner" ? "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء." : R === "organizer" ? "بعد التأكيد تنتقل لبيانات الجهة والفعالية." : "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
-      profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بياناتك", "لإصدار جوازك الرقمي."]
+      profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بيانات حسابك",
+        R === "admin" ? "بيانات حساب إدارة شُرفة." : R === "organizer" ? "الاسم ورقم التواصل لحساب المنظم." : R === "partner" ? "الاسم ورقم التواصل لحساب الشريك." : "مرة واحدة، لاستخدامها في جوازك الرقمي."]
     }[st] || ["شُرفة", ""];
-    const topBg = st === "who" ? "" : R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : "";
-    const badge = st === "who" ? "" : (R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر") + (evName ? " · " + evName : "");
-    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge && st !== "profile" ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["who", "login", "signup", "forgot", "code"].includes(st) ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
+    const topBg = st === "who" ? "" : R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : R === "admin" ? "linear-gradient(150deg,#5F4486,#7B5BA7)" : "";
+    const badge = st === "who" ? "" : R === "admin" ? "إدارة المنصة" : (R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر") + (evName ? " · " + evName : "");
+    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["who", "login", "signup", "forgot", "code"].includes(st) && R !== "admin" ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
       <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="8" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
     let body = "";
     if (st === "who") {
       const pick = !!A.session.get("pick");
-      const evs = (D.events || []);
+      const evs = allEvents();
       const roles = [
         ["visitor", "زائر", "award", "#1A2E28", "#2E5148", evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
         ["partner", "شريك", "users", "#7A4F00", "#B07400", evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
@@ -112,16 +134,17 @@
         ${roles.map(([k, l, i, c1, c2, d]) => `<button type="button" class="who-card" data-a="who" data-k="${k}" style="background:linear-gradient(150deg,${c1},${c2})">
           <span class="ico-tile" style="background:rgba(255,255,255,.16);color:#fff;width:50px;height:50px">${ic(i, 26)}</span>
           <span class="grow"><b>${l}${evName ? ` <small>· ${evName}</small>` : ""}</b><span>${d}</span></span>${ic("fwd", 20, 2)}</button>`).join("")}
+        <button type="button" class="linkbtn" data-a="who" data-k="admin" style="align-self:center;color:var(--purple)">${ic("shield", 16)} دخول إدارة شُرفة</button>
       </div>`;
     } else if (st === "login") {
       body = `<form class="auth-body" data-f="login" novalidate>
-        <div class="card flat between" style="padding:10px 14px"><span style="font-size:14px">تدخل بصفتك <b>${R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر"}</b>${evName ? " في <b>" + evName + "</b>" : ""}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="who" style="padding:0;min-height:auto">تغيير</button></div>
+        <div class="card flat between" style="padding:10px 14px"><span style="font-size:14px">${R === "admin" ? "تدخل بصفتك <b>إدارة شُرفة</b>" : `تدخل بصفتك <b>${R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر"}</b>${evName ? " في <b>" + evName + "</b>" : ""}`}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="who" style="padding:0;min-height:auto">تغيير</button></div>
         <div class="field"><label for="au-id">البريد الإلكتروني أو رقم الهاتف</label><input class="input" id="au-id" name="ident" autocomplete="username" dir="ltr" style="text-align:right" placeholder="name@example.com / 9xxxxxxx" value="${esc(S.email)}" required></div>
         ${pw("password", "كلمة المرور", "current-password")}
         <button type="button" class="linkbtn" data-a="auth-go" data-k="forgot" style="align-self:flex-start;padding:0;min-height:30px">نسيت كلمة المرور؟</button>
         <div id="au-msg"></div>
-        <button class="btn btn-dark" type="submit">${R === "partner" ? "دخول الشريك" : R === "organizer" ? "دخول المنظم" : "تسجيل الدخول"}</button>
-        <div class="row" style="justify-content:center;gap:6px"><span class="sub">${R === "partner" ? "شريك جديد؟" : R === "organizer" ? "منظم جديد؟" : "ليس لديك حساب؟"}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">${R === "partner" ? "سجّل مشروعك" : R === "organizer" ? "سجّل جهتك وفعاليتك" : "أنشئ حسابًا"}</button></div>
+        <button class="btn btn-dark" type="submit">${R === "partner" ? "دخول الشريك" : R === "organizer" ? "دخول المنظم" : R === "admin" ? "دخول الإدارة" : "تسجيل الدخول"}</button>
+        ${R === "admin" ? `<p class="sub" style="text-align:center">حسابات الإدارة تُضاف من فريق شُرفة فقط.</p>` : `<div class="row" style="justify-content:center;gap:6px"><span class="sub">${R === "partner" ? "شريك جديد؟" : R === "organizer" ? "منظم جديد؟" : "ليس لديك حساب؟"}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">${R === "partner" ? "سجّل مشروعك" : R === "organizer" ? "سجّل جهتك وفعاليتك" : "أنشئ حسابًا"}</button></div>`}
         ${R === "organizer" ? `<p class="sub" style="text-align:center">يراجع فريق شُرفة طلبات المنظمين قبل تفعيل لوحة الإدارة.</p>` : ""}
       </form>`;
     } else if (st === "signup") {
@@ -171,11 +194,12 @@
       body = `<form class="auth-body" data-f="profile" novalidate>
         <div class="field"><label for="pf-name">الاسم</label><input class="input" id="pf-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد" value="${esc(p.name || "")}" required></div>
         <div class="field"><label for="pf-phone">رقم الهاتف</label><input class="input" id="pf-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(p.phone || "")}" required></div>
-        <div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(p.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>
-        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>أوافق على استخدام اسمي ورقمي لتشغيل الجواز الرقمي في الفعاليات فقط. <a href="privacy.html">سياسة الخصوصية</a></span></label>
+        ${R === "visitor" ? `<div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(p.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>` : ""}
+        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>${R === "visitor" ? "أوافق على استخدام اسمي ورقمي لتشغيل الجواز الرقمي في الفعاليات فقط." : "أوافق على استخدام اسمي ورقمي لإدارة حسابي والتواصل بخصوص الفعاليات."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
         <div id="au-msg"></div>
-        <button class="btn btn-cta" type="submit">${S.me && S.me.profile ? "حفظ" : "أصدر جوازي"}</button>
-        ${S.me && S.me.profile ? `<button type="button" class="btn btn-line" data-a="go-tab" data-tab="account">إلغاء</button>` : ""}
+        <button class="btn btn-cta" type="submit">${S.me && S.me.profile ? "حفظ" : "متابعة"}</button>
+        ${S.me && S.me.profile ? `<button type="button" class="btn btn-line" data-a="go-tab" data-tab="account">إلغاء</button>`
+          : `<div class="row" style="justify-content:center;gap:6px"><span class="sub dir-ltr" dir="ltr">${esc((S.me && S.me.email) || "")}</span><button type="button" class="linkbtn" data-a="logout">ليس حسابك؟ خروج</button></div>`}
       </form>`;
     }
     scr.innerHTML = top + body;
@@ -242,8 +266,10 @@
       if (!S.me) { S.after = "partner"; A.session.set("after", "partner"); S.authOpen = true; goAuth(q.get("join") ? "signup" : "login"); return; }
       return startIntent("partner");
     }
+    if (qr === "admin") { history.replaceState(null, "", location.pathname); setRole("admin"); return S.me ? startIntent("admin") : requireLogin("admin", "admin"); }
     if (qr === "organizer") { history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("organizer"); return S.me ? startIntent("organizer") : requireLogin("organizer", "organizer"); }
     if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null, null); }
+    if (isAdmin() && !q.get("tab")) S.tab = "admin";
     if (S.after) { const a = S.after; S.after = null; return startIntent(a); }
     render();
   }
@@ -257,6 +283,10 @@
       // شريك: إن كان لديه كشك يفتح «كشكي»، وإلا نموذج المشروع
       if (isStaff() && approvedStalls().length) { S.tab = "work"; S.work.mode = "stall"; S.sub = null; }
       else { S.tab = isStaff() ? "work" : "account"; S.sub = isStaff() ? null : { name: "partner" }; }
+    }
+    else if (kind === "admin") {
+      if (isAdmin()) { S.tab = "admin"; S.sub = null; }
+      else { toast("هذا الحساب ليس من إدارة شُرفة.", "err"); S.tab = "home"; S.sub = null; setRole("visitor"); }
     }
     else if (kind === "organizer") {
       if (isOrg()) { S.tab = "work"; S.work.mode = "org"; S.sub = null; }
@@ -272,7 +302,11 @@
   function setRole(r) { S.role = r; A.session.set("role", r); }
 
   async function loadEvInfo() {
-    try { S.ev = await A.rpc("event_info", { p_event: EV }); } catch (e) { S.ev = S.ev || null; }
+    try {
+      const list = await A.rpc("list_events");
+      (list || []).forEach((e) => { EVDB[e.id] = e; });
+      S.ev = EVDB[EV] || null;
+    } catch (e) { S.ev = S.ev || null; }
     return S.ev;
   }
   const myPassRef = () => S.me && (S.me.passes || []).find((p) => p.event === EV);
@@ -292,6 +326,7 @@
   const myName = () => (S.me && S.me.profile && S.me.profile.name) || "";
 
   function tabs() {
+    if (isAdmin()) return [["admin", "الإدارة", "shield"], ["home", "الرئيسية", "home"], ["events", "الفعاليات", "compass"], ["pass", "الجواز", "award"], ["account", "حسابي", "user"]];
     const t = [["home", "الرئيسية", "home"], ["pass", "جوازي", "award"]];
     if (isStaff() || isOrg()) t.push(["work", isStaff() && isOrg() ? "عملي" : isStaff() ? "كشكي" : "الاعتماد", "scan"]);
     if (isAdmin()) t.push(["admin", "شُرفة", "shield"]);
@@ -299,9 +334,14 @@
     return t;
   }
   function renderBar() {
-    bar.hidden = false;
-    bar.innerHTML = tabs().map(([k, l, i]) => `<button data-a="go-tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ""}>${ic(i, 22, S.tab === k ? 2.1 : 1.8)}${l}</button>`).join("");
+    const items = tabs().map(([k, l, i]) => `<button data-a="go-tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ""}>${ic(i, 20, S.tab === k ? 2.1 : 1.8)}<span>${l}</span></button>`).join("");
+    const ab = $("#appbar"); ab.hidden = false;
+    $("#appnav").innerHTML = items;
+    $("#drawer").innerHTML = items;
+    closeMenu();
+    bar.hidden = true;
   }
+  function closeMenu() { const d = $("#drawer"), m = $("#menuBtn"); if (d) d.hidden = true; if (m) m.setAttribute("aria-expanded", "false"); }
 
   let refreshT, railRAF;
   function render() {
@@ -311,6 +351,7 @@
     renderBar();
     window.scrollTo(0, 0);
     if (S.sub && SUB[S.sub.name]) { const h = SUB[S.sub.name](S.sub); if (typeof h === "string") scr.innerHTML = h; afterSub(S.sub); return; }
+    if (isAdmin() && !tabs().some((t) => t[0] === S.tab)) S.tab = "admin";
     ({ home: renderHome, pass: renderPass, work: renderWork, admin: renderAdmin, events: renderEvents, account: renderAccount }[S.tab] || renderHome)();
   }
   const head = (title, back = true, extra = "") => `<div class="phead">${back ? `<button class="iconbtn" data-a="back" aria-label="رجوع">${ic("back", 24, 2)}</button>` : ""}<h2>${esc(title)}</h2>${extra}</div>`;
@@ -320,7 +361,7 @@
   function renderHome() {
     const ev = evById(EV) || {};
     const c = ev.colors || { from: "#1A2E28", to: "#2E5148" };
-    const others = (D.events || []).filter((e) => e.id !== EV);
+    const others = allEvents().filter((e) => e.id !== EV);
     const prog = (ev.page && ev.page.program && ev.page.program.items) || [];
     const ref = myPassRef();
     const services = [];
@@ -344,7 +385,8 @@
         <div class="between">${ev.logo ? `<img class="logo" src="${esc(img(ev.logo))}" alt="">` : "<span></span>"}${canSell() ? '<span class="st st-glass">الجواز الرقمي متاح</span>' : statusChip(ev.status)}</div>
         <h3>${esc((ev.name || "").split("—")[0].trim())}</h3>
         <div class="meta">${ev.date ? `<span class="row" style="gap:6px">${ic("cal", 16)}${esc(ev.date)}</span>` : ""}
-          ${ev.page && ev.page.facts ? ev.page.facts.slice(1, 3).map((f) => `<span class="row" style="gap:6px">${ic(f.icon === "i-pin" ? "pin" : "clock", 16)}${esc(f.text)}</span>`).join("") : ""}</div>
+          ${ev.hours || (ev.db && ev.db.location) ? `${ev.hours ? `<span class="row" style="gap:6px">${ic("clock", 16)}${esc(ev.hours)}</span>` : ""}${ev.location ? `<span class="row" style="gap:6px">${ic("pin", 16)}${esc(ev.location)}</span>` : ""}`
+            : ev.page && ev.page.facts ? ev.page.facts.slice(1, 3).map((f) => `<span class="row" style="gap:6px">${ic(f.icon === "i-pin" ? "pin" : "clock", 16)}${esc(f.text)}</span>`).join("") : ""}</div>
         ${ref && ref.status === "active" ? `<button class="btn btn-soft" data-a="go-tab" data-tab="pass" style="margin-top:4px">${ic("qr", 20)} اعرض جوازي للكشك</button>`
           : `<button class="btn btn-soft" data-a="sub" data-name="event" data-id="${esc(EV)}" style="margin-top:4px">تفاصيل الفعالية وخدماتها</button>`}
       </section>
@@ -464,6 +506,7 @@
 
     const pending = ref.status === "pending_payment";
     const tab = S.passTab;
+    scr.classList.add("pass-layout");
     scr.innerHTML = `${head("جوازي الرقمي", false)}
       <section class="pp-cover">
         <div class="between"><span style="font-size:12.5px;opacity:.9">جواز شُرفة · ${evName}</span>${pending ? '<span class="st" style="background:var(--gold);color:var(--ink)">بانتظار الدفع</span>' : `<span class="st st-glass">${esc(TYPE[(S.me.profile || {}).type] || "")}</span>`}</div>
@@ -650,32 +693,76 @@
     } catch (e) { /* ignore */ }
   }
 
-  /* ---------- إدارة شُرفة (تبويب خاص) ---------- */
+  /* ---------- إدارة شُرفة: لكل فعالية على حدة ---------- */
+  const adminEv = () => S.adminEv || EV;
   function renderAdmin() {
-    const t = S.adminTab || "orgs";
-    scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>لوحة المنصة</h2></div>
-        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
-      <div class="pad stack" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
-    if (t === "orgs") loadPlatform();
+    const t = S.adminTab || "content", evs = allEvents(), cur = adminEv();
+    scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div class="between"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>${esc(((evById(cur) || {}).name || cur).split("—")[0].trim())}</h2></div></div>
+        <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}">${esc(e.name.split("—")[0].trim())}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
+        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
+      <div class="pad stack wrap-md" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
+    if (t === "content") renderEventForm(S.newEvent ? null : cur);
+    else if (t === "orgs") loadPlatform();
     else if (t === "partners") loadAdminPartners();
     else loadAdminStats();
+  }
+  const media = {};
+  function renderEventForm(id) {
+    const el = $("#pfBody"); if (!el) return;
+    const e = id ? (evById(id) || {}) : { status: "soon", db: {} }, x = e.db || {};
+    media.image = x.image || null; media.logo = x.logo || null;
+    const prev = (k, u) => u ? `<img src="${esc(img(u))}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<span class="sub">${k === "image" ? "صورة الغلاف" : "الشعار"}</span>`;
+    el.innerHTML = `<form class="stack" data-f="event" novalidate>
+      ${id ? "" : `<div class="msg info">فعالية جديدة: اختر معرّفًا قصيرًا بالإنجليزية (مثل: winter-fest-2026). لا يمكن تغييره لاحقًا.</div>
+        <div class="field"><label for="ev-id">المعرّف</label><input class="input" id="ev-id" name="id" dir="ltr" maxlength="40" placeholder="my-event-2026" required></div>`}
+      <div class="card stack" style="gap:12px"><b>المحتوى الظاهر للزوار</b>
+        <div class="field"><label for="ev-name">اسم الفعالية</label><input class="input" id="ev-name" name="name" maxlength="80" value="${esc(x.name || e.name || "")}" required></div>
+        <div class="field"><label for="ev-sum">نبذة</label><textarea class="input" id="ev-sum" name="summary" maxlength="400" rows="3" style="height:auto;padding:10px 14px">${esc(x.summary || e.summary || "")}</textarea></div>
+        <div class="grid2">
+          <div class="field"><label for="ev-date">التاريخ</label><input class="input" id="ev-date" name="date" maxlength="80" placeholder="15 – 17 نوفمبر 2026" value="${esc(x.date || e.date || "")}"></div>
+          <div class="field"><label for="ev-hours">الأوقات</label><input class="input" id="ev-hours" name="hours" maxlength="80" placeholder="من 4 إلى 9 مساءً" value="${esc(x.hours || "")}"></div>
+        </div>
+        <div class="field"><label for="ev-loc">المكان</label><input class="input" id="ev-loc" name="location" maxlength="120" value="${esc(x.location || e.location || "")}"></div>
+        <div class="field"><label for="ev-st">حالة الفعالية</label><select class="input" id="ev-st" name="status">${[["soon", "قريبًا"], ["available", "متاحة"], ["ended", "انتهت"]].map(([k, l]) => `<option value="${k}" ${(x.status || e.status) === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="grid2">
+          <div class="field"><span>صورة الغلاف</span><label class="media-box" style="aspect-ratio:16/9">${prev("image", media.image || e.image)}<input type="file" accept="image/png,image/jpeg,image/webp" data-c="ev-media" data-k="image" hidden></label></div>
+          <div class="field"><span>الشعار</span><label class="media-box" style="aspect-ratio:1/1;max-width:9rem">${prev("logo", media.logo || e.logo)}<input type="file" accept="image/png,image/jpeg,image/webp" data-c="ev-media" data-k="logo" hidden></label></div>
+        </div>
+        <div class="grid2">
+          <div class="field"><label for="ev-c1">لون الهوية 1</label><input class="input" id="ev-c1" name="color_from" type="color" value="${esc(x.color_from || (e.colors || {}).from || "#1A2E28")}" style="padding:4px"></div>
+          <div class="field"><label for="ev-c2">لون الهوية 2</label><input class="input" id="ev-c2" name="color_to" type="color" value="${esc(x.color_to || (e.colors || {}).to || "#2E5148")}" style="padding:4px"></div>
+        </div>
+        <div class="field"><label for="ev-sort">ترتيب الظهور</label><input class="input" id="ev-sort" name="sort" type="number" min="0" max="999" value="${esc(x.sort != null ? x.sort : 100)}"></div>
+      </div>
+      <div class="card stack" style="gap:12px"><b>الجواز الرقمي والشركاء</b>
+        <label class="check"><input type="checkbox" name="active" ${x.active ? "checked" : ""}> <span>بيع الجواز الرقمي مفتوح لهذه الفعالية</span></label>
+        <div class="grid2">
+          <div class="field"><label for="ev-price">سعر الجواز (بيسة)</label><input class="input" id="ev-price" name="price" type="number" min="0" max="100000" step="50" value="${esc(x.price_baisa != null ? x.price_baisa : 1000)}"><span class="sub">1000 بيسة = 1 ريال</span></div>
+          <div class="field"><label for="ev-pay">تعليمات الدفع للزائر</label><input class="input" id="ev-pay" name="pay_note" maxlength="300" value="${esc(x.pay_note || "")}"></div>
+        </div>
+        <label class="check"><input type="checkbox" name="partner_signup" ${x.partner_signup !== false ? "checked" : ""}> <span>تسجيل الشركاء مفتوح لهذه الفعالية</span></label>
+      </div>
+      <div id="evMsg"></div>
+      <button class="btn btn-cta" type="submit">${id ? "حفظ المحتوى" : "إضافة الفعالية"}</button>
+      ${id ? `<button type="button" class="btn btn-line" data-a="admin-preview">${ic("eye", 18)} معاينة كما يراها الزائر</button>` : ""}
+    </form>`;
   }
   async function loadAdminPartners() {
     const el = $("#pfBody"); if (!el) return;
     try {
-      const apps = await A.urpc("admin_list_applications", { p_event: EV });
+      const apps = await A.urpc("admin_list_applications", { p_event: adminEv() });
       el.innerHTML = apps.length ? apps.map(appCard).join("") : `<div class="empty card">${ic("users", 36)}<b>لا توجد طلبات شركاء بعد</b><span>رابط تسجيل الشركاء: <b dir="ltr">${esc(location.origin + location.pathname)}?role=partner&amp;join=partner</b></span></div>`;
     } catch (e) { el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
   }
   async function loadAdminStats() {
     const el = $("#pfBody"); if (!el) return;
     try {
-      const s = await A.urpc("admin_stats", { p_event: EV });
+      const s = await A.urpc("admin_stats", { p_event: adminEv() });
       el.innerHTML = `<div class="kpis3"><div><b class="num">${s.paid}</b><span>جوازات مفعّلة</span></div><div><b class="num">${s.pending_payment}</b><span>بانتظار الدفع</span></div><div><b class="num" style="font-size:18px">${s.revenue_baisa ? fmtPrice(s.revenue_baisa) : "0"}</b><span>المبيعات</span></div></div>
         <div class="kpis3"><div><b class="num">${s.visitors_today}</b><span>طلبات اليوم</span></div><div><b class="num">${s.stamps}</b><span>أختام</span></div><div><b class="num">${s.rewards}</b><span>مكافآت</span></div></div>
         <h3 class="sec-t">أداء الأكشاك المعتمدة</h3>
         <div class="card" style="padding:4px 16px">${(s.stalls || []).length ? s.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;background:var(--gold-soft);color:var(--gold-ink)">${ic(KIND_ICON[x.kind] || "star", 18)}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visitors} زائر · ${x.visits} زيارة · ${x.rewards} مكافأة</div></div>${x.active ? "" : '<span class="st st-mute">متوقف</span>'}</div>`).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
-        <a class="btn btn-dark" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)} لوحة التحكم الكاملة</a>`;
+        <a class="btn btn-dark" href="admin.html?e=${encodeURIComponent(adminEv())}">${ic("grid", 20)} لوحة التحكم الكاملة</a>`;
     } catch (e) { el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
   }
   const STATUS_AR = { pending: ["قيد المراجعة", "st-warn"], approved: ["معتمد", "st-ok"], rejected: ["مرفوض", "st-err"] };
@@ -700,7 +787,7 @@
 
   /* ---------------- الفعاليات ---------------- */
   function renderEvents() {
-    const list = D.events || [];
+    const list = allEvents();
     scr.innerHTML = `${head("فعاليات شُرفة", false, S.me ? "" : loginBtn())}
       <div class="pad stack"><p class="sub">الفعاليات والمهرجانات المستضافة على شُرفة. اضغط على أي فعالية لتفاصيلها وخدماتها.</p>
       ${list.map((e) => eventCard(e, true)).join("")}</div><div class="sp"></div>`;
@@ -708,6 +795,21 @@
 
   /* ---------------- حسابي ---------------- */
   function renderAccount() {
+    if (S.me && isAdmin()) {
+      const p = S.me.profile || {};
+      scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>حسابي</h2></div></div>
+        <div class="pad stack" style="padding-top:16px">
+          <div class="card row"><span class="avatar lg" style="background:var(--purple)">${esc(firstName(p.name).charAt(0))}</span><div class="grow"><b style="font-size:17px">${esc(p.name || "")}</b>
+            <div class="sub" dir="ltr" style="text-align:right">${esc(S.me.email)}</div><div class="sub" dir="ltr" style="text-align:right">${esc(p.phone || "")}</div></div></div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <button class="menu-btn" data-a="go-tab" data-tab="admin">${ic("shield", 20)}<span class="grow">الطلبات والمؤشرات</span>${ic("fwd", 16, 2)}</button>
+            <a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>
+            <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
+            <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
+            <button class="menu-btn danger" data-a="logout">${ic("logout", 20)}<span class="grow">تسجيل الخروج</span></button>
+          </div></div>`;
+      return;
+    }
     if (!S.me) {
       scr.innerHTML = `${head("حسابي", false)}
         <div class="pad stack">
@@ -885,7 +987,8 @@
   async function loadPlatform() {
     const box = $("#pfBody"); if (!box) return;
     try {
-      const list = await A.urpc("shurfa_list_org_requests");
+      const all = await A.urpc("shurfa_list_org_requests");
+      const list = S.tab === "admin" ? all.filter((r) => r.event === adminEv() || !r.event) : all;
       const ST = { pending: ["قيد المراجعة", "st-warn"], approved: ["معتمد", "st-ok"], rejected: ["مرفوض", "st-err"] };
       box.innerHTML = list.length ? list.map((r) => `<div class="card stack" style="gap:8px">
           <div class="between"><b>${esc(r.org)}</b><span class="st ${ST[r.status][1]}">${ST[r.status][0]}</span></div>
@@ -954,10 +1057,10 @@
     $("#ptSlots").innerHTML = A.slotsHTML(c);
     $("#ptOffer").textContent = A.offerText(c);
   }
-  async function uploadLogo(file) {
+  async function uploadLogo(file, maxSide = 400) {
     if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw { code: "bad_logo" };
     const bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
-    const n = 400, sc = Math.min(1, n / Math.max(bmp.width, bmp.height));
+    const n = maxSide, sc = Math.min(1, n / Math.max(bmp.width, bmp.height));
     const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * sc); cv.height = Math.round(bmp.height * sc);
     cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
     URL.revokeObjectURL(bmp.src);
@@ -994,6 +1097,7 @@
      الأحداث
      ========================================================= */
   document.addEventListener("click", async (ev) => {
+    if (ev.target.closest("#menuBtn")) { const d = $("#drawer"), open = d.hidden; d.hidden = !open; $("#menuBtn").setAttribute("aria-expanded", String(open)); return; }
     const b = ev.target.closest("[data-a]"); if (!b) return;
     const a = b.dataset.a;
     if (a === "go-tab") { S.tab = b.dataset.tab; S.sub = null; S.authOpen = false; render(); }
@@ -1021,7 +1125,10 @@
     else if (a === "pass-tab") { S.passTab = b.dataset.k; S.tab = "pass"; S.sub = null; render(); }
     else if (a === "work-mode") { S.work.mode = b.dataset.k; render(); }
     else if (a === "work-refresh") loadStaffStats();
-    else if (a === "admin-tab") { S.adminTab = b.dataset.k; render(); }
+    else if (a === "admin-tab") { S.adminTab = b.dataset.k; S.newEvent = false; render(); }
+    else if (a === "admin-ev") { S.adminEv = b.dataset.id; S.newEvent = false; render(); }
+    else if (a === "admin-new-ev") { S.newEvent = true; S.adminTab = "content"; render(); }
+    else if (a === "admin-preview") { if (adminEv() !== EV) { location.href = location.pathname + "?e=" + encodeURIComponent(adminEv()) + "&tab=home"; return; } S.tab = "home"; render(); }
     else if (a === "org-open") { S.me = await A.urpc("me"); S.tab = "work"; S.work.mode = "org"; S.sub = null; render(); }
     else if (a === "org-review") {
       const okv = b.dataset.ok === "1"; let note = null;
@@ -1063,6 +1170,12 @@
 
   document.addEventListener("change", async (ev) => {
     const t = ev.target;
+    if (t.dataset.c === "ev-media" && t.files && t.files[0]) {
+      const k = t.dataset.k, m = $("#evMsg"); m.innerHTML = `<div class="msg info">جارٍ رفع الصورة…</div>`;
+      try { media[k] = await uploadLogo(t.files[0], k === "image" ? 1600 : 500); t.parentElement.querySelector("img, span").outerHTML = `<img src="${esc(media[k])}" alt="" style="width:100%;height:100%;object-fit:cover">`; m.innerHTML = `<div class="msg ok">تم رفع الصورة. اضغط «حفظ المحتوى».</div>`; }
+      catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code === "bad_logo" ? "bad_logo" : "upload_failed"))}</div>`; }
+      return;
+    }
     if (t.dataset.c === "org-event") { S.work.orgEvent = t.value; render(); return; }
     if (t.dataset.c === "work-stall") { S.work.stall = t.value; S.work.res = ""; A.local.set("work-stall", t.value); render(); }
     else if (t.dataset.c === "pt-logo" && t.files && t.files[0]) {
@@ -1080,6 +1193,22 @@
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
     if (k === "manual") { const i = $("#manualCode"); scanned(i.value); i.value = ""; return; }
+    if (k === "event") {
+      const m = $("#evMsg"); m.innerHTML = "";
+      const id = f.id && f.id.value !== undefined && f.querySelector("#ev-id") ? f.querySelector("#ev-id").value.trim().toLowerCase() : adminEv();
+      btn.disabled = true;
+      try {
+        await A.urpc("admin_save_event", { p_id: id, p_name: f.name.value.trim(), p_summary: f.summary.value.trim(), p_location: f.location.value.trim(),
+          p_date: f.date.value.trim(), p_hours: f.hours.value.trim(), p_status: f.status.value, p_price: parseInt(f.price.value || "0", 10),
+          p_pay_note: f.pay_note.value.trim(), p_active: f.active.checked, p_partner_signup: f.partner_signup.checked,
+          p_image: media.image, p_logo: media.logo, p_color_from: f.color_from.value, p_color_to: f.color_to.value, p_sort: parseInt(f.sort.value || "100", 10) });
+        await loadEvInfo();
+        S.adminEv = id; S.newEvent = false;
+        toast("حُفظ محتوى الفعالية", "ok"); render();
+      } catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code))}</div>`; }
+      finally { if (document.body.contains(btn)) btn.disabled = false; }
+      return;
+    }
     if (k === "orgapply") {
       const m = $("#oaMsg"); m.innerHTML = "";
       const err = (c) => { m.innerHTML = `<div class="msg err">${esc(A.errText(c))}</div>`; };

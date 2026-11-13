@@ -204,3 +204,88 @@ select.input { appearance: auto; }
 .who-card b small { font-size: 13px; font-weight: 600; opacity: .85; font-family: var(--font); }
 .who-card .grow > span { display: block; font-size: 13.5px; opacity: .92; margin-top: 2px; }
 .who-card:active { transform: scale(.99); }
+
+/* =========================================================
+   التصميم المتجاوب (Mobile-First)
+   نقاط التوقف: 480 · 768 · 1024 · 1280
+   ========================================================= */
+html { font-size: 100%; }
+img, video, svg { max-width: 100%; height: auto; }
+.tabbar { display: none !important; }                 /* التنقل في الشريط العلوي */
+.shell { max-width: none; box-shadow: none; background: var(--cream); min-height: calc(100dvh - 3.75rem); }
+body { background: var(--cream); }
+.screen { width: 100%; max-width: 75rem; margin-inline: auto; padding-bottom: 2.5rem; }
+.toast { bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+.phead { padding-top: 1rem; }
+.ohead { padding-top: 1.1rem; border-radius: 0 0 1.5rem 1.5rem; }
+
+/* الشريط العلوي */
+.appbar { position: sticky; top: 0; z-index: 30; background: rgba(250, 246, 240, .94); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--sand); padding-top: env(safe-area-inset-top, 0px); }
+.appbar-in { width: 100%; max-width: 75rem; margin-inline: auto; display: flex; align-items: center; gap: .75rem; padding: .55rem 1rem; min-height: 3.75rem; }
+.appbar-brand { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; font-size: 1.25rem; color: var(--ink); text-decoration: none; margin-inline-end: auto; }
+.appbar-brand img { width: 2rem; height: 2rem; }
+.appbar-nav { display: none; }
+.appbar-menu { width: 2.75rem; height: 2.75rem; border-radius: .875rem; border: 1px solid var(--sand); background: #fff; display: inline-flex; align-items: center; justify-content: center; color: var(--ink); }
+.drawer { display: grid; gap: .25rem; padding: .5rem 1rem 1rem; border-top: 1px solid var(--sand); background: var(--cream); max-height: calc(100dvh - 4rem); overflow-y: auto; }
+.drawer[hidden] { display: none; }
+.drawer button { display: flex; align-items: center; gap: .75rem; width: 100%; min-height: 3.25rem; padding: 0 1rem; border: 0; border-radius: .875rem; background: transparent; font-size: 1rem; font-weight: 600; color: var(--ink); text-align: right; }
+.drawer button[aria-current="page"] { background: #fff; box-shadow: 0 1px 2px rgba(26,46,40,.08); }
+.drawer .drawer-cta { background: var(--green); color: var(--cream); margin-top: .25rem; }
+
+/* شرائح اختيار الفعالية (الإدارة) */
+.chips { display: flex; gap: .5rem; overflow-x: auto; scrollbar-width: none; padding-bottom: .1rem; }
+.chips::-webkit-scrollbar { display: none; }
+.chips button { flex: none; border: 1px solid rgba(250,246,240,.35); background: transparent; color: var(--cream); border-radius: 999px; padding: .45rem .9rem; font-size: .85rem; font-weight: 600; }
+.chips button[aria-pressed="true"] { background: var(--cream); color: var(--ink); border-color: var(--cream); }
+.grid2 { display: grid; grid-template-columns: 1fr; gap: .75rem; }
+.media-box { display: flex; align-items: center; justify-content: center; width: 100%; border: 1.5px dashed #CFC5B6; border-radius: 1rem; overflow: hidden; background: #fff; cursor: pointer; }
+
+/* شاشات الدخول: عمود مركزي */
+.auth-screen .auth-body { width: 100%; max-width: 32rem; margin-inline: auto; }
+.auth-top > * { width: 100%; max-width: 32rem; margin-inline: auto; }
+
+/* ≥ 480px: هواتف كبيرة */
+@media (min-width: 480px) {
+  .pad { padding-inline: 1.5rem; }
+  .hero, .pp-cover { margin-inline: 1.5rem; }
+  .hscroll { padding-inline: 1.5rem; }
+  .grid2 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ≥ 768px: آيباد */
+@media (min-width: 768px) {
+  html { font-size: 106.25%; }
+  .pad { padding-inline: 2rem; }
+  .hero, .pp-cover { margin-inline: 2rem; }
+  .hscroll:not(.rail) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; padding-inline: 2rem; }
+  .hscroll:not(.rail) > * { width: auto; }
+  .hero { min-height: 18rem; padding: 2rem; }
+  .hero h3 { font-size: 2.25rem; }
+  .kpis3 { gap: 1rem; }
+  .wrap-md, .stack#ppBody { max-width: 46rem; margin-inline: auto; width: 100%; }
+  .ohead { padding-inline: 2rem; }
+  .who-card { min-height: 6rem; }
+  #reader { max-width: 30rem; margin-inline: auto; }
+}
+
+/* ≥ 1024px: لابتوب — قائمة كاملة بدل القائمة المنسدلة */
+@media (min-width: 1024px) {
+  .appbar-nav { display: flex; gap: .25rem; }
+  .appbar-nav button { display: inline-flex; align-items: center; gap: .4rem; min-height: 2.5rem; padding: 0 .9rem; border: 0; border-radius: .75rem; background: transparent; font-size: .95rem; font-weight: 600; color: var(--muted); }
+  .appbar-nav button[aria-current="page"] { background: var(--green); color: var(--cream); }
+  .appbar-menu, .drawer { display: none !important; }
+  .hscroll:not(.rail) { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hero { margin-top: 1rem; }
+  .ohead { border-radius: 1.5rem; margin: 1rem 2rem 0; }
+  /* الجواز: الغلاف بجانب البطاقات */
+  .screen.pass-layout { display: grid; grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); gap: 0 1.5rem; align-items: start; }
+  .screen.pass-layout > .phead { grid-column: 1 / -1; }
+  .screen.pass-layout > .pp-cover { grid-column: 1; position: sticky; top: 5rem; }
+  .screen.pass-layout > :not(.phead):not(.pp-cover) { grid-column: 2; }
+}
+
+/* ≥ 1280px: شاشات كبيرة */
+@media (min-width: 1280px) {
+  .hscroll:not(.rail) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .appbar-in { padding-inline: 2rem; }
+}
