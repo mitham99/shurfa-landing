@@ -99,7 +99,10 @@
     $$(".header-actions").forEach((box) => {
       if (box.querySelector("[data-login]")) return;
       const a = document.createElement("a");
-      a.className = "btn btn-ghost btn-sm"; a.href = "app/?login=1"; a.dataset.login = "1";
+      // في صفحة فعالية: الدخول مرتبط بها؛ في شُرفة العامة: يختار المستخدم الفعالية
+      const evRoot = document.getElementById("eventRoot");
+      const evId = evRoot && /^[a-z0-9-]+$/.test(evRoot.dataset.event || "") ? evRoot.dataset.event : "";
+      a.className = "btn btn-ghost btn-sm"; a.href = evId ? `app/?e=${evId}&login=1` : "app/?login=1"; a.dataset.login = "1";
       a.innerHTML = '<svg class="ico"><use href="#i-users"/></svg><span>دخول</span>';
       box.insertBefore(a, box.firstChild);
     });

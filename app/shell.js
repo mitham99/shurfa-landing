@@ -77,10 +77,11 @@
     const evName = ev ? esc(ev.name.split("—")[0].trim()) : "";
     const TL = {
       visitor: ["أهلًا بك في شُرفة", "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام" + (evName ? " في " + evName : "") + "."],
-      partner: ["بوابة الشركاء", "للمطاعم والأكشاك والمشاريع: أدر بطاقة الولاء وامسح جوازات الزوار."],
-      organizer: ["دخول المنظمين", "لحسابات منظمي الفعاليات المعتمدة من شُرفة."]
+      partner: ["بوابة الشركاء", "شريك" + (evName ? " في " + evName : "") + ": أدر كشكك وبطاقة الولاء وامسح جوازات الزوار."],
+      organizer: ["دخول المنظمين", "منظم" + (evName ? " في " + evName : "") + ": اعتمد جوازات الزوار بعد الدفع."]
     };
     const T = {
+      who: ["سجّل دخولك إلى شُرفة", evName ? "اختر صفتك في " + evName + "." : "اختر صفتك والفعالية."],
       login: TL[R],
       signup: R === "partner" ? ["تسجيل شريك جديد", "الخطوة 1 من 2: حساب المسؤول عن المشروع. بعدها تُدخل بيانات المشروع وبطاقة الولاء."]
         : R === "organizer" ? ["تسجيل منظم فعالية", "الخطوة 1 من 2: حساب المسؤول. بعدها تُدخل بيانات الجهة والفعالية، ويعتمدها فريق شُرفة."]
@@ -90,17 +91,31 @@
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
       profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بياناتك", "لإصدار جوازك الرقمي."]
     }[st] || ["شُرفة", ""];
-    const topBg = R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : "";
-    const badge = R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "";
-    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge && st !== "profile" ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["login", "signup", "forgot", "code"].includes(st) ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
+    const topBg = st === "who" ? "" : R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : "";
+    const badge = st === "who" ? "" : (R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر") + (evName ? " · " + evName : "");
+    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge && st !== "profile" ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["who", "login", "signup", "forgot", "code"].includes(st) ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
       <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="8" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
     let body = "";
-    if (st === "login") {
+    if (st === "who") {
+      const pick = !!A.session.get("pick");
+      const evs = (D.events || []);
+      const roles = [
+        ["visitor", "زائر", "award", "#1A2E28", "#2E5148", evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
+        ["partner", "شريك", "users", "#7A4F00", "#B07400", evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
+        ["organizer", "منظم", "scan", "#14524F", "#1E7C7A", evName ? `اعتمد جوازات الزوار في ${evName}` : "اعتمد جوازات زوار فعاليتك"]
+      ];
+      body = `<div class="auth-body">
+        ${pick ? `<div class="field"><span>الفعالية</span><div class="hscroll" style="padding:2px 0 6px;margin:0 -2px">${evs.map((e) => `<button type="button" class="st ${e.id === EV ? "st-ok" : "st-mute"}" data-a="who-event" data-id="${esc(e.id)}" style="border:0;padding:8px 14px;font-size:13.5px">${esc(e.name.split("—")[0].trim())}</button>`).join("")}</div></div>` : ""}
+        <div class="field"><span>أنت</span></div>
+        ${roles.map(([k, l, i, c1, c2, d]) => `<button type="button" class="who-card" data-a="who" data-k="${k}" style="background:linear-gradient(150deg,${c1},${c2})">
+          <span class="ico-tile" style="background:rgba(255,255,255,.16);color:#fff;width:50px;height:50px">${ic(i, 26)}</span>
+          <span class="grow"><b>${l}${evName ? ` <small>· ${evName}</small>` : ""}</b><span>${d}</span></span>${ic("fwd", 20, 2)}</button>`).join("")}
+      </div>`;
+    } else if (st === "login") {
       body = `<form class="auth-body" data-f="login" novalidate>
-        <div class="field"><span>أدخل بصفتك</span>
-          <div class="seg" role="group" aria-label="نوع الحساب">${[["visitor", "زائر"], ["partner", "شريك"], ["organizer", "منظم"]].map(([k, l]) => `<button type="button" data-a="role" data-k="${k}" aria-pressed="${R === k}">${l}</button>`).join("")}</div></div>
+        <div class="card flat between" style="padding:10px 14px"><span style="font-size:14px">تدخل بصفتك <b>${R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر"}</b>${evName ? " في <b>" + evName + "</b>" : ""}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="who" style="padding:0;min-height:auto">تغيير</button></div>
         <div class="field"><label for="au-id">البريد الإلكتروني أو رقم الهاتف</label><input class="input" id="au-id" name="ident" autocomplete="username" dir="ltr" style="text-align:right" placeholder="name@example.com / 9xxxxxxx" value="${esc(S.email)}" required></div>
         ${pw("password", "كلمة المرور", "current-password")}
         <button type="button" class="linkbtn" data-a="auth-go" data-k="forgot" style="align-self:flex-start;padding:0;min-height:30px">نسيت كلمة المرور؟</button>
@@ -185,6 +200,10 @@
      ========================================================= */
   async function boot() {
     if (A.session.get("role")) S.role = A.session.get("role");
+    { const q0 = new URLSearchParams(location.search);
+      // من شُرفة العامة (بدون فعالية في الرابط) ← يختار الفعالية؛ من صفحة فعالية ← الفعالية ثابتة
+      if (q0.get("pick") === "1" || !q0.has("e")) A.session.set("pick", 1);
+      else A.session.del("pick"); }
     if (!A.ready) {
       scr.innerHTML = `<div class="empty" style="padding-top:80px">${ic("lock", 36)}<b>النظام قيد التجهيز</b><span>سيُفعَّل قريبًا.</span></div>`;
       return;
@@ -224,7 +243,7 @@
       return startIntent("partner");
     }
     if (qr === "organizer") { history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("organizer"); return S.me ? startIntent("organizer") : requireLogin("organizer", "organizer"); }
-    if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null); }
+    if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null, null); }
     if (S.after) { const a = S.after; S.after = null; return startIntent(a); }
     render();
   }
@@ -246,8 +265,9 @@
     render();
   }
   function requireLogin(intent, role) {
-    if (role) setRole(role); else if (intent === "partner") setRole("partner");
-    S.after = intent; A.session.set("after", intent || null); S.authOpen = true; S.authStep = "login"; renderAuth();
+    if (role) setRole(role); else if (intent === "partner") setRole("partner"); else if (intent === "buy") setRole("visitor");
+    S.after = intent; A.session.set("after", intent || null); S.authOpen = true;
+    S.authStep = (role || intent) ? "login" : "who"; renderAuth();
   }
   function setRole(r) { S.role = r; A.session.set("role", r); }
 
@@ -979,7 +999,9 @@
     if (a === "go-tab") { S.tab = b.dataset.tab; S.sub = null; S.authOpen = false; render(); }
     else if (a === "sub") { S.sub = { name: b.dataset.name, id: b.dataset.id, title: b.dataset.title }; render(); }
     else if (a === "back") { S.sub = null; render(); }
-    else if (a === "login") requireLogin(null, "visitor");
+    else if (a === "login") requireLogin(null, null);
+    else if (a === "who") { const k = b.dataset.k; setRole(k); S.after = k === "visitor" ? null : k; A.session.set("after", S.after); goAuth("login"); }
+    else if (a === "who-event") { location.href = location.pathname + "?e=" + encodeURIComponent(b.dataset.id) + "&login=1&pick=1"; }
     else if (a === "signup") { S.after = null; setRole("visitor"); S.authOpen = true; goAuth("signup"); }
     else if (a === "browse") { S.authOpen = false; S.after = null; A.session.del("after"); A.session.del("pending-email"); setRole("visitor"); render(); }
     else if (a === "role") { setRole(b.dataset.k); S.after = b.dataset.k === "visitor" ? null : b.dataset.k; A.session.set("after", S.after); goAuth("login"); }
