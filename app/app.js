@@ -57,7 +57,8 @@
     try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
     if (!res.ok) {
       const msg = (data && (data.message || data.error_description || data.msg)) || "network";
-      const code = Object.keys(ERR).find((k) => String(msg).includes(k)) || (res.status === 401 ? "not_authorized" : "network");
+      const code = res.status === 429 ? "otp_wait"
+        : Object.keys(ERR).find((k) => String(msg).includes(k)) || (res.status === 401 ? "not_authorized" : "network");
       throw Object.assign(new Error(code), { code, status: res.status, raw: data });
     }
     return data;
@@ -148,5 +149,63 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   }
 
-  window.ShurfaApp = { ready, SB, eventId, call, rpc, ERR, errText, local, session, esc, $, $$, toast, qr, cardState, slotsHTML, offerText, KIND, csvDownload };
+  /* ---------- الحساب: دخول برمز البريد (Supabase Auth) ----------
+     الجلسة تُحفظ في الجهاز (localStorage) وتتجدد تلقائيًا، فيبقى المستخدم مسجّلًا */
+  const AUTH_KEY = "auth";
+  const auth = {
+    get() { return local.get(AUTH_KEY); },
+    signedIn() { const s = local.get(AUTH_KEY); return !!(s && s.refresh_token); },
+    email() { const s = local.get(AUTH_KEY); return s ? s.email : ""; },
+    _save(d, email) {
+      const s = { access_token: d.access_token, refresh_token: d.refresh_token,
+        expires_at: Date.now() + (d.expires_in || 3600) * 1000 - 60000,
+        email: (d.user && d.user.email) || email || "" };
+      local.set(AUTH_KEY, s);
+      return s;
+    },
+    async sendCode(email) {
+      await call("/auth/v1/otp", { body: { email, create_user: true } });
+    },
+    async verify(email, code) {
+      let d;
+      try { d = await call("/auth/v1/verify", { body: { type: "email", email, token: code } }); }
+      catch (e) {
+        if (e.status === 400 || e.status === 403) {
+          try { d = await call("/auth/v1/verify", { body: { type: "signup", email, token: code } }); }
+          catch (e2) { throw Object.assign(new Error("bad_otp"), { code: "bad_otp" }); }
+        } else throw e;
+      }
+      if (!d || !d.access_token) throw Object.assign(new Error("bad_otp"), { code: "bad_otp" });
+      return auth._save(d, email);
+    },
+    _refreshing: null,
+    async token() {
+      const s = local.get(AUTH_KEY);
+      if (!s || !s.refresh_token) throw Object.assign(new Error("not_signed_in"), { code: "not_signed_in" });
+      if (Date.now() < s.expires_at) return s.access_token;
+      if (!auth._refreshing) {
+        auth._refreshing = call("/auth/v1/token?grant_type=refresh_token", { body: { refresh_token: s.refresh_token } })
+          .then((d) => auth._save(d, s.email).access_token)
+          .catch((e) => { if (e.status === 400 || e.status === 401) local.del(AUTH_KEY); throw Object.assign(new Error("not_signed_in"), { code: e.code === "network" ? "network" : "not_signed_in" }); })
+          .finally(() => { auth._refreshing = null; });
+      }
+      return auth._refreshing;
+    },
+    async signOut() {
+      const s = local.get(AUTH_KEY);
+      local.del(AUTH_KEY);
+      if (s && s.access_token) { try { await call("/auth/v1/logout", { body: {}, token: s.access_token }); } catch (e) { /* ignore */ } }
+    }
+  };
+  /* RPC باسم المستخدم المسجّل */
+  async function urpc(fn, args) { return rpc(fn, args, await auth.token()); }
+  Object.assign(ERR, {
+    bad_otp: "الرمز غير صحيح أو انتهت صلاحيته. اطلب رمزًا جديدًا.",
+    bad_email: "أدخل بريدًا إلكترونيًا صحيحًا.",
+    not_signed_in: "انتهت الجلسة. سجّل الدخول من جديد.",
+    profile_required: "أكمل بياناتك أولًا.",
+    otp_wait: "انتظر قليلًا قبل طلب رمز جديد."
+  });
+
+  window.ShurfaApp = { ready, SB, eventId, call, rpc, urpc, auth, ERR, errText, local, session, esc, $, $$, toast, qr, cardState, slotsHTML, offerText, KIND, csvDownload };
 })();

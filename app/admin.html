@@ -28,7 +28,7 @@
     <!-- الدخول -->
     <form class="card" id="loginView" hidden novalidate style="max-width:440px;margin-inline:auto">
       <h2>دخول المنظم</h2>
-      <p class="sub">بحساب المنظم الذي أُنشئ في Supabase.</p>
+      <p class="sub">الأسهل: سجّل دخولك من <a href="index.html">تطبيق شُرفة</a> برمز البريد، ثم ارجع لهذه الصفحة. أو استخدم كلمة المرور إن وُجدت.</p>
       <div id="loginMsg"></div>
       <label class="field"><span>البريد الإلكتروني</span><input name="email" type="email" required autocomplete="username" dir="ltr"></label>
       <label class="field"><span>كلمة المرور</span><input name="password" type="password" required autocomplete="current-password" dir="ltr"></label>
@@ -78,6 +78,18 @@
           <div class="pin-box" id="pinBox"></div>
         </div>
         <div class="card"><h2>الأكشاك</h2><div class="table-wrap"><table id="stallTable"></table></div></div>
+        <form class="card" id="staffForm" novalidate>
+          <h2>موظفو الأكشاك (الشركاء)</h2>
+          <p class="sub">أضف بريد موظف الكشك. عند دخوله تطبيق شُرفة بنفس البريد تظهر له واجهة «كشكي» لمسح جوازات الزوار — بدون رمز PIN.</p>
+          <div id="staffMsg"></div>
+          <div class="row2">
+            <label class="field"><span>الكشك</span><select name="stall" id="staffStall"></select></label>
+            <label class="field"><span>الصلاحية</span><select name="role"><option value="staff">موظف</option><option value="manager">مدير الكشك</option></select></label>
+          </div>
+          <label class="field"><span>البريد الإلكتروني</span><input name="email" type="email" dir="ltr" required placeholder="name@example.com"></label>
+          <button class="btn btn-primary" type="submit" id="staffBtn">إضافة الموظف</button>
+          <div class="table-wrap" style="margin-top:14px"><table id="staffTable"></table></div>
+        </form>
       </div>
 
       <div data-panel="visitors" hidden>
@@ -97,18 +109,18 @@
 
       <div data-panel="links" hidden>
         <div class="stats">
-          <div class="card qr-print"><h2>جواز الزوار</h2><div id="qrVisitor"></div><small id="lnkVisitor" dir="ltr"></small><p class="sub">اطبعه عند المدخل وعلى الأكشاك.</p></div>
+          <div class="card qr-print"><h2>تطبيق شُرفة (الجواز)</h2><div id="qrVisitor"></div><small id="lnkVisitor" dir="ltr"></small><p class="sub">اطبعه عند المدخل وعلى الأكشاك.</p></div>
           <div class="card qr-print"><h2>تسجيل فرق البطولة</h2><div id="qrTeam"></div><small id="lnkTeam" dir="ltr"></small></div>
-          <div class="card qr-print"><h2>واجهة الأكشاك</h2><div id="qrStall"></div><small id="lnkStall" dir="ltr"></small><p class="sub">لمسؤولي الأكشاك فقط (تحتاج PIN).</p></div>
+          <div class="card qr-print"><h2>واجهة الأكشاك</h2><div id="qrStall"></div><small id="lnkStall" dir="ltr"></small><p class="sub">احتياطي برمز PIN. الأفضل: أضف بريد الموظف في تبويب الأكشاك.</p></div>
         </div>
         <button class="btn btn-primary" type="button" id="printBtn">طباعة</button>
       </div>
     </section>
   </main>
 
-  <script src="../assets/js/config.js?v=50"></script>
+  <script src="../assets/js/config.js?v=51"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="app.js?v=1"></script>
-  <script src="admin.js?v=1"></script>
+  <script src="app.js?v=2"></script>
+  <script src="admin.js?v=2"></script>
 </body>
 </html>
