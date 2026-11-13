@@ -272,6 +272,8 @@
     if (qr === "organizer") { history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("organizer"); return S.me ? startIntent("organizer") : requireLogin("organizer", "organizer"); }
     if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null, null); }
     if (isAdmin() && !q.get("tab")) S.tab = "admin";
+    if (!q.get("tab") && S.tab === "home" && (isStaff() || isOrg())) S.tab = "work";
+    setGuard(); startPulse();
     if (S.after) { const a = S.after; S.after = null; return startIntent(a); }
     render();
   }
@@ -346,9 +348,33 @@
   function closeMenu() { const d = $("#drawer"), m = $("#menuBtn"); if (d) d.hidden = true; if (m) m.setAttribute("aria-expanded", "false"); }
 
   let refreshT, railRAF;
+  /* سجل التنقل: زر الرجوع في المتصفح/الجوال يبقى داخل التطبيق.
+     أول سطر في السجل «حارس» يعيد المستخدم لصفحته الأساسية بدل صفحة الهبوط. */
+  let restoring = false;
+  const homeTab = () => isAdmin() ? "admin" : (isStaff() || isOrg()) ? "work" : "home";
+  const sameNav = (st) => st && st.s && !st.guard && st.tab === S.tab && JSON.stringify(st.sub || null) === JSON.stringify(S.sub || null);
+  function pushNav() {
+    if (restoring) return;
+    const st = history.state;
+    if (sameNav(st)) return;
+    try { history.pushState({ s: 1, depth: ((st && st.s && st.depth) || 0) + 1, tab: S.tab, sub: S.sub || null }, ""); } catch (e) { /* ignore */ }
+  }
+  function setGuard() { try { history.replaceState({ s: 1, guard: 1, depth: 0 }, ""); } catch (e) { /* ignore */ } }
+  window.addEventListener("popstate", (e) => {
+    const st = e.state;
+    if (!st || !st.s) return;
+    closeOverlay(false); closeMenu();
+    if (S.authOpen) { if (S.me && !S.me.profile) { pushNav(); return; } S.authOpen = false; S.after = null; A.session.del("after"); }
+    if (st.guard) { S.tab = homeTab(); S.sub = null; render(); return; }   // render يضيف سطرًا جديدًا فوق الحارس
+    S.tab = st.tab; S.sub = st.sub || null;
+    if (!tabs().some((t) => t[0] === S.tab)) S.tab = homeTab();
+    restoring = true; try { render(); } finally { restoring = false; }
+  });
+
   function render() {
     clearInterval(refreshT); cancelAnimationFrame(railRAF);
-    stopScanner();
+    stopScanner(); S.passFill = null;
+    pushNav();
     scr.className = "screen";
     renderBar();
     window.scrollTo(0, 0);
@@ -544,22 +570,16 @@
       <div class="pad stack" id="ppBody"><div class="skel"></div></div><div class="sp"></div>`}`;
     A.qr($("#ppQr"), "SHURFA:" + ref.code, 190);
 
-    if (pending) {
-      refreshT = setInterval(async () => {
-        if (document.visibilityState !== "visible") return;
-        await loadPass();
-        if (S.pass && S.pass.status === "active") { toast("تم تفعيل جوازك! 🎉", "ok"); render(); }
-      }, 8000);
-      return;
-    }
+    if (pending) return;   // التفعيل يصل عبر النبضة (startPulse) ويظهر إشعار فوري
     const fill = () => {
       const p = S.pass; if (!p || !p.ok || !$("#ppBody")) return;
       $("#ppVisits").textContent = p.visits; $("#ppCards").textContent = p.cards.length; $("#ppRewards").textContent = p.rewards;
       let h = "";
       if (S.passTab === "cards") {
         h = p.cards.length ? p.cards.map((c) => { const st = A.cardState(c); return `<div class="loyalty">
-            <div class="loyalty-head"><span class="row" style="gap:10px">${logoTile({ name: c.stall, logo: c.logo }, 36)}<b>${esc(c.stall)}</b></span>${st.done >= c.required ? '<span class="st st-warn">مكافأة بانتظارك</span>' : `<span class="st st-purple">${st.done}/${c.required}</span>`}</div>
+            <div class="loyalty-head"><span class="row" style="gap:10px">${logoTile({ name: c.stall, logo: c.logo }, 36)}<b>${esc(c.stall)}</b>${c.rounds ? `<span class="sub">البطاقة ${c.rounds + 1}</span>` : ""}</span>${st.done >= c.required ? '<span class="st st-warn">مكافأة بانتظارك</span>' : `<span class="st st-purple">${st.done}/${c.required}</span>`}</div>
             <div class="slots">${A.slotsHTML(c)}</div><p class="loyalty-next">${esc(st.next)}</p></div>`; }).join("")
+          : p.completed ? `<div class="empty card">${ic("gift", 36)}<b>أكملت ${p.completed === 1 ? "بطاقة ولاء واحدة" : p.completed === 2 ? "بطاقتي ولاء" : p.completed + " بطاقات ولاء"} 🎉</b><span>بطاقاتك المكتملة في «السجل». اعرض رمزك عند أي كشك لتبدأ بطاقة جديدة.</span></div>`
           : `<div class="empty card">${ic("award", 36)}<b>لا توجد أختام بعد</b><span>اعرض رمزك عند أي كشك مشارك، وستظهر بطاقته هنا مباشرة.</span></div>`;
       } else if (S.passTab === "offers") {
         h = offersHTML(S.stalls || []) || `<div class="empty card">${ic("gift", 36)}<b>لم تُعلن العروض بعد</b></div>`;
@@ -570,44 +590,132 @@
       }
       $("#ppBody").innerHTML = h;
     };
+    S.passFill = fill;
     Promise.all([loadPass(), S.stalls ? null : loadStalls()]).then(fill);
-    refreshT = setInterval(() => { if (document.visibilityState === "visible") loadPass().then(fill); }, 15000);
+  }
+
+  /* نبضة الزائر: كل 3 ثوانٍ في «جوازي» (6 في غيرها) — تفعيل الجواز أو ختم/مكافأة جديدة ⇐ إشعار فوري */
+  let pulseT = null, pulseKey = null, pulseN = 0, pulseEv = null;
+  function startPulse() {
+    clearInterval(pulseT); pulseKey = null; pulseEv = EV;
+    pulseT = setInterval(pulse, 3000); pulse();
+  }
+  async function pulse() {
+    if (document.visibilityState !== "visible" || !S.me || !myPassRef() || S.authOpen) return;
+    if (S.tab !== "pass" && (pulseN++ % 2)) return;
+    let d; try { d = await A.urpc("pass_pulse", { p_event: EV }); } catch (e) { return; }
+    if (!d || !d.ok) return;
+    const key = `${d.status}:${d.last_id || 0}:${d.n}`;
+    if (pulseKey === null || pulseEv !== EV) { pulseKey = key; pulseEv = EV; return; }
+    if (key === pulseKey) return;
+    const prevN = +pulseKey.split(":")[2] || 0; pulseKey = key;
+    const ref = myPassRef(), wasPending = ref && ref.status === "pending_payment";
+    await loadPass();
+    if (wasPending && d.status === "active") {
+      try { if (navigator.vibrate) navigator.vibrate([80, 50, 80]); } catch (e) { /* ignore */ }
+      overlay({ k: "ok", icon: "check", title: "تم تفعيل جوازك 🎉", body: "استلم المنظم الدفع وتفعّل جوازك الرقمي.<br>اعرض رمزك عند الأكشاك المشاركة لجمع الأختام.", auto: 7000, onClose: () => { if (S.tab === "pass" || S.tab === "home") render(); } });
+      if (S.tab === "pass" || S.tab === "home") render();
+      return;
+    }
+    if (d.n > prevN && S.pass && S.pass.last) notifyStamp(S.pass.last);
+    if (S.passFill) S.passFill();
+  }
+  function notifyStamp(L) {
+    const st = esc(L.stall), pos = L.position || 0, req = L.required || 0, logo = logoTile({ name: L.stall, logo: L.logo }, 64);
+    let k = "ok", t, b;
+    if (L.kind === "reward") {
+      k = "gold"; t = `مبروك! حصلت على ${L.reward} 🎁`;
+      b = pos >= (L.cycle || 0) ? `من ${st}. اكتملت بطاقة ولائك، وتبدأ بطاقة جديدة في زيارتك القادمة.` : `من ${st}. وفي زيارتك القادمة: <b>${esc(L.reward2 || "")}</b>`;
+    } else if (pos === req) {
+      k = "gold"; t = "مبروك! أكملت الأختام 🎉";
+      b = `في ${st}: زيارتك القادمة تمنحك <b>${esc(L.reward1 || "")}</b>`;
+    } else {
+      const left = req - pos;
+      t = "تمت إضافة ختم ✓";
+      b = `${st}: ختم ${pos} من ${req}<br>${left === 1 ? "بقي ختم واحد" : left === 2 ? "بقي ختمان" : `بقيت ${left} أختام`} ثم <b>${esc(L.reward1 || "")}</b>`;
+    }
+    try { if (navigator.vibrate) navigator.vibrate(k === "gold" ? [80, 50, 80, 50, 120] : 70); } catch (e) { /* ignore */ }
+    overlay({ k, title: t, body: b, auto: k === "gold" ? 9000 : 6000, logo: `<span class="ovl-logo">${logo}</span>` });
   }
 
   /* ---------------- الماسح (مشترك: الكشك والمنظم) ---------------- */
-  let scanner = null, lastScan = { code: "", at: 0 }, onScan = null;
+  /* قراءة واحدة لكل فتح للكاميرا: أول قراءة صحيحة توقف الكاميرا فورًا وتظهر النتيجة في نافذة واضحة */
+  let scanner = null, scanBusy = false, scanLock = false, lastScan = { code: "", at: 0 }, onScan = null;
   async function stopScanner() {
-    try { if (scanner && scanner.isScanning) await scanner.stop(); } catch (e) { /* ignore */ }
+    const sc = scanner; scanner = null;
+    if (sc) {
+      try { if (sc.isScanning) await sc.stop(); } catch (e) { /* ignore */ }
+      try { sc.clear(); } catch (e) { /* ignore */ }
+    }
+    const r = $("#reader"), b = $("#scanBtn");
+    if (r) { r.hidden = true; r.innerHTML = ""; }
+    if (b) { b.querySelector("b").textContent = b.dataset.label; b.classList.remove("on"); }
   }
   async function toggleScan() {
-    const r = $("#reader"), b = $("#scanBtn");
-    if (scanner && scanner.isScanning) { await stopScanner(); r.hidden = true; b.querySelector("b").textContent = b.dataset.label; return; }
+    if (scanBusy) return;
+    if (scanner) return stopScanner();
+    const r = $("#reader"), b = $("#scanBtn"); if (!r || !b) return;
     if (!window.Html5Qrcode) return toast("تعذّر تحميل قارئ الكاميرا — أدخل الرمز يدويًا.", "err");
-    r.hidden = false;
+    scanBusy = true; scanLock = false; r.hidden = false;
     try {
-      scanner = new window.Html5Qrcode("reader");
-      await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 230, height: 230 } }, (t) => scanned(t), () => {});
-      b.querySelector("b").textContent = "إيقاف الكاميرا";
+      const L = window.__Html5QrcodeLibrary__ || {}, F = window.Html5QrcodeSupportedFormats || L.Html5QrcodeSupportedFormats;
+      const cfg = { verbose: false, experimentalFeatures: { useBarCodeDetectorIfSupported: true } };
+      if (F) cfg.formatsToSupport = [F.QR_CODE];
+      scanner = new window.Html5Qrcode("reader", cfg);
+      await scanner.start({ facingMode: "environment" },
+        { fps: 15, aspectRatio: 1, disableFlip: true, qrbox: (w, h) => { const m = Math.max(180, Math.floor(Math.min(w, h) * 0.78)); return { width: m, height: m }; } },
+        onDecode, () => {});
+      b.querySelector("b").textContent = "إيقاف الكاميرا"; b.classList.add("on");
+      r.scrollIntoView({ block: "center", behavior: "smooth" });
     } catch (e) {
-      r.hidden = true;
+      await stopScanner();
       toast("لم نتمكن من فتح الكاميرا. اسمح للمتصفح باستخدامها أو أدخل الرمز يدويًا.", "err");
-    }
+    } finally { scanBusy = false; }
   }
-  function scanned(raw) {
+  function onDecode(text) {
+    if (scanLock) return;            // تجاهل القراءات المتكررة لنفس الإطار
+    scanLock = true;
+    try { if (navigator.vibrate) navigator.vibrate(40); } catch (e) { /* ignore */ }
+    stopScanner();
+    scanned(text, true);
+  }
+  function scanned(raw, fromCam) {
     const code = String(raw || "").trim().replace(/^SHURFA:/i, "").toUpperCase();
-    if (!/^[A-Z0-9]{7}$/.test(code)) return showRes("err", "x", "رمز غير صالح", "هذا ليس رمز جواز شُرفة.");
-    if (code === lastScan.code && Date.now() - lastScan.at < 4000) return;
+    if (!/^[A-Z0-9]{7}$/.test(code)) return showRes("err", "x", "رمز غير صالح", "هذا ليس رمز جواز شُرفة. اطلب من الزائر فتح «جوازي» وعرض الرمز.", fromCam ? scanNextBtn() : "", 6000);
+    if (code === lastScan.code && Date.now() - lastScan.at < 2500) return;
     lastScan = { code, at: Date.now() };
-    if (onScan) onScan(code);
+    if (onScan && !S.work.busy) { overlay({ k: "wait", icon: "scan", title: "جارٍ التحقق…", body: `الرمز <b dir="ltr">${esc(code)}</b>` }); onScan(code); }
   }
+  const scanNextBtn = () => `<button class="btn btn-line" data-a="scan-next">${ic("scan", 18)} امسح جوازًا آخر</button>`;
+
+  /* نافذة النتيجة (تظهر فوق كل شيء ثم تُغلق تلقائيًا وتعيد المستخدم لصفحته) */
+  let ovT = null, ovOnClose = null;
+  function overlay({ k = "ok", icon = "check", title = "", body = "", extra = "", auto = 0, onClose = null, logo = "" }) {
+    clearTimeout(ovT); const old = $("#ovl"); if (old) old.remove();
+    const el = document.createElement("div");
+    el.className = "ovl"; el.id = "ovl"; el.setAttribute("role", "alertdialog"); el.setAttribute("aria-modal", "true"); el.setAttribute("aria-labelledby", "ovlT");
+    el.innerHTML = `<div class="ovl-card r-${k}">${logo || `<span class="big">${k === "wait" ? '<span class="spin"></span>' : ic(icon, 40, 2.4)}</span>`}
+      <h3 id="ovlT">${esc(title)}</h3>${body ? `<div class="ovl-body">${body}</div>` : ""}
+      ${extra ? `<div class="ovl-acts">${extra}</div>` : ""}
+      ${k === "wait" ? "" : `<button class="btn btn-dark" data-a="ovl-close">${auto ? "تم" : "إغلاق"}</button>`}
+      ${auto ? `<span class="ovl-bar" style="animation-duration:${auto}ms"></span>` : ""}</div>`;
+    document.body.appendChild(el);
+    ovOnClose = onClose;
+    if (auto) ovT = setTimeout(() => closeOverlay(), auto);
+    const f = el.querySelector("[data-a=ovl-close]"); if (f) setTimeout(() => { try { f.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }, 30);
+  }
+  function closeOverlay(fire = true) {
+    clearTimeout(ovT); const el = $("#ovl"); if (el) el.remove();
+    const f = ovOnClose; ovOnClose = null; if (fire && f) f();
+  }
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && $("#ovl") && !$("#ovl .r-wait")) closeOverlay(); });
   const scanUI = (label, sub) => `<div id="reader" hidden></div>
     <button class="otile" data-a="scan-toggle" id="scanBtn" data-label="${esc(label)}"><span class="ico-tile" style="background:rgba(250,246,240,.14);color:var(--cream)">${ic("scan", 26)}</span><span class="grow"><b style="font-size:18px">${esc(label)}</b><span style="display:block;font-size:12.5px;opacity:.85">${esc(sub)}</span></span></button>
     <form class="manual" data-f="manual"><input class="input" id="manualCode" maxlength="7" placeholder="أو أدخل الرمز" aria-label="رمز الجواز" autocomplete="off"><button class="btn btn-dark btn-sm" type="submit">تحقق</button></form>
     <div id="scanRes"></div>`;
-  function showRes(k, icon, title, body, extra = "") {
-    const h = `<div class="result r-${k}" role="alert"><span class="big">${ic(icon, 30, 2.4)}</span><h3>${esc(title)}</h3><span class="sub" style="color:var(--ink)">${body}</span>${extra}</div>`;
-    const el = $("#scanRes"); if (el) el.innerHTML = h;
-    return h;
+  function showRes(k, icon, title, body, extra = "", auto = 0, onClose = null) {
+    overlay({ k, icon, title, body, extra, auto, onClose });
+    return "";
   }
 
   /* ---------------- عملي: الكشك + المنظم ---------------- */
@@ -646,7 +754,6 @@
         <div class="card" style="padding:4px 16px" id="stRecent"><div class="li sub">…</div></div>
         ${s.role === "manager" ? `<button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} بيانات الشريك وبطاقة الولاء</button>` : ""}
       </div>`;
-    if (W.res) $("#scanRes").innerHTML = W.res;
     loadStaffStats();
     refreshT = setInterval(() => { if (document.visibilityState === "visible") loadStaffStats(); }, 20000);
   }
@@ -667,16 +774,21 @@
       const d = await A.urpc("staff_scan", { p_stall: S.work.stall, p_code: code });
       S.work.last = code;
       try { if (navigator.vibrate) navigator.vibrate(d.kind === "reward" ? [80, 60, 80] : 60); } catch (e) { /* ignore */ }
-      const undo = `<button class="linkbtn" data-a="undo" style="color:var(--err)">${ic("undo", 16)} تراجع عن هذه العملية</button>`;
-      S.work.res = d.kind === "reward"
-        ? showRes("gold", "gift", "مكافأة: " + d.reward, `الزائر: <b>${esc(d.visitor)}</b> · طبّق المكافأة على الطلب`, undo)
-        : showRes("ok", "check", "تمت إضافة الختم", `الزائر: <b>${esc(d.visitor)}</b> · ختم ${d.position} من ${d.required}`, undo);
+      const acts = scanNextBtn() + `<button class="linkbtn" data-a="undo" style="color:var(--err)">${ic("undo", 16)} تراجع عن هذه العملية</button>`;
+      const back = () => { const r = $("#scanRes"); if (r) r.innerHTML = ""; };
+      if (d.kind === "reward") {
+        showRes("gold", "gift", "مكافأة الزائر: " + d.reward,
+          `طبّق المكافأة على طلب <b>${esc(d.visitor)}</b> الآن.<br>${d.final ? "اكتملت بطاقته، وتبدأ له بطاقة جديدة في الزيارة القادمة." : d.next_reward ? `زيارته القادمة: <b>${esc(d.next_reward)}</b>` : ""}<br><span class="sub">وصل للزائر إشعار بالمكافأة.</span>`, acts, 10000, back);
+      } else {
+        showRes("ok", "check", "تمت إضافة الختم",
+          `الزائر <b>${esc(d.visitor)}</b> · ختم ${d.position} من ${d.required}${d.next_reward ? `<br>اكتملت أختامه! زيارته القادمة: <b>${esc(d.next_reward)}</b>` : ""}<br><span class="sub">وصل للزائر إشعار بالختم.</span>`, acts, 6000, back);
+      }
       loadStaffStats();
     } catch (e) {
       const d = e.data || {};
-      if (e.code === "cooldown") S.work.res = showRes("warn", "clock", "تمت زيارة قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`);
-      else if (e.code === "pass_not_paid") S.work.res = showRes("warn", "lock", "الجواز غير مفعّل", `${esc(d.visitor || "الزائر")} لم يُكمل الدفع بعد. وجّهه إلى منصة المنظمين.`);
-      else S.work.res = showRes("err", "x", "لم تتم الإضافة", esc(errMsg(e)));
+      if (e.code === "cooldown") showRes("warn", "clock", "أُضيف ختم قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`, scanNextBtn(), 7000);
+      else if (e.code === "pass_not_paid") showRes("warn", "lock", "الجواز غير مفعّل", `${esc(d.visitor || "الزائر")} لم يُكمل الدفع بعد. وجّهه إلى منصة المنظمين.`, scanNextBtn(), 8000);
+      else showRes("err", "x", "لم تتم الإضافة", esc(errMsg(e)), scanNextBtn(), 7000);
     } finally { S.work.busy = false; }
   }
 
@@ -792,10 +904,10 @@
   async function orgLookup(code) {
     try {
       const d = await A.urpc("admin_pass_lookup", { p_event: orgEv(), p_code: code });
-      if (d.status === "active") return showRes("ok", "check", "الجواز مفعّل", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · ${d.pay_method === "free" ? "مجاني" : "مدفوع"} ${d.paid_at ? esc(dayTime(d.paid_at)) : ""}`);
-      showRes("warn", "lock", "بانتظار الدفع", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · المبلغ ${fmtPrice(d.amount_baisa || price())}`,
-        `<div class="row" style="gap:8px;width:100%;margin-top:6px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="cash">استلمت نقدًا</button><button class="btn btn-line btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="transfer">تحويل بنكي</button></div>`);
-    } catch (e) { showRes("err", "x", "لم يُعثر على الجواز", esc(errMsg(e))); }
+      if (d.status === "active") return showRes("ok", "check", "الجواز مفعّل مسبقًا", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · ${d.pay_method === "free" ? "مجاني" : "مدفوع"} ${d.paid_at ? esc(dayTime(d.paid_at)) : ""}`, scanNextBtn(), 6000);
+      showRes("warn", "lock", "بانتظار الدفع", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")}<br>المبلغ المطلوب: <b>${fmtPrice(d.amount_baisa || price())}</b><br><span class="sub">بعد استلام المبلغ اختر طريقة الدفع لتفعيل الجواز.</span>`,
+        `<div class="row" style="gap:8px;width:100%"><button class="btn btn-cta btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="cash">استلمت نقدًا</button><button class="btn btn-line btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="transfer">تحويل بنكي</button></div>`);
+    } catch (e) { showRes("err", "x", "لم يُعثر على الجواز", esc(errMsg(e)), scanNextBtn(), 7000); }
   }
 
   /* ---------------- الفعاليات ---------------- */
@@ -1101,6 +1213,7 @@
   }
   async function logout() {
     await A.auth.signOut(); A.session.del("pending-email");
+    clearInterval(pulseT); pulseKey = null; closeOverlay(false);
     S.me = null; S.pass = null; S.tab = "home"; S.sub = null; S.email = ""; S.work = { stall: null, mode: "stall", res: null, last: null, busy: false };
     setRole("visitor"); A.session.del("after");
     render();
@@ -1115,7 +1228,9 @@
     const a = b.dataset.a;
     if (a === "go-tab") { S.tab = b.dataset.tab; S.sub = null; S.authOpen = false; render(); }
     else if (a === "sub") { S.sub = { name: b.dataset.name, id: b.dataset.id, title: b.dataset.title }; render(); }
-    else if (a === "back") { S.sub = null; render(); }
+    else if (a === "back") { const st = history.state; if (st && st.s && st.depth > 1 && st.sub) history.back(); else { S.sub = null; render(); } }
+    else if (a === "ovl-close") closeOverlay();
+    else if (a === "scan-next") { closeOverlay(false); toggleScan(); }
     else if (a === "login") requireLogin(null, null);
     else if (a === "who") { const k = b.dataset.k; setRole(k); S.after = k === "visitor" ? null : k; A.session.set("after", S.after); goAuth("login"); }
     else if (a === "who-event") { location.href = location.pathname + "?e=" + encodeURIComponent(b.dataset.id) + "&login=1&pick=1"; }
@@ -1152,12 +1267,14 @@
     else if (a === "scan-toggle") toggleScan();
     else if (a === "undo") {
       if (!S.work.last) return;
-      try { await A.urpc("staff_undo", { p_stall: S.work.stall, p_code: S.work.last }); S.work.res = ""; $("#scanRes").innerHTML = ""; toast("تم التراجع عن آخر عملية", "ok"); loadStaffStats(); }
+      try { await A.urpc("staff_undo", { p_stall: S.work.stall, p_code: S.work.last }); S.work.res = ""; closeOverlay(false); toast("تم التراجع عن آخر عملية", "ok"); loadStaffStats(); }
       catch (e) { toast(errMsg(e), "err"); }
     }
     else if (a === "activate") {
       b.disabled = true;
-      try { const d = await A.urpc("admin_activate_pass", { p_event: orgEv(), p_code: b.dataset.code, p_method: b.dataset.m }); showRes("ok", "check", "تم تفعيل الجواز", `<b>${esc(d.name)}</b> · ${b.dataset.m === "cash" ? "نقدًا" : "تحويل بنكي"}`); loadOrgActivity(); }
+      try { const d = await A.urpc("admin_activate_pass", { p_event: orgEv(), p_code: b.dataset.code, p_method: b.dataset.m });
+        try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (x) { /* ignore */ }
+        showRes("ok", "check", "تم تفعيل الجواز", `<b>${esc(d.name)}</b> · ${b.dataset.m === "cash" ? "نقدًا" : "تحويل بنكي"}<br><span class="sub">وصل للزائر إشعار بتفعيل جوازه.</span>`, scanNextBtn(), 6000); loadOrgActivity(); }
       catch (e) { b.disabled = false; toast(e.code === "already_active" ? "الجواز مفعّل مسبقًا." : errMsg(e), "err"); }
     }
     else if (a === "review") {
@@ -1205,7 +1322,7 @@
     ev.preventDefault();
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
-    if (k === "manual") { const i = $("#manualCode"); scanned(i.value); i.value = ""; return; }
+    if (k === "manual") { const i = $("#manualCode"); lastScan = { code: "", at: 0 }; scanned(i.value); i.value = ""; i.blur(); return; }
     if (k === "event") {
       const m = $("#evMsg"); m.innerHTML = "";
       const id = f.id && f.id.value !== undefined && f.querySelector("#ev-id") ? f.querySelector("#ev-id").value.trim().toLowerCase() : adminEv();

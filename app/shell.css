@@ -310,3 +310,25 @@ body { background: var(--cream); }
   background: color-mix(in srgb, var(--c1) 12%, #fff); color: color-mix(in srgb, var(--c1) 80%, #000); }
 @media (prefers-reduced-motion: reduce) { .svc, .svc:hover { transition: none; transform: none; } }
 @media (min-width: 768px) { .svc .svc-art { height: 11rem; } }
+
+/* ---------- نافذة النتيجة (المسح والإشعارات الفورية) ---------- */
+.ovl { position: fixed; inset: 0; z-index: 80; display: flex; align-items: center; justify-content: center; padding: 1rem; background: rgba(14, 26, 22, .55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); animation: ovlIn .18s ease-out; }
+.ovl-card { position: relative; overflow: hidden; width: 100%; max-width: 26rem; border-radius: 24px; padding: 1.75rem 1.25rem 1.25rem; display: flex; flex-direction: column; align-items: center; text-align: center; gap: .6rem; box-shadow: 0 20px 60px rgba(0, 0, 0, .3); animation: ovlPop .28s cubic-bezier(.2, .9, .3, 1.3); }
+.ovl-card .big { width: 76px; height: 76px; border-radius: 38px; display: flex; align-items: center; justify-content: center; color: #fff; }
+.ovl-card h3 { font-family: var(--head); font-size: 1.45rem; line-height: 1.35; }
+.ovl-body { font-size: 1rem; line-height: 1.8; color: var(--ink); }
+.ovl-acts { display: flex; flex-direction: column; align-items: center; gap: .4rem; width: 100%; }
+.ovl-acts .btn { width: 100%; }
+.ovl-card > .btn { width: 100%; margin-top: .25rem; }
+.ovl-logo { display: flex; justify-content: center; }
+.ovl-logo > * { border-radius: 18px !important; box-shadow: 0 6px 18px rgba(0, 0, 0, .15); }
+.ovl-bar { position: absolute; bottom: 0; right: 0; height: 4px; width: 100%; background: currentColor; opacity: .35; transform-origin: right; animation: ovlBar linear forwards; }
+.r-ok .ovl-bar { color: var(--ok); } .r-gold .ovl-bar { color: var(--gold-ink); } .r-warn .ovl-bar { color: var(--warn); } .r-err .ovl-bar { color: var(--err); }
+.r-wait { background: var(--cream, #FAF6F0); } .r-wait .big { background: var(--green, #1A2E28); }
+.spin { width: 34px; height: 34px; border-radius: 50%; border: 3.5px solid rgba(255, 255, 255, .3); border-top-color: #fff; animation: spin .8s linear infinite; }
+#scanBtn.on { background: var(--err); }
+@keyframes ovlIn { from { opacity: 0; } }
+@keyframes ovlPop { from { transform: scale(.85); opacity: 0; } }
+@keyframes ovlBar { to { transform: scaleX(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .ovl, .ovl-card { animation: none; } .spin { animation-duration: 2s; } }
