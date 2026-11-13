@@ -33,7 +33,7 @@
     grid: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z", qr: "M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM20 14v1M14 20h1M18 18h3v3h-3",
     phone: "M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2", shield: "M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6zM9 12l2 2 4-4",
     undo: "M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3", edit: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4", trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
-    compass: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z", box: "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", ext: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"
+    compass: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z", box: "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6z", ext: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"
   };
   const ic = (n, s = 20, w = 1.8) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n] || P.star}"></path></svg>`;
 
@@ -63,7 +63,7 @@
     tab: "home", sub: null, // شاشة فرعية فوق التبويب
     passTab: "cards",
     work: { stall: null, mode: "stall", res: null, last: null, busy: false },
-    authStep: "email", email: "", resendAt: 0
+    authStep: "login", loginBy: "email", email: "", resendAt: 0, signup: null
   };
   const isStaff = () => !!(S.me && S.me.stalls && S.me.stalls.length);
   const isOrg = () => !!(S.me && S.me.organizer);
@@ -74,32 +74,71 @@
      ========================================================= */
   function renderAuth() {
     bar.hidden = true; scr.className = "screen no-tabs";
-    const ev = evById(EV);
-    const top = `<div class="auth-top">
-      <img src="../assets/img/brand/monogram-160.png" alt="">
-      <h1>${S.authStep === "profile" ? "أكمل بياناتك" : "أهلًا بك في شُرفة"}</h1>
-      <p>${S.authStep === "profile" ? "مرة واحدة فقط، لإصدار جوازك الرقمي." : "منصة الفعاليات والتجارب في عُمان. سجّل دخولك لتحصل على جوازك الرقمي" + (ev ? " في " + esc(ev.name.split("—")[0].trim()) : "") + "."}</p>
-    </div>`;
+    const ev = evById(EV), st = S.authStep;
+    const T = {
+      login: ["أهلًا بك في شُرفة", "سجّل دخولك لتتصفح الفعاليات وتحصل على جوازك الرقمي" + (ev ? " في " + esc(ev.name.split("—")[0].trim()) : "") + "."],
+      signup: ["إنشاء حساب", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
+      code: ["تأكيد البريد", "خطوة أخيرة لحماية حسابك."],
+      forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
+      reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
+      profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بياناتك", "لإصدار جوازك الرقمي."]
+    }[st] || ["شُرفة", ""];
+    const top = `<div class="auth-top"><img src="../assets/img/brand/monogram-160.png" alt=""><h1>${T[0]}</h1><p>${T[1]}</p></div>`;
+    const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
+      <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="8" required style="padding-left:52px">
+      <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
     let body = "";
-    if (S.authStep === "email") {
-      body = `<form class="auth-body" data-f="email" novalidate>
-        <div class="field"><label for="au-email">البريد الإلكتروني</label>
-          <input class="input" id="au-email" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(S.email)}" required></div>
-        <p class="sub">نرسل رمز دخول من 6 أرقام إلى بريدك. لا نحتاج كلمة مرور.</p>
+    if (st === "login") {
+      const byPhone = S.loginBy === "phone";
+      body = `<form class="auth-body" data-f="login" novalidate>
+        <div class="seg" role="group" aria-label="طريقة الدخول"><button type="button" data-a="login-by" data-k="email" aria-pressed="${!byPhone}">البريد الإلكتروني</button><button type="button" data-a="login-by" data-k="phone" aria-pressed="${byPhone}">رقم الهاتف</button></div>
+        ${byPhone ? `<div class="field"><label for="au-id">رقم الهاتف</label><input class="input" id="au-id" name="ident" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" required></div>`
+          : `<div class="field"><label for="au-id">البريد الإلكتروني</label><input class="input" id="au-id" name="ident" type="email" inputmode="email" autocomplete="username" dir="ltr" placeholder="name@example.com" value="${esc(S.email)}" required></div>`}
+        ${pw("password", "كلمة المرور", "current-password")}
+        <button type="button" class="linkbtn" data-a="auth-go" data-k="forgot" style="align-self:flex-start;padding:0;min-height:30px">نسيت كلمة المرور؟</button>
         <div id="au-msg"></div>
-        <button class="btn btn-dark" type="submit">${ic("mail", 20)} أرسل رمز الدخول</button>
-        <p class="sub" style="text-align:center">بالمتابعة توافق على <a href="privacy.html">سياسة الخصوصية</a>.</p>
+        <button class="btn btn-dark" type="submit">تسجيل الدخول</button>
+        <div class="row" style="justify-content:center;gap:6px"><span class="sub">ليس لديك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">أنشئ حسابًا</button></div>
       </form>`;
-    } else if (S.authStep === "code") {
+    } else if (st === "signup") {
+      const v = S.signup || {};
+      body = `<form class="auth-body" data-f="signup" novalidate>
+        <div class="field"><label for="su-name">الاسم</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
+        <div class="field"><label for="su-phone">رقم الهاتف</label><input class="input" id="su-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(v.phone || "")}" required></div>
+        <div class="field"><label for="su-email">البريد الإلكتروني</label><input class="input" id="su-email" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(v.email || "")}" required></div>
+        ${pw("password", "كلمة المرور", "new-password", "8 أحرف على الأقل.")}
+        ${pw("password2", "تأكيد كلمة المرور", "new-password")}
+        <div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(v.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>
+        <label class="check"><input type="checkbox" name="consent"> <span>أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط. <a href="privacy.html">سياسة الخصوصية</a></span></label>
+        <div id="au-msg"></div>
+        <button class="btn btn-cta" type="submit">إنشاء الحساب</button>
+        <div class="row" style="justify-content:center;gap:6px"><span class="sub">لديك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="login">سجّل الدخول</button></div>
+      </form>`;
+    } else if (st === "code") {
       const wait = Math.max(0, Math.ceil((S.resendAt - Date.now()) / 1000));
       body = `<form class="auth-body" data-f="code" novalidate>
-        <div class="card flat row" style="gap:10px">${ic("mail", 20)}<span class="grow" style="font-size:14px">أرسلنا الرمز إلى <b dir="ltr">${esc(S.email)}</b></span><button type="button" class="linkbtn" data-a="au-change">تغيير</button></div>
-        <div class="field"><label for="au-code">رمز الدخول</label>
+        <div class="card flat row" style="gap:10px">${ic("mail", 20)}<span class="grow" style="font-size:14px">أرسلنا رمز التأكيد إلى <b dir="ltr">${esc(S.email)}</b></span></div>
+        <div class="field"><label for="au-code">رمز التأكيد</label>
           <input class="input code" id="au-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="10" placeholder="••••••" required></div>
         <p class="sub">تحقق من صندوق الوارد أو الرسائل غير المرغوبة (Spam). إذا وصلك رابط بدل الرمز، اضغط عليه من هذا الجهاز.</p>
         <div id="au-msg"></div>
-        <button class="btn btn-dark" type="submit">تأكيد الدخول</button>
+        <button class="btn btn-dark" type="submit">تأكيد</button>
         <button type="button" class="linkbtn" data-a="au-resend" id="au-resend" ${wait ? "disabled" : ""} style="align-self:center">${wait ? `إعادة الإرسال بعد ${wait} ث` : "أعد إرسال الرمز"}</button>
+        <button type="button" class="linkbtn" data-a="auth-go" data-k="login" style="align-self:center">العودة لتسجيل الدخول</button>
+      </form>`;
+    } else if (st === "forgot") {
+      body = `<form class="auth-body" data-f="forgot" novalidate>
+        <div class="field"><label for="au-femail">البريد الإلكتروني للحساب</label><input class="input" id="au-femail" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(S.email)}" required></div>
+        <div id="au-msg"></div>
+        <button class="btn btn-dark" type="submit">${ic("mail", 20)} أرسل رابط الاستعادة</button>
+        <button type="button" class="linkbtn" data-a="auth-go" data-k="login" style="align-self:center">العودة لتسجيل الدخول</button>
+      </form>`;
+    } else if (st === "reset") {
+      body = `<form class="auth-body" data-f="reset" novalidate>
+        ${pw("password", "كلمة المرور الجديدة", "new-password", "8 أحرف على الأقل.")}
+        ${pw("password2", "تأكيدها", "new-password")}
+        <div id="au-msg"></div>
+        <button class="btn btn-dark" type="submit">حفظ كلمة المرور</button>
       </form>`;
     } else {
       const p = (S.me && S.me.profile) || {};
@@ -114,9 +153,10 @@
       </form>`;
     }
     scr.innerHTML = top + body;
-    const f = scr.querySelector("input:not([type=radio]):not([type=checkbox])");
-    if (f && !f.value) setTimeout(() => f.focus(), 50);
-    if (S.authStep === "code") tickResend();
+    window.scrollTo(0, 0);
+    const f = scr.querySelector(".auth-body input:not([type=radio]):not([type=checkbox])");
+    if (f && !f.value && st !== "login") setTimeout(() => f.focus(), 50);
+    if (st === "code") tickResend();
   }
   let resendTimer;
   function tickResend() {
@@ -127,13 +167,7 @@
     if (wait) resendTimer = setTimeout(tickResend, 1000);
   }
   const authMsg = (t, k = "err") => { const m = $("#au-msg"); if (m) m.innerHTML = t ? `<div class="msg ${k}">${esc(t)}</div>` : ""; };
-
-  async function sendCode(email) {
-    await A.auth.sendCode(email);
-    S.email = email; S.resendAt = Date.now() + 60000; S.authStep = "code";
-    A.session.set("pending-email", email);
-    renderAuth();
-  }
+  const goAuth = (step) => { S.authStep = step; renderAuth(); };
 
   /* =========================================================
      التشغيل
@@ -143,25 +177,28 @@
       scr.innerHTML = `<div class="empty" style="padding-top:80px">${ic("lock", 36)}<b>النظام قيد التجهيز</b><span>سيُفعَّل قريبًا.</span></div>`;
       return;
     }
-    // دخول عبر رابط البريد (إذا وصل المستخدم رابطًا بدل الرمز)
+    // روابط البريد (تأكيد الحساب أو استعادة كلمة المرور)
     const hp = new URLSearchParams(location.hash.replace(/^#/, ""));
+    let recovery = false;
     if (hp.get("access_token") && hp.get("refresh_token")) {
       A.auth._save({ access_token: hp.get("access_token"), refresh_token: hp.get("refresh_token"), expires_in: +hp.get("expires_in") || 3600 }, A.session.get("pending-email") || "");
+      recovery = hp.get("type") === "recovery";
       A.session.del("pending-email");
       history.replaceState(null, "", location.pathname + location.search);
     } else if (hp.get("error")) {
       history.replaceState(null, "", location.pathname + location.search);
-      toast("انتهت صلاحية رابط الدخول. اطلب رمزًا جديدًا.", "err");
+      toast("انتهت صلاحية الرابط. اطلب رابطًا جديدًا.", "err");
     }
+    if (recovery) { goAuth("reset"); return; }
     if (!A.auth.signedIn()) {
       const pe = A.session.get("pending-email");
-      if (pe) { S.email = pe; S.authStep = "code"; } else S.authStep = "email";
-      renderAuth(); return;
+      if (pe) { S.email = pe; goAuth("code"); } else goAuth("login");
+      return;
     }
     try {
       S.me = await A.urpc("me");
     } catch (e) {
-      if (e.code === "not_signed_in" || e.status === 401) { await A.auth.signOut(); S.authStep = "email"; renderAuth(); return; }
+      if (e.code === "not_signed_in" || e.status === 401) { await A.auth.signOut(); goAuth("login"); return; }
       scr.innerHTML = `<div class="empty" style="padding-top:80px">${ic("alert", 36)}<b>${esc(errMsg(e))}</b><button class="btn btn-dark btn-sm" data-a="reload">إعادة المحاولة</button></div>`;
       return;
     }
@@ -506,7 +543,7 @@
   /* ---------------- الخروج ---------------- */
   async function signedOut() {
     await A.auth.signOut();
-    S.me = null; S.pass = null; S.sub = null; S.tab = "home"; S.authStep = "email";
+    S.me = null; S.pass = null; S.sub = null; S.tab = "home"; S.authStep = "login";
     toast(A.errText("not_signed_in"), "err");
     renderAuth();
   }
@@ -530,14 +567,16 @@
       catch (e) { toast(errMsg(e), "err"); }
     }
     else if (a === "edit-profile") { S.authStep = "profile"; renderAuth(); }
-    else if (a === "logout") { await A.auth.signOut(); A.session.del("pending-email"); S.me = null; S.tab = "home"; S.sub = null; S.authStep = "email"; S.email = ""; renderAuth(); }
+    else if (a === "logout") { await A.auth.signOut(); A.session.del("pending-email"); S.me = null; S.tab = "home"; S.sub = null; S.authStep = "login"; S.email = ""; renderAuth(); }
     else if (a === "delete-data") {
       if (!confirm("سيتم حذف بياناتك وجوازاتك وأختامها نهائيًا من شُرفة. هل أنت متأكد؟")) return;
-      try { await A.urpc("delete_my_data"); await A.auth.signOut(); S.me = null; S.authStep = "email"; S.email = ""; renderAuth(); toast("حُذفت بياناتك", "ok"); }
+      try { await A.urpc("delete_my_data"); await A.auth.signOut(); S.me = null; S.authStep = "login"; S.email = ""; renderAuth(); toast("حُذفت بياناتك", "ok"); }
       catch (e) { toast(errMsg(e), "err"); }
     }
-    else if (a === "au-change") { S.authStep = "email"; A.session.del("pending-email"); renderAuth(); }
-    else if (a === "au-resend") { try { await sendCode(S.email); toast("أرسلنا رمزًا جديدًا", "ok"); } catch (e) { authMsg(errMsg(e)); } }
+    else if (a === "auth-go") { if (b.dataset.k === "login") A.session.del("pending-email"); goAuth(b.dataset.k); }
+    else if (a === "login-by") { S.loginBy = b.dataset.k; goAuth("login"); }
+    else if (a === "pw-toggle") { const i = b.parentElement.querySelector("input"); i.type = i.type === "password" ? "text" : "password"; }
+    else if (a === "au-resend") { try { await A.auth.resendConfirm(S.email); S.resendAt = Date.now() + 60000; tickResend(); toast("أرسلنا رمزًا جديدًا", "ok"); } catch (e) { authMsg(errMsg(e)); } }
     else if (a === "reload") boot();
   });
 
@@ -555,15 +594,53 @@
     authMsg("");
     btn.disabled = true;
     try {
-      if (k === "email") {
-        const email = f.email.value.trim().toLowerCase();
-        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw { code: "bad_email" };
-        await sendCode(email);
+      if (k === "login") {
+        const id = f.ident.value.trim(), pass = f.password.value;
+        if (!id || !pass) throw { code: "bad_login" };
+        let email = id.toLowerCase();
+        if (!id.includes("@")) {          // رقم هاتف (حتى لو اختار تبويب البريد)
+          const d = await A.rpc("login_email_for_phone", { p_phone: id.replace(/[\s-]/g, ""), p_password: pass });
+          email = d.email;
+        } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw { code: "bad_email" };
+        try { await A.auth.signIn(email, pass); }
+        catch (e) {
+          if (e.code === "email_not_confirmed") { S.email = email; A.session.set("pending-email", email); try { await A.auth.resendConfirm(email); S.resendAt = Date.now() + 60000; } catch (x) { /* ignore */ } goAuth("code"); return; }
+          throw e;
+        }
+        await boot();
+      } else if (k === "signup") {
+        const v = { name: f.name.value.trim(), phone: f.phone.value.replace(/[\s-]/g, ""), email: f.email.value.trim().toLowerCase(),
+          type: (f.querySelector("input[name=type]:checked") || {}).value || "visitor" };
+        S.signup = v;
+        if (v.name.length < 2) throw { code: "bad_name" };
+        if (!/^\+?[0-9]{8,15}$/.test(v.phone)) throw { code: "bad_phone" };
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) throw { code: "bad_email" };
+        if (f.password.value.length < 8) throw { code: "weak_password" };
+        if (f.password.value !== f.password2.value) throw { code: "password_mismatch" };
+        if (!f.consent.checked) throw { code: "consent_required" };
+        const chk = await A.rpc("phone_available", { p_phone: v.phone });
+        if (!chk.available) throw { code: "phone_taken" };
+        const r = await A.auth.signUp(v.email, f.password.value, { name: v.name, phone: v.phone, type: v.type, consent: true });
+        S.email = v.email;
+        if (r.session) { S.signup = null; await boot(); }
+        else { A.session.set("pending-email", v.email); S.resendAt = Date.now() + 60000; goAuth("code"); }
       } else if (k === "code") {
         const code = f.code.value.replace(/\D/g, "");
         if (code.length < 6) throw { code: "bad_otp" };
         await A.auth.verify(S.email, code);
-        A.session.del("pending-email");
+        A.session.del("pending-email"); S.signup = null;
+        await boot();
+      } else if (k === "forgot") {
+        const email = f.email.value.trim().toLowerCase();
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw { code: "bad_email" };
+        await A.auth.recover(email);
+        S.email = email;
+        authMsg("إذا كان البريد مسجّلًا لدينا فسيصلك رابط الاستعادة خلال دقائق. افتحه من هذا الجهاز.", "ok");
+      } else if (k === "reset") {
+        if (f.password.value.length < 8) throw { code: "weak_password" };
+        if (f.password.value !== f.password2.value) throw { code: "password_mismatch" };
+        await A.auth.setPassword(f.password.value);
+        toast("تم تغيير كلمة المرور", "ok");
         await boot();
       } else if (k === "profile") {
         if (!f.consent.checked) throw { code: "consent_required" };

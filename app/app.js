@@ -166,6 +166,43 @@
     async sendCode(email) {
       await call("/auth/v1/otp", { body: { email, create_user: true } });
     },
+    /* إنشاء حساب: يرجع { session } إذا لم يُطلب تأكيد البريد، أو { confirm: true } */
+    async signUp(email, password, data) {
+      let d;
+      try { d = await call("/auth/v1/signup", { body: { email, password, data } }); }
+      catch (e) {
+        const m = JSON.stringify(e.raw || "");
+        if (/already.*registered|user_already_exists/i.test(m)) throw Object.assign(new Error("email_taken"), { code: "email_taken" });
+        if (/weak_password|Password should/i.test(m)) throw Object.assign(new Error("weak_password"), { code: "weak_password" });
+        throw e;
+      }
+      if (d && d.access_token) return { session: auth._save(d, email) };
+      const u = (d && d.user) || d || {};
+      if (Array.isArray(u.identities) && u.identities.length === 0) throw Object.assign(new Error("email_taken"), { code: "email_taken" });
+      return { confirm: true };
+    },
+    async signIn(email, password) {
+      try {
+        const d = await call("/auth/v1/token?grant_type=password", { body: { email, password } });
+        return auth._save(d, email);
+      } catch (e) {
+        const m = JSON.stringify(e.raw || "");
+        if (/not.*confirmed/i.test(m)) throw Object.assign(new Error("email_not_confirmed"), { code: "email_not_confirmed" });
+        if (e.status === 400) throw Object.assign(new Error("bad_login"), { code: "bad_login" });
+        throw e;
+      }
+    },
+    async resendConfirm(email) { await call("/auth/v1/resend", { body: { type: "signup", email } }); },
+    async recover(email) { await call("/auth/v1/recover", { body: { email } }); },
+    async setPassword(password) {
+      try { await call("/auth/v1/user", { method: "PUT", body: { password }, token: await auth.token() }); }
+      catch (e) {
+        const m = JSON.stringify(e.raw || "");
+        if (/weak_password|Password should/i.test(m)) throw Object.assign(new Error("weak_password"), { code: "weak_password" });
+        if (/same_password|different from the old/i.test(m)) throw Object.assign(new Error("same_password"), { code: "same_password" });
+        throw e;
+      }
+    },
     async verify(email, code) {
       let d;
       try { d = await call("/auth/v1/verify", { body: { type: "email", email, token: code } }); }
@@ -204,7 +241,14 @@
     bad_email: "أدخل بريدًا إلكترونيًا صحيحًا.",
     not_signed_in: "انتهت الجلسة. سجّل الدخول من جديد.",
     profile_required: "أكمل بياناتك أولًا.",
-    otp_wait: "انتظر قليلًا قبل طلب رمز جديد."
+    otp_wait: "محاولات كثيرة. انتظر قليلًا ثم حاول مرة أخرى.",
+    bad_login: "بيانات الدخول غير صحيحة.",
+    email_taken: "هذا البريد مسجّل مسبقًا. سجّل الدخول أو استعد كلمة المرور.",
+    phone_taken: "رقم الهاتف مسجّل في حساب آخر.",
+    weak_password: "كلمة المرور ضعيفة. استخدم 8 أحرف على الأقل.",
+    same_password: "اختر كلمة مرور مختلفة عن السابقة.",
+    password_mismatch: "كلمتا المرور غير متطابقتين.",
+    email_not_confirmed: "لم يتم تأكيد بريدك بعد. أدخل رمز التأكيد المرسل إليك."
   });
 
   window.ShurfaApp = { ready, SB, eventId, call, rpc, urpc, auth, ERR, errText, local, session, esc, $, $$, toast, qr, cardState, slotsHTML, offerText, KIND, csvDownload };

@@ -1,35 +1,506 @@
 <!doctype html>
-<html lang="ar" dir="rtl">
+<html lang="ar" dir="rtl" class="no-js">
 <head>
   <meta charset="utf-8">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co; base-uri 'self'; object-src 'none'; form-action 'self'">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https:; form-action 'self' https:; base-uri 'self'; object-src 'none'">
   <meta name="referrer" content="strict-origin-when-cross-origin">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>شُرفة SHURFA | اكتشف عُمان بطريقة مختلفة</title>
+  <meta name="description" content="شُرفة منصة رقمية عُمانية تجمع الفعاليات والتجارب السياحية في تطبيق واحد، مع جواز رقمي يجمع بطاقات ولاء الشركاء ويوثّق رحلتك بالصور واللحظات.">
   <meta name="theme-color" content="#1A2E28">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="robots" content="noindex">
-  <title>شُرفة</title>
-  <link rel="icon" href="../assets/img/favicon.png" type="image/png">
-  <link rel="apple-touch-icon" href="../assets/img/apple-touch-icon.png">
+  <meta property="og:title" content="شُرفة | اكتشف عُمان بطريقة مختلفة">
+  <meta property="og:description" content="شُرفة منصة رقمية عُمانية تجمع الفعاليات والتجارب السياحية في تطبيق واحد، مع جواز رقمي يجمع بطاقات ولاء الشركاء ويوثّق رحلتك بالصور واللحظات.">
+  <meta property="og:locale" content="ar_OM">
+  <link rel="icon" href="assets/img/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shell.css?v=1">
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;600;700;800&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="assets/css/style.css?v=50">
+  <link rel="stylesheet" href="assets/css/home.css?v=50">
+  <link rel="stylesheet" href="assets/css/brand.css?v=50">
 </head>
 <body>
-  <div class="shell">
-    <main class="screen" id="screen" aria-live="polite">
-      <div class="pad stack" style="padding-top:60px"><div class="skel"></div><div class="skel"></div></div>
-    </main>
-    <nav class="tabbar" id="tabbar" aria-label="التنقل" hidden></nav>
-  </div>
-  <div class="toast" id="toast" role="status"></div>
 
-  <script src="../assets/js/config.js?v=51"></script>
-  <script src="../assets/js/data.js?v=51"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <script src="app.js?v=3"></script>
-  <script src="shell.js?v=5"></script>
+<!-- ================= أيقونات (SVG sprite) ================= -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-ticket" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 0 2-2h14a2 2 0 0 0 2 2v2a2 2 0 0 0 0 4v2a2 2 0 0 0-2 2H5a2 2 0 0 0-2-2v-2a2 2 0 0 0 0-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 6v12" stroke="currentColor" stroke-width="1.7" stroke-dasharray="2 2.2"/></symbol>
+    <symbol id="i-box" viewBox="0 0 24 24"><path d="M3.5 8.5 12 4l8.5 4.5v7L12 20l-8.5-4.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M3.5 8.5 12 13l8.5-4.5M12 13v7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-passport" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10.5" r="3.2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 16.5h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-band" viewBox="0 0 24 24"><path d="M8 3h8l-1 4H9zM9 17h6l1 4H8z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><rect x="6.5" y="7" width="11" height="10" rx="3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10h1.5v1.5H10zM12.5 12.5H14V14h-1.5z" fill="currentColor"/></symbol>
+    <symbol id="i-qr" viewBox="0 0 24 24"><path d="M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4z" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14 14h2v2h-2zM18 14h2v2h-2zM16 16h2v2h-2zM14 18h2v2h-2zM18 18h2v2h-2z" fill="currentColor"/></symbol>
+    <symbol id="i-scan" viewBox="0 0 24 24"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15zM10 20.5a2.2 2.2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></symbol>
+    <symbol id="i-hands" viewBox="0 0 24 24"><circle cx="8" cy="6.5" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16.5" cy="9" r="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 20v-3.5A4.5 4.5 0 0 1 8 12a4.5 4.5 0 0 1 4.5 4.5V20M13 20v-2.5a3.5 3.5 0 0 1 7 0V20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-gift" viewBox="0 0 24 24"><rect x="4" y="9" width="16" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3 9h18M12 9v11M12 9S10.5 4 8 5s.5 4 4 4zm0 0s1.5-5 4-4-.5 4-4 4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-spark" viewBox="0 0 24 24"><path d="M12 3c.6 4.2 2.8 6.4 7 7-4.2.6-6.4 2.8-7 7-.6-4.2-2.8-6.4-7-7 4.2-.6 6.4-2.8 7-7z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-food" viewBox="0 0 24 24"><path d="M3 13h18a9 9 0 0 1-18 0zM12 4v3M8 5.5l1 2M16 5.5l-1 2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-coffee" viewBox="0 0 24 24"><path d="M5 9h11v5a5 5 0 0 1-5 5h-1a5 5 0 0 1-5-5zM16 10h1.5a2.5 2.5 0 0 1 0 5H16M8.5 3.5v2.5M12 3.5v2.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-sweet" viewBox="0 0 24 24"><path d="M4 14h16l-1.5 6h-13zM6 14a6 6 0 0 1 12 0M12 5V3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9" cy="11" r=".9" fill="currentColor"/><circle cx="14" cy="10" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-game" viewBox="0 0 24 24"><path d="M7 8h10a4 4 0 0 1 4 4v1.5a3 3 0 0 1-5.4 1.8L15 14.5H9l-.6.8A3 3 0 0 1 3 13.5V12a4 4 0 0 1 4-4z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 10.5v3M6.5 12h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="15.5" cy="11" r=".9" fill="currentColor"/><circle cx="17" cy="13" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="6.5" cy="18" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="17.5" cy="16" r="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10.5l5 5 5-5M5 20h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="3.8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3 5 6v5.5c0 4.3 3 7.8 7 9.5 4-1.7 7-5.2 7-9.5V6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="m9 12 2.2 2.2L15.5 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="10.5" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-eyeoff" viewBox="0 0 24 24"><path d="M3 3l18 18M10.6 6.2A9.6 9.6 0 0 1 12 6c5 0 8.5 4.5 9.5 6a17 17 0 0 1-2.6 3.2M6.4 7.6C4.4 9 3 11 2.5 12c1 1.5 4.5 6 9.5 6 1.5 0 2.9-.4 4.1-1" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24"><rect x="4" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="4" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="4" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/><rect x="13" y="13" width="7" height="7" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20h16M7 16v-4M12 16V7M17 16v-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.6 2.1-3.7-1.2-1.7-3-1.9-3.6-2-1.5-.2-3 .9-3.8.9-.8 0-2-.9-3.3-.8-1.7 0-3.3 1-4.2 2.5-1.8 3.1-.5 7.7 1.3 10.2.9 1.2 1.9 2.6 3.2 2.6 1.3-.1 1.8-.8 3.3-.8 1.6 0 2 .8 3.3.8 1.4 0 2.3-1.3 3.1-2.5 1-1.4 1.4-2.8 1.4-2.9 0 0-2.8-1.1-2.8-4.3zM13.9 5.3c.7-.9 1.2-2 1-3.2-1 .1-2.2.7-2.9 1.5-.6.7-1.2 1.9-1 3.1 1.1.1 2.2-.6 2.9-1.4z"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path fill="currentColor" d="M4.2 2.6c-.2.2-.3.6-.3 1v16.8c0 .4.1.8.3 1l9.4-9.4zM14.8 13.2l2.9 2.9-11.3 6.4c-.4.2-.8.2-1.1.1zM18.9 9.3l-2.9-1.7-3.3 3.4 3.3 3.3 2.9-1.6c.8-.5.8-2.9 0-3.4zM5.3 1.4c.3-.1.7-.1 1.1.1l11.3 6.4-2.9 2.9z"/></symbol>
+    <symbol id="i-insta" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4.5" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="12" r="3.6" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="16.8" cy="7.2" r="1" fill="currentColor"/></symbol>
+    <symbol id="i-x" viewBox="0 0 24 24"><path d="M5 4l14 16M19 4 5 20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-tiktok" viewBox="0 0 24 24"><path d="M14 4v10.5a3.5 3.5 0 1 1-3.5-3.5M14 4c.5 2.5 2.3 4 5 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-snap" viewBox="0 0 24 24"><path d="M12 3.5c3 0 5 2.2 5 5v2.3l1.8-.4c.6 0 .7.8.2 1l-2 1c.6 1.8 2 3 3.5 3.4-.3.8-1.6 1-2.6 1.1l-.4 1.3c-1.2-.2-2.3 0-3.2.6-.8.5-1.4.9-2.3.9s-1.5-.4-2.3-.9c-.9-.6-2-.8-3.2-.6l-.4-1.3c-1-.1-2.3-.3-2.6-1.1 1.5-.4 2.9-1.6 3.5-3.4l-2-1c-.5-.2-.4-1 .2-1l1.8.4V8.5c0-2.8 2-5 5-5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></symbol>
+    <symbol id="i-yt" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="3.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m10.5 9.5 4 2.5-4 2.5z" fill="currentColor"/></symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6.5 3.5h3l1.5 4-2 1.3a10 10 0 0 0 6.2 6.2l1.3-2 4 1.5v3a2 2 0 0 1-2.2 2A16.5 16.5 0 0 1 4.5 5.7a2 2 0 0 1 2-2.2z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z" fill="none" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="2.4" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-store" viewBox="0 0 24 24"><path d="M4 9.5 5.5 4h13L20 9.5M4 9.5a2.7 2.7 0 0 0 5.3 0 2.7 2.7 0 0 0 5.4 0 2.7 2.7 0 0 0 5.3 0M5.5 12v8h13v-8M10 20v-4.5h4V20" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-handshake" viewBox="0 0 24 24"><path d="m3 11 4-4 4 2 2-1 4 0 4 4M3 11l3 3m15-3-4 4-3.5-3.5M6 14l2.5 2.5a1.5 1.5 0 0 0 2.1 0l.4-.4m-5-2.1 1.5-1.5M11 16.1l1 1a1.5 1.5 0 0 0 2.1 0l.4-.4m-3.5-.6 1-1m2.5 2 .5.5a1.5 1.5 0 0 0 2.1 0L17 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-send" viewBox="0 0 24 24"><path d="M20 4 3.5 11l6.5 2.5L12.5 20zM10 13.5 20 4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24"><path d="M3.5 12.5V4.5a1 1 0 0 1 1-1h8l8 8-9 9z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="8.5" cy="8.5" r="1.5" fill="currentColor"/></symbol>
+    <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.3" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M2.5 19.5a6.5 6.5 0 0 1 13 0M16 4.8a3.3 3.3 0 0 1 0 6.4M18 13.5a6.5 6.5 0 0 1 3.5 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 10h17M8 3v4M16 3v4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="8.5" cy="14.5" r="1.1" fill="currentColor"/><circle cx="12" cy="14.5" r="1.1" fill="currentColor"/></symbol>
+    <symbol id="i-compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m15.5 8.5-2 5-5 2 2-5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m16 16 4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-bed" viewBox="0 0 24 24"><path d="M3 18V6M3 14h18v4M21 14v-2.5A2.5 2.5 0 0 0 18.5 9H11v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><circle cx="7" cy="11" r="1.8" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <symbol id="i-home" viewBox="0 0 24 24"><path d="M4 11 12 4l8 7v8.5a1 1 0 0 1-1 1h-4.5V15h-5v5.5H5a1 1 0 0 1-1-1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></symbol>
+    <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2.2l1.5-2h5.6l1.5 2h2.2A1.5 1.5 0 0 1 20 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 17.5z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4" fill="none" stroke="currentColor" stroke-width="1.7"/></symbol>
+    <!-- ===== أيقونات هوية شُرفة (من Shurfah Icon Pack V2) — تُستخدم بأحجام 24 بكسل فأكبر ===== -->
+    <symbol id="b-ticket" viewBox="832 191 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M840 215L836 219V227H858.5V203H836V211L840 215ZM849 223.8L840.2 215L849 206.2L857.8 215L849 223.8ZM872 215L876 211V203H867.5V227H876V219L872 215Z" style="fill:var(--ia,#F5A623)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M843 215L849 221L855 215L849 209L843 215ZM860.5 203V227H865.5V203H860.5Z" fill="currentColor"/></symbol>
+    <symbol id="b-box" viewBox="336 3011 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M360 3039L380 3027.9V3026.7L360 3015.6L340 3026.7V3027.9L360 3039ZM348.3 3027.3L360 3020.8L371.7 3027.3L360 3033.8L348.3 3027.3ZM344.5 3038.5L360 3047.1L379.5 3036.3L373.3 3034.6L360 3041.9L342.8 3032.4L344.5 3038.5Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M360 3049.2L342.8 3039.6L344.5 3045.8L360 3054.4L379.5 3043.6L373.3 3041.8L360 3049.2Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-passport" viewBox="584 191 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M622 235V203L614 195H594V235H622ZM610.3 221.5H617V230.5H599V221.5H605.7L597.2 213L608 202.2L618.8 213L610.3 221.5Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M600 213L608 221L616 213L608 205L600 213ZM601 228.5H615V223.5H601V228.5Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-band" viewBox="460 2715 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M467.3 2741.3L484 2759L500.7 2741.3V2725.3L484 2719L467.3 2725.3V2741.3ZM496.2 2730L498.6 2729.8L496.2 2732.6V2739.5L484 2752.4L471.8 2739.5V2728.4L484 2723.8L496.2 2728.4V2730Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M482 2739.7L476.8 2734.5V2740.8L482.3 2746.4L494.4 2732L488 2732.5L482 2739.7Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-spark" viewBox="88 2824 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M107 2843L92 2848L107 2853L112 2868L117 2853L132 2848L117 2843L112 2828L107 2843Z" style="fill:var(--ia,#F5A623)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M126 2830.5L129.5 2834L126 2837.5L122.5 2834L126 2830.5Z" fill="currentColor"/></symbol>
+    <symbol id="b-star" viewBox="1080 2606 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M1104 2610L1110 2623L1124 2624L1113 2634L1117 2648L1104 2640L1091 2648L1095 2634L1084 2624L1098 2623L1104 2610Z" fill="currentColor"/></symbol>
+    <symbol id="b-gift" viewBox="212 1500 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M221 1528.2L228.7 1535.9L226.7 1535.1L223.7 1543.1L228.3 1544.9L231.3 1537H240.7L243.7 1544.9L248.3 1543.1L245.3 1535.1L243.3 1535.9L251 1528.2V1515.8L242.2 1507H229.8L221 1515.8V1528.2ZM236 1530.8L227.2 1522L236 1513.2L244.8 1522L236 1530.8Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M236 1528L242 1522L236 1516L230 1522L236 1528Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-user" viewBox="88 2388 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M97 2426V2431H127V2426L118 2417H106L97 2426Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M108.7 2396H115.3L120 2400.7V2407.3L115.3 2412H108.7L104 2407.3V2400.7L108.7 2396Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-users" viewBox="212 2388 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M223.5 2413H228.5L232 2409.5V2404.5L228.5 2401H223.5L220 2404.5V2409.5L223.5 2413ZM216 2426V2431H232V2424.2L233.1 2423.1L228 2418H224L216 2426Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M238 2401.1V2406.9L242.1 2411H247.9L252 2406.9V2401.1L247.9 2397H242.1L238 2401.1ZM234 2425V2431H256V2425L247 2416H243L234 2425Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-store" viewBox="708 191 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M727 202V205L718 214H746L737 205V202H727ZM737 235V232L746 223H718L727 232V235H737Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M742 200L738 195H726L722 200H742ZM716 221H748V216H716V221Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-scan" viewBox="336 2824 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M341 2840.1V2855.9L352.1 2867H367.9L379 2855.9V2840.1L367.9 2829H352.1L341 2840.1ZM364.5 2839.3L377.2 2838.4L357.3 2861.6L349 2853.4V2840.6L356.7 2848.4L364.5 2839.3Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M356.9 2851.3L351 2845.5V2852.5L357.1 2858.7L372.5 2840.7L365.5 2841.3L356.9 2851.3Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-grid" viewBox="88 3011 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M110 3037V3017H94V3037H110ZM130 3053V3033H114V3053H130ZM110 3053V3041H94V3053H110Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M130 3029V3017H114V3029H130Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-compass" viewBox="584 2606 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M615.1 2648.6L628.5 2643.8V2610.9L628.1 2610.6L614.9 2615.4L600.9 2611.4L587.5 2616.2V2649.1L587.9 2649.4L601.1 2644.6L615.1 2648.6ZM598.5 2640H599.2L592.5 2642.4V2619.8L601.1 2616.6L612.9 2620H612.5V2627.7L614.8 2630L612.5 2632.3V2642H617.5V2620H616.8L623.5 2617.6V2640.2L614.9 2643.4L603.1 2640H603.5V2632.3L601.2 2630L603.5 2627.7V2618H598.5V2640Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M608 2626L612 2630L608 2634L604 2630L608 2626Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-calendar" viewBox="212 2606 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M239.5 2618.5V2613.5H232.5V2618.5H239.5ZM221.5 2622L223.5 2620V2613.5H223L216.5 2620V2650.5H255.5V2620L249 2613.5H248.5V2620L250.5 2622V2624.5H221.5V2622ZM250.5 2645.5H221.5V2629.5H250.5V2645.5Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M225.5 2611V2619H230.5V2611H225.5ZM241.5 2619H246.5V2611H241.5V2619ZM243 2642L247 2638L243 2634L239 2638L243 2642Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-handshake" viewBox="1204 3011 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M1214.8 3046.6H1224.4L1228 3043.1L1231.6 3046.6H1241.2L1248 3039.8V3030.2L1241.2 3023.4H1231.6L1228 3026.9L1224.4 3023.4H1214.8L1208 3030.2V3039.8L1214.8 3046.6ZM1231.3 3038.1L1228 3041.4L1224.7 3038.1V3039.8L1222.5 3042H1216.7L1212.7 3037.9V3032.1L1216.7 3028H1222.5L1224.7 3030.2V3031.9L1228 3028.6L1231.3 3031.9V3030.2L1233.5 3028H1239.3L1243.3 3032.1V3037.9L1239.3 3042H1233.5L1231.3 3039.8V3038.1Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M1228 3031.3L1231.7 3035L1228 3038.7L1224.3 3035L1228 3031.3Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-food" viewBox="212 191 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M227 232H245L252 224L254 217H218L220 224L227 232Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M225.5 210.7L232.5 209.3L235.5 204.8V195.5L230.5 200.5V203.2L225.5 210.7ZM237.5 210.7L244.5 209.3L247.5 204.8V195.5L242.5 200.5V203.2L237.5 210.7Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-game" viewBox="88 191 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M131.5 232L132 225.3L120.4 211.7L115.5 216.6L108.7 209.8L92 228.8L98.8 228.4L108.9 216.8L115.5 223.4L120.1 218.7L131.5 232Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M124.1 198L129.8 203.7L124.1 209.5L118.3 203.7L124.1 198Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-bed" viewBox="336 939 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M340.5 980H345.5V973.5H374.5V980H379.5V968.5H377V969H346V968.5H345.5V949H340.5V980Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M352 957H371L375 961V967H348V961L352 957Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-tag" viewBox="708 2715 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M731 2759.5L752.5 2738L734 2719.5H712.5V2741L731 2759.5ZM745.5 2738L731 2752.5L717.5 2739V2730.8L716.7 2730L717.5 2729.2V2724.5H722.2L723 2723.7L723.8 2724.5H732L745.5 2738Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M723 2726.5L726.5 2730L723 2733.5L719.5 2730L723 2726.5Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-bell" viewBox="708 2388 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M729.5 2393V2396.5H723.5L716.5 2410.4V2425.5H729.2L732 2422.7L734.8 2425.5H747.5V2410.4L740.5 2396.5H734.5V2393H729.5ZM737.5 2401.5L742.5 2411.6V2420.5H721.5V2411.6L726.5 2401.5H737.5Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M728.5 2429L732 2432.5L735.5 2429L732 2425.5L728.5 2429Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-coffee" viewBox="832 565 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M867.5 602V601.5H863V583.5H867.5V580.5H847.7L847.2 580.6L847.3 580.5H838.7L838.2 580.6L838.3 580.5H836.5V602L844 609.5H860L867.5 602ZM846 604.5L841.5 600V585.5H862.5V600L858 604.5H846Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M849.5 576.3L853.5 570.3L846.5 571.7L842.5 577.7L849.5 576.3ZM862.5 570.3L855.5 571.7L851.5 577.7L858.5 576.3L862.5 570.3ZM865 599.5H875.5V585.5H865V590.5H870.5V594.5H865V599.5Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-music" viewBox="212 1126 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M252.5 1129.1L226.5 1132.8V1153H227.7L231.5 1156.8V1137.2L247.5 1134.9V1150H248.7L252.5 1153.8V1129.1Z" style="fill:var(--ia,#F5A623)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M238 1156.1V1161.9L242.1 1166H247.9L252 1161.9V1156.1L247.9 1152H242.1L238 1156.1ZM217 1159.1V1164.9L221.1 1169H226.9L231 1164.9V1159.1L226.9 1155H221.1L217 1159.1Z" fill="currentColor"/></symbol>
+    <symbol id="b-sweet" viewBox="336 565 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M374.9 590.6L369.3 583.2H350.7L345.1 590.6V597.1H374.9V590.6Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M356.3 576.7L360 580.4L363.7 576.7L360 573L356.3 576.7ZM344.7 605H380L375.3 600.4H340L344.7 605Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-lock" viewBox="336 2715 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M371.5 2729.2L365.3 2720.5H354.7L348.5 2729.2V2737H345V2753L350 2758H370L375 2753V2737H371.5V2729.2ZM366.5 2737H353.5V2730.8L357.3 2725.5H362.7L366.5 2730.8V2737ZM355.5 2754V2742H364.5V2754H355.5Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M362.5 2744H357.5V2752H362.5V2744Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-shield" viewBox="460 2715 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M467.3 2741.3L484 2759L500.7 2741.3V2725.3L484 2719L467.3 2725.3V2741.3ZM496.2 2730L498.6 2729.8L496.2 2732.6V2739.5L484 2752.4L471.8 2739.5V2728.4L484 2723.8L496.2 2728.4V2730Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M482 2739.7L476.8 2734.5V2740.8L482.3 2746.4L494.4 2732L488 2732.5L482 2739.7Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-pin" viewBox="460 2606 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M500.1 2622.8L493.7 2610H474.3L467.9 2622.8V2630.6L484 2650L500.1 2630.6V2622.8ZM472.5 2623.9L477.1 2614.6H490.9L495.5 2623.9V2629L484 2642.8L472.5 2629V2623.9Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M484 2619.7L488.6 2624.3L484 2628.9L479.4 2624.3L484 2619.7Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-home" viewBox="88 2606 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M98.7 2630.7V2648.1H128.4V2630.7L132 2633.7L131.4 2627L113.5 2611.9L92 2630.1L98.7 2630.7ZM113.5 2618.2L125.7 2628.5H123.6V2643.3H118.3V2647.6H108.8V2643.3H103.5V2628.5H101.4L113.5 2618.2Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M110.7 2634.2H116.4V2645.7H110.7V2634.2Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-search" viewBox="460 2279 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M465.5 2306.4L474.6 2315.5H487.4L489 2313.9V2306.8L485.3 2310.5H476.7L470.5 2304.3V2295.7L476.7 2289.5H485.3L491.5 2295.7V2304.1L495.1 2307.8L496.5 2306.4V2293.6L487.4 2284.5H474.6L465.5 2293.6V2306.4Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M491 2306.5V2313.5L500 2322.5V2315.5L491 2306.5Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-chart" viewBox="708 2824 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M745 2844H739V2864.5H721V2852H715V2864.5H712V2867.5H752V2864.5H745V2844Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M733 2834H727V2862.5H733V2834Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-link" viewBox="832 2497 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M853 2534.5V2529.5H847L841.5 2524V2518L847 2512.5H853V2507.5H845L836.5 2516V2526L845 2534.5H853ZM848 2523.5H864V2518.5H848V2523.5Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M865 2529.5H859V2534.5H867L875.5 2526V2516L867 2507.5H859V2512.5H865L870.5 2518V2524L865 2529.5Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-eyeoff" viewBox="212 2715 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M248.2 2722.9L244 2727.4H225.5L216 2739L223.9 2748.7L220.7 2752.2L223.8 2755.1L228 2750.6H246.5L256 2739L248.1 2729.3L251.3 2725.8L248.2 2722.9ZM238.6 2733.1L241.7 2736.1L245.1 2732.5L250.4 2739L244.5 2746.3H232.1L233.4 2744.9L230.3 2741.9L226.9 2745.5L221.6 2739L227.5 2731.7H239.9L238.6 2733.1Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M234.2 2734.7H237.8L240.3 2737.2V2740.8L237.8 2743.3H234.2L231.7 2740.8V2737.2L234.2 2734.7Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-hands" viewBox="336 1983 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M349.1 2003L352 2000.1V1995.9L349.1 1993H344.9L342 1995.9V2000.1L344.9 2003H349.1ZM369 2008.7L371.3 2011H374.7L377 2008.7V2005.3L374.7 2003H371.3L369 2005.3V2008.7ZM352 2010.2L352.1 2010.1L348 2006H346L341 2011V2026H352V2010.2ZM368 2026H378V2018L374 2014H372L368 2018V2026Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M357.9 2003H362.1L365 2000.1V1995.9L362.1 1993H357.9L355 1995.9V2000.1L357.9 2003ZM366 2026V2011L361 2006H359L354 2011V2026H366Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-festival" viewBox="88 1126 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M116.2 1136H131V1134.5H93V1137.5H116.7L116.2 1136ZM100 1152L105 1138H95L100 1152ZM116.9 1138H107L112 1152L116.9 1138.2V1138Z" style="fill:var(--ia,#F5A623)"/><path fill-rule="evenodd" clip-rule="evenodd" d="M124 1152L129 1138H119L124 1152ZM107 1164L112 1169L117 1164L112 1159L107 1164Z" fill="currentColor"/></symbol>
+    <symbol id="b-stamp" viewBox="88 1500 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M122 1524H120V1526H104V1524H102V1536H96V1543H128V1536H122V1524Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M118 1524V1510L114 1506H110L106 1510V1524H118Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <symbol id="b-coin" viewBox="1204 1983 48 48"><path fill-rule="evenodd" clip-rule="evenodd" d="M1208 2015.3L1219.7 2027H1236.3L1248 2015.3V1998.7L1236.3 1987H1219.7L1208 1998.7V2015.3ZM1243.3 2000.6V2013.4L1234.4 2022.3H1221.6L1212.7 2013.4V2000.6L1221.6 1991.7H1234.4L1243.3 2000.6Z" fill="currentColor"/><path fill-rule="evenodd" clip-rule="evenodd" d="M1228 2001.4L1233.6 2007L1228 2012.6L1222.4 2007L1228 2001.4Z" style="fill:var(--ia,#F5A623)"/></symbol>
+    <!-- ===== شعار شُرفة (المونوغرام) ===== -->
+    <symbol id="logo-mark" viewBox="0 0 480 480"><image href="assets/img/brand/monogram.png" width="480" height="480"/></symbol>
+    <symbol id="logo-mark-white" viewBox="0 0 480 480"><image href="assets/img/brand/monogram-white.png" width="480" height="480"/></symbol>
+  </defs>
+</svg>
+
+<a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
+
+<!-- ================= الترويسة (موحّدة في كل الصفحات) ================= -->
+<header class="site-header" id="siteHeader">
+  <div class="container header-inner">
+    <a class="brand" href="#top" aria-label="شُرفة — الصفحة الرئيسية">
+      <span class="brand-word">شُرفة</span><img class="brand-mono" src="assets/img/brand/monogram-160.png" alt="" width="40" height="40">
+    </a>
+
+    <nav class="main-nav" id="mainNav" aria-label="التنقل الرئيسي">
+      <a href="#about">عن شُرفة</a>
+      <a href="#passport">الجواز الرقمي</a>
+      <a href="#events">الفعاليات</a>
+      <a href="#services">الخدمات</a>
+      <a href="#partners">الشركاء</a>
+      <a class="nav-partner" href="partners.html"><svg class="ico"><use href="#i-handshake"/></svg>انضم كشريك</a>
+    </nav>
+
+    <div class="header-actions">
+      <a class="btn btn-partner btn-sm" href="partners.html"><svg class="ico"><use href="#i-handshake"/></svg><span>انضم كشريك</span></a>
+      <a class="btn btn-primary btn-sm" href="#download"><svg class="ico"><use href="#i-download"/></svg><span>حمّل التطبيق</span></a>
+      <button class="nav-toggle" id="navToggle" aria-label="القائمة" aria-expanded="false" aria-controls="mainNav"><svg class="ico"><use href="#i-menu"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main id="main">
+
+<!-- ================= 1. الواجهة: شُرفة المنصة الأم ================= -->
+<section class="hero" id="top">
+  <div class="pattern" aria-hidden="true"></div>
+  <div class="container hero-grid">
+    <div class="hero-copy">
+      <span class="eyebrow reveal"><span class="dot"></span>منصة رقمية عُمانية للفعاليات والتجارب السياحية</span>
+      <h1 class="reveal" data-delay="1">اكتشف عُمان<br><span class="hl">بطريقة مختلفة</span></h1>
+      <p class="lead reveal" data-delay="2">شُرفة تجمع الفعاليات والتجارب السياحية في تطبيق واحد، مع جواز رقمي يجمع بطاقات ولاء الشركاء ويوثّق رحلتك بالصور واللحظات.</p>
+      <div class="hero-ctas reveal" data-delay="3">
+        <a class="btn btn-primary btn-lg" href="#about"><svg class="ico"><use href="#i-spark"/></svg>اكتشف شُرفة</a>
+        <a class="btn btn-ghost btn-lg" href="#events">استكشف الفعاليات<svg class="ico"><use href="#i-arrow"/></svg></a>
+      </div>
+      <ul class="hero-points reveal" data-delay="4">
+        <li><svg class="ico"><use href="#i-calendar"/></svg>فعاليات وتجارب</li>
+        <li><svg class="ico"><use href="#i-passport"/></svg>الجواز الرقمي</li>
+        <li><svg class="ico"><use href="#i-gift"/></svg>مكافآت الشركاء</li>
+        <li><svg class="ico"><use href="#i-download"/></svg>تطبيق واحد</li>
+      </ul>
+    </div>
+
+    <div class="hero-visual reveal" data-delay="2" aria-hidden="true">
+      <div class="halo"></div>
+      <div class="arch-frame"></div>
+
+      <div class="phone phone-tilt">
+        <div class="phone-screen">
+          <div class="app-status"><span>9:41</span><span class="notch"></span><span>●●●</span></div>
+          <div class="app-head">
+            <div><small>أهلًا بك في</small><strong>شُرفة</strong></div>
+            <span class="avatar"><svg class="ico"><use href="#i-user"/></svg></span>
+          </div>
+          <div class="app-search"><svg class="ico"><use href="#i-search"/></svg>ابحث عن فعالية أو تجربة</div>
+
+          <div class="app-event">
+            <span class="ae-badge">متاحة</span>
+            <small>فعالية على شُرفة</small>
+            <strong>مهرجان صحار</strong>
+            <span class="ae-loc"><svg class="ico"><use href="#i-pin"/></svg>صحار</span>
+          </div>
+
+          <div class="app-quick">
+            <span class="q q-gold"><svg class="ico"><use href="#i-calendar"/></svg>الفعاليات</span>
+            <span class="q q-teal"><svg class="ico"><use href="#i-compass"/></svg>التجارب</span>
+            <span class="q q-purple"><svg class="ico"><use href="#i-passport"/></svg>الجواز</span>
+            <span class="q q-brick"><svg class="ico"><use href="#i-gift"/></svg>المكافآت</span>
+          </div>
+
+          <div class="app-passport-mini">
+            <div class="row"><strong>الجواز الرقمي</strong><small>بطاقة مطعم</small></div>
+            <div class="bar"><span style="--w:48%"></span></div>
+            <div class="stamps-mini"><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="float-chip chip-1"><span class="c-ico c-gold"><svg class="ico"><use href="#i-calendar"/></svg></span><span><b>مهرجان صحار</b><small>فعالية متاحة الآن</small></span></div>
+      <div class="float-chip chip-2"><span class="c-ico c-purple"><svg class="ico"><use href="#i-star"/></svg></span><span><b>ختم جديد</b><small>في بطاقة مطعم شريك</small></span></div>
+      <div class="float-chip chip-3"><span class="c-ico c-brick"><svg class="ico"><use href="#i-gift"/></svg></span><span><b>الثامنة مجانًا</b><small>مكافأة يحددها الشريك</small></span></div>
+      <div class="float-chip chip-4"><span class="c-ico c-teal"><svg class="ico"><use href="#i-compass"/></svg></span><span><b>تجارب جديدة</b><small>قريبًا</small></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 2. ما هي شُرفة؟ ================= -->
+<section class="section about" id="about">
+  <div class="container about-grid">
+    <div class="about-copy">
+      <span class="kicker reveal">ما هي شُرفة؟</span>
+      <h2 class="reveal" data-delay="1">منصة واحدة<br>لكل تجربة</h2>
+      <p class="reveal" data-delay="2">تفاصيل أي زيارة اليوم متفرقة: التذاكر في مكان، والعروض في مكان آخر، ولا شيء يوثّق تجاربك أو يكافئك عليها.</p>
+      <p class="reveal" data-delay="2"><b>شُرفة تجمع ذلك كله في تجربة رقمية واحدة</b> — من اكتشاف الفعالية، إلى الاستفادة من خدماتها، إلى توثيق زيارتك في جوازك الرقمي.</p>
+      <div class="about-compare reveal" data-delay="3">
+        <div class="ac-before"><small>بدون شُرفة</small><span>تطبيقات ومواقع متفرقة</span><span>عروض لا تعرف عنها</span><span>زيارات بلا أثر</span></div>
+        <div class="ac-after"><small>مع شُرفة</small><span>كل التجربة في تطبيق واحد</span><span>خدمات وعروض كل فعالية</span><span>بطاقة ولاء لكل شريك</span></div>
+      </div>
+    </div>
+    <div class="pillars">
+      <article class="pillar reveal" data-delay="1" style="--ac:var(--gold)">
+        <span class="p-num">01</span>
+        <span class="p-ico"><svg class="ico"><use href="#b-compass"/></svg></span>
+        <h3>اكتشف</h3>
+        <p>الفعاليات والتجارب السياحية في مكان واحد، بمعلومات واضحة عن كل فعالية وخدماتها.</p>
+      </article>
+      <article class="pillar reveal" data-delay="2" style="--ac:var(--teal)">
+        <span class="p-num">02</span>
+        <span class="p-ico"><svg class="ico"><use href="#b-ticket"/></svg></span>
+        <h3>تفاعل</h3>
+        <p>احجز، كوّن باقتك، واستفد من الخدمات الرقمية التي توفرها كل فعالية مشاركة.</p>
+      </article>
+      <article class="pillar reveal" data-delay="3" style="--ac:var(--purple)">
+        <span class="p-num">03</span>
+        <span class="p-ico"><svg class="ico"><use href="#b-passport"/></svg></span>
+        <h3>وثّق واكسب</h3>
+        <p>اجمع أختام كل شريك في جوازك الرقمي، ووثّق رحلتك بالصور واللحظات.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 3. الجواز الرقمي ================= -->
+<section class="section home-passport dark" id="passport">
+  <div class="pattern pattern-light" aria-hidden="true"></div>
+  <div class="container hp-grid">
+    <div class="hp-copy">
+      <span class="kicker kicker-gold reveal">خدمة أساسية في شُرفة</span>
+      <h2 class="reveal" data-delay="1">الجواز الرقمي</h2>
+      <p class="hp-lead reveal" data-delay="2">جوازك في شُرفة يجمع بطاقة ولاء لكل شريك في مكان واحد: كل زيارة تضيف ختمًا في بطاقة ذلك الشريك، والشريك يحدد مكافأتك. ومعه توثّق رحلتك بالصور واللحظات.</p>
+
+      <ul class="hp-features reveal" data-delay="3">
+        <li><svg class="ico"><use href="#i-store"/></svg><span><b>بطاقة لكل شريك</b> مطعم أو مقهى أو لعبة</span></li>
+        <li><svg class="ico"><use href="#i-star"/></svg><span><b>ختم مع كل زيارة</b> لدى الشريك نفسه</span></li>
+        <li><svg class="ico"><use href="#i-gift"/></svg><span><b>مكافأة يحددها الشريك</b> خصم أو زيارة مجانية</span></li>
+        <li><svg class="ico"><use href="#i-camera"/></svg><span><b>وثّق رحلتك</b> بصور من المكان</span></li>
+        <li><svg class="ico"><use href="#i-spark"/></svg><span><b>اكتب لحظتك</b> وشعورك في وقتها</span></li>
+      </ul>
+
+      <div class="lc-examples reveal" data-delay="3">
+        <div class="lc-row"><b>مطعم</b><span>6 زيارات</span><i aria-hidden="true">←</i><span class="r1">خصم 30% في السابعة</span><i aria-hidden="true">←</i><span class="r2">الثامنة مجانًا</span></div>
+        <div class="lc-row"><b>ألعاب</b><span>3 مرات</span><i aria-hidden="true">←</i><span class="r2">الرابعة مجانًا</span></div>
+        <small>أمثلة — عدد الزيارات ونوع المكافأة يحددهما كل شريك.</small>
+      </div>
+
+      <div class="flow3 reveal" data-delay="3" id="flow3">
+        <div class="f-step"><span class="f-ico"><svg class="ico"><use href="#b-spark"/></svg></span><b>زُر الشريك</b></div>
+        <div class="f-line"><i></i></div>
+        <div class="f-step"><span class="f-ico"><svg class="ico"><use href="#b-star"/></svg></span><b>اجمع أختامه</b></div>
+        <div class="f-line"><i></i></div>
+        <div class="f-step"><span class="f-ico"><svg class="ico"><use href="#b-gift"/></svg></span><b>استلم مكافأته</b></div>
+      </div>
+
+      <div class="hp-ctas reveal" data-delay="4">
+        <button class="btn btn-gold" type="button" id="hpHowBtn" aria-expanded="false" aria-controls="passportHow"><svg class="ico"><use href="#i-passport"/></svg>اكتشف الجواز الرقمي</button>
+        <button class="btn btn-ghost-light" type="button" id="ppAdd"><svg class="ico"><use href="#i-plus"/></svg><span>جرّب: أضف زيارة</span></button>
+        <button class="btn-link-light" type="button" id="ppReset">إعادة</button>
+      </div>
+    </div>
+
+    <div class="hp-visual reveal" data-delay="2">
+      <div class="phone phone-dark">
+        <div class="phone-screen pp-screen">
+          <div class="app-status light"><span>9:41</span><span class="notch"></span><span>●●●</span></div>
+          <div class="pp-book">
+                <div class="pp-cover">
+                  <svg class="pp-emblem"><use href="#logo-mark-white"/></svg>
+                  <div><small>شُرفة</small><strong>الجواز الرقمي</strong></div>
+                </div>
+                <div class="pp-tabs" role="tablist" aria-label="أقسام الجواز">
+                  <button type="button" role="tab" data-card="food" class="is-active" aria-selected="true">مطعم</button>
+                  <button type="button" role="tab" data-card="games" aria-selected="false">ألعاب</button>
+                  <button type="button" role="tab" data-card="journal" aria-selected="false">يومياتي</button>
+                </div>
+                <div class="pp-card" id="ppCard">
+                  <div class="pp-card-head"><span class="pp-card-ico" id="ppCardIcon"></span><div><b id="ppCardName">مطعم شريك</b><small>بطاقة ولاء</small></div></div>
+                  <div class="pp-slots" id="ppSlots"></div>
+                  <small class="pp-next" id="ppNext"></small>
+                </div>
+                <div class="pp-journal" id="ppJournal" hidden>
+                  <div class="pj-list" id="ppJournalList"></div>
+                  <span class="pj-add"><svg class="ico"><use href="#i-camera"/></svg>أضف صورة ولحظة من المكان</span>
+                </div>
+                <div class="pp-reward" id="ppReward">
+                  <svg class="ico"><use href="#i-gift"/></svg>
+                  <div><b id="ppRewardTitle"></b><small id="ppRewardSub"></small></div>
+                </div>
+              </div>
+        </div>
+      </div>
+      <p class="fine light center">عرض توضيحي — الأسماء والأعداد والمكافآت للتوضيح فقط.</p>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="passport-how" id="passportHow" hidden>
+      <h3>كيف يعمل الجواز؟</h3>
+      <ol>
+        <li><span>1</span><b>حمّل شُرفة</b><small>جوازك جاهز مع حسابك</small></li>
+        <li><span>2</span><b>زُر شريكًا مشاركًا</b><small>مطعمًا أو مقهى أو لعبة</small></li>
+        <li><span>3</span><b>احصل على ختم مع كل زيارة</b><small>في بطاقة هذا الشريك فقط</small></li>
+        <li><span>4</span><b>استلم مكافأتك</b><small>عند الزيارة التي يحددها الشريك</small></li>
+      </ol>
+    </div>
+    <p class="hp-note"><svg class="ico"><use href="#i-shield"/></svg>لا تُجمع الأختام بين شركاء مختلفين: لكل شريك بطاقته الخاصة، وهو من يحدد عدد الزيارات ونوع المكافأة. والبطاقات متاحة لدى الشركاء المشاركين فقط.</p>
+  </div>
+</section>
+
+<!-- ================= 4. الفعاليات ================= -->
+<section class="section events" id="events">
+  <div class="container">
+    <div class="sec-row reveal">
+      <div>
+        <span class="kicker kicker-brick">الفعاليات والتجارب</span>
+        <h2>استكشف ما يحدث على شُرفة</h2>
+      </div>
+      <p>لكل فعالية صفحتها وتجربتها الرقمية الخاصة، بحسب الخدمات التي توفرها.</p>
+    </div>
+    <div class="event-filters reveal" id="eventFilters" role="group" aria-label="تصفية الفعاليات حسب الحالة"></div>
+    <div class="event-grid" id="eventGrid"><!-- تُبنى من assets/js/data.js --></div>
+  </div>
+</section>
+
+<!-- ================= 5. الخدمات ================= -->
+<section class="section services-home" id="services">
+  <div class="container">
+    <header class="section-head reveal">
+      <span class="kicker kicker-teal">خدمات شُرفة</span>
+      <h2>ما الذي تقدمه شُرفة؟</h2>
+      <p>خدمات المنصة الأساسية، وحالة توفّر كل منها.</p>
+    </header>
+    <div class="svc-grid" id="serviceGrid"><!-- تُبنى من assets/js/data.js --></div>
+    <p class="svc-legend reveal">
+      <span class="st st-live">متاح</span> متوفر الآن
+      <span class="st st-event">ضمن الفعاليات</span> متوفر داخل الفعاليات المشاركة
+      <span class="st st-soon">قريبًا</span> قيد التطوير
+    </p>
+  </div>
+</section>
+
+<!-- ================= 6. الشركاء ================= -->
+<section class="section partners-home" id="partners">
+  <div class="container">
+    <div class="sec-row reveal">
+      <div>
+        <span class="kicker kicker-gold">شركاء شُرفة</span>
+        <h2>منظومة تتعاون مع جهات متعددة</h2>
+      </div>
+      <p>شُرفة لا ترتبط بجهة أو فعالية واحدة؛ بل تجمع مقدمي الخدمات من مجالات مختلفة.</p>
+    </div>
+    <div class="ptype-filters reveal" id="partnerFilters" role="group" aria-label="استعراض الشركاء حسب نوع الخدمة"></div>
+    <div class="partner-grid" id="partnerGrid"><!-- تُبنى من assets/js/data.js --></div>
+    <div class="partner-cta reveal">
+      <div>
+        <b>تقدّم خدمة أو تنظّم فعالية؟</b>
+        <span>انضم إلى منظومة شُرفة ووصل خدماتك إلى زوار الفعاليات والتجارب.</span>
+      </div>
+      <a class="btn btn-primary" href="partners.html"><svg class="ico"><use href="#i-handshake"/></svg>انضم كشريك</a>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 7. القسم الختامي ================= -->
+<section class="section download dark" id="download">
+  <div class="pattern pattern-light" aria-hidden="true"></div>
+  <div class="container">
+    <div class="download-grid">
+      <div class="dl-copy">
+        <span class="kicker kicker-gold reveal">ابدأ مع شُرفة</span>
+        <h2 class="reveal" data-delay="1">عُمان بانتظارك…<br><span class="hl-gold">ابدأ رحلتك من شُرفة</span></h2>
+        <p class="reveal" data-delay="2">اكتشف الفعاليات والتجارب، ووثّق كل زيارة في جوازك الرقمي.</p>
+
+        <div class="stores reveal" data-delay="3">
+          <div class="store">
+            <a class="store-btn" data-store="appStore" href="#download" target="_blank" rel="noopener">
+              <svg class="ico"><use href="#i-apple"/></svg>
+              <span><small>حمّله من</small><b>App Store</b></span>
+            </a>
+            <div class="qr-box" data-qr="appStore"><span class="qr-wait">رمز QR<br>يظهر عند إضافة الرابط</span></div>
+          </div>
+          <div class="store">
+            <a class="store-btn" data-store="googlePlay" href="#download" target="_blank" rel="noopener">
+              <svg class="ico"><use href="#i-play"/></svg>
+              <span><small>احصل عليه من</small><b>Google Play</b></span>
+            </a>
+            <div class="qr-box" data-qr="googlePlay"><span class="qr-wait">رمز QR<br>يظهر عند إضافة الرابط</span></div>
+          </div>
+        </div>
+        <p class="fine light store-note" id="storeNote">روابط التحميل الرسمية ستُضاف قريبًا.</p>
+        <a class="dl-events-link reveal" href="#events">أو استكشف الفعاليات المتاحة الآن<svg class="ico"><use href="#i-arrow"/></svg></a>
+      </div>
+
+      <div class="dl-visual reveal" data-delay="2" aria-hidden="true">
+        <div class="halo halo-gold"></div>
+        <div class="phone">
+          <div class="phone-screen dl-screen">
+            <div class="app-status light"><span>9:41</span><span class="notch"></span><span>●●●</span></div>
+            <div class="dl-splash">
+              <svg class="dl-logo"><use href="#logo-mark-white"/></svg>
+              <strong>شُرفة</strong>
+              <small>اكتشف عُمان بطريقة مختلفة</small>
+            </div>
+            <div class="dl-tiles">
+              <span style="--c:var(--gold)"><svg class="ico"><use href="#i-calendar"/></svg>الفعاليات</span>
+              <span style="--c:var(--teal)"><svg class="ico"><use href="#i-compass"/></svg>التجارب</span>
+              <span style="--c:var(--purple)"><svg class="ico"><use href="#i-passport"/></svg>الجواز</span>
+              <span style="--c:var(--brick)"><svg class="ico"><use href="#i-gift"/></svg>المكافآت</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+
+<!-- ================= التذييل (موحّد في كل الصفحات) ================= -->
+<footer class="site-footer">
+  <div class="container footer-grid">
+    <div class="f-brand">
+      <a class="brand brand-light" href="#top" aria-label="شُرفة">
+        <span class="brand-word">شُرفة</span><img class="brand-mono" src="assets/img/brand/monogram-white-160.png" alt="" width="40" height="40">
+      </a>
+      <p>شُرفة منصة رقمية عُمانية لاكتشاف الفعاليات والتجارب السياحية، مع جواز رقمي يجمع بطاقات ولاء الشركاء ويوثّق رحلتك.</p>
+    </div>
+    <div>
+      <h4>شُرفة</h4>
+      <ul>
+        <li><a href="#about">عن شُرفة</a></li>
+        <li><a href="#passport">الجواز الرقمي</a></li>
+        <li><a href="#services">الخدمات</a></li>
+        <li><a href="#partners">الشركاء</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>الفعاليات</h4>
+      <ul>
+        <li><a href="sohar-festival.html">مهرجان صحار</a></li>
+        <li><a href="dhahirah-festival.html">مهرجان الظاهرة السياحي</a></li>
+        <li><a href="squ-eat.html">SQU إيييت</a></li>
+        <li><a href="#events">كل الفعاليات</a></li>
+      </ul>
+      <h4 class="mt">الشركاء</h4>
+      <ul>
+        <li><a href="partners.html">انضم كشريك</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>حمّل التطبيق</h4>
+      <ul>
+        <li><a data-store="appStore" href="#download" target="_blank" rel="noopener">App Store</a></li>
+        <li><a data-store="googlePlay" href="#download" target="_blank" rel="noopener">Google Play</a></li>
+      </ul>
+      <h4 class="mt">تواصل معنا</h4>
+      <ul class="contact-list" id="contactList"></ul>
+      <div class="socials" id="socialList"></div>
+    </div>
+  </div>
+  <div class="container footer-bottom">
+    <span>© <span id="year"></span> شُرفة SHURFA. جميع الحقوق محفوظة.</span>
+    <a href="#top">العودة للأعلى ↑</a>
+  </div>
+</footer>
+
+<!-- زر ثابت للهاتف -->
+<div class="mobile-cta" id="mobileCta">
+  <span><b>شُرفة</b><small>اكتشف عُمان بطريقة مختلفة</small></span>
+  <a class="btn btn-primary btn-sm" href="#download"><svg class="ico"><use href="#i-download"/></svg>حمّل التطبيق</a>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<!-- الإعدادات: روابط التحميل والتواصل في config.js — والفعاليات والخدمات والشركاء في data.js -->
+<script src="assets/js/config.js?v=50"></script>
+<script src="assets/js/data.js?v=50"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous" referrerpolicy="no-referrer" defer></script>
+<script src="assets/js/home.js?v=50" defer></script>
+<script src="assets/js/main.js?v=50" defer></script>
 </body>
 </html>
