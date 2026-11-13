@@ -184,3 +184,13 @@ button.card { border: 0; width: 100%; text-align: right; }
 .toast.show { opacity: 1; transform: translate(-50%, 0); }
 .toast.err { background: var(--err); } .toast.ok { background: var(--ok); }
 @media (prefers-reduced-motion: reduce) { .skel { animation: none; } .toast { transition: none; } }
+
+/* شريط شعارات الشركاء */
+.rail { overflow-x: auto; scrollbar-width: none; padding: 10px 0 6px; cursor: grab; -webkit-overflow-scrolling: touch; }
+.rail::-webkit-scrollbar { display: none; }
+.rail.drag { cursor: grabbing; }
+.rail-track { display: flex; gap: 12px; width: max-content; padding: 0 18px; }
+.rail-item { width: 92px; flex: none; display: flex; flex-direction: column; align-items: center; gap: 6px; border: 0; background: #fff; border-radius: 18px; padding: 12px 6px 10px; box-shadow: 0 1px 3px rgba(26,46,40,.08); user-select: none; -webkit-user-select: none; }
+.rail-item img { pointer-events: none; -webkit-user-drag: none; }
+.rail-item span:last-child { font-size: 12px; font-weight: 600; text-align: center; line-height: 1.3; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; }
+select.input { appearance: auto; }

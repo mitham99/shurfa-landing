@@ -1,6 +1,6 @@
 /* =========================================================
    شُرفة — تطبيق المستخدم
-   • دخول برمز يُرسل للبريد، والجلسة تبقى محفوظة في الجهاز
+   • التصفح متاح بدون تسجيل؛ الدخول (بالبريد/الهاتف + كلمة المرور) لشراء الجواز أو التسجيل كشريك
    • ما يظهر يعتمد على دور الحساب في قاعدة البيانات:
        زائر ← الرئيسية · جوازي · الفعاليات · حسابي
        شريك (موظف كشك) ← + «كشكي» لمسح جوازات الزوار
@@ -56,18 +56,16 @@
 
   /* ---------- الحالة ---------- */
   const S = {
-    me: null,               // نتيجة me()
+    me: null,               // نتيجة me() — null = زائر بدون تسجيل
+    ev: null,               // event_info(EV): السعر وتعليمات الدفع
     pass: null,             // my_pass(EV)
     stalls: null,           // list_stalls(EV)
-    passOk: false,          // هل الجواز مفعّل لهذه الفعالية
     tab: "home", sub: null, // شاشة فرعية فوق التبويب
     passTab: "cards",
     work: { stall: null, mode: "stall", res: null, last: null, busy: false },
+    authOpen: false, after: null,
     authStep: "login", loginBy: "email", email: "", resendAt: 0, signup: null
   };
-  const isStaff = () => !!(S.me && S.me.stalls && S.me.stalls.length);
-  const isOrg = () => !!(S.me && S.me.organizer);
-  const myName = () => (S.me && S.me.profile && S.me.profile.name) || "";
 
   /* =========================================================
      الدخول
@@ -76,14 +74,14 @@
     bar.hidden = true; scr.className = "screen no-tabs";
     const ev = evById(EV), st = S.authStep;
     const T = {
-      login: ["أهلًا بك في شُرفة", "سجّل دخولك لتتصفح الفعاليات وتحصل على جوازك الرقمي" + (ev ? " في " + esc(ev.name.split("—")[0].trim()) : "") + "."],
+      login: ["أهلًا بك في شُرفة", "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام" + (ev ? " في " + esc(ev.name.split("—")[0].trim()) : "") + "."],
       signup: ["إنشاء حساب", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
       code: ["تأكيد البريد", "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
       profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بياناتك", "لإصدار جوازك الرقمي."]
     }[st] || ["شُرفة", ""];
-    const top = `<div class="auth-top"><img src="../assets/img/brand/monogram-160.png" alt=""><h1>${T[0]}</h1><p>${T[1]}</p></div>`;
+    const top = `<div class="auth-top"><img src="../assets/img/brand/monogram-160.png" alt=""><h1>${T[0]}</h1><p>${T[1]}</p>${["login", "signup", "forgot", "code"].includes(st) ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
       <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="8" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
@@ -189,43 +187,60 @@
       history.replaceState(null, "", location.pathname + location.search);
       toast("انتهت صلاحية الرابط. اطلب رابطًا جديدًا.", "err");
     }
-    if (recovery) { goAuth("reset"); return; }
-    if (!A.auth.signedIn()) {
-      const pe = A.session.get("pending-email");
-      if (pe) { S.email = pe; goAuth("code"); } else goAuth("login");
-      return;
+    if (recovery) { S.authOpen = true; goAuth("reset"); return; }
+
+    S.me = null;
+    if (A.auth.signedIn()) {
+      try { S.me = await A.urpc("me"); }
+      catch (e) { if (e.code === "not_signed_in" || e.status === 401) await A.auth.signOut(); S.me = null; }
+    } else if (A.session.get("pending-email")) {
+      S.email = A.session.get("pending-email"); S.authOpen = true; goAuth("code"); return;
     }
-    try {
-      S.me = await A.urpc("me");
-    } catch (e) {
-      if (e.code === "not_signed_in" || e.status === 401) { await A.auth.signOut(); goAuth("login"); return; }
-      scr.innerHTML = `<div class="empty" style="padding-top:80px">${ic("alert", 36)}<b>${esc(errMsg(e))}</b><button class="btn btn-dark btn-sm" data-a="reload">إعادة المحاولة</button></div>`;
-      return;
-    }
-    if (!S.me.profile) { S.authStep = "profile"; renderAuth(); return; }
-    await ensurePass();
-    const want = new URLSearchParams(location.search).get("tab");
-    if (want && tabs().some((t) => t[0] === want)) S.tab = want;
+    if (S.me && !S.me.profile) { S.authOpen = true; goAuth("profile"); return; }
+    S.authOpen = false;
+
+    await loadEvInfo();
+    const q =new URLSearchParams(location.search);
+    if (q.get("tab") && tabs().some((t) => t[0] === q.get("tab"))) S.tab = q.get("tab");
+    if (q.get("join") === "partner") { history.replaceState(null, "", location.pathname + "?e=" + EV); return startIntent("partner"); }
+    if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null); }
+    if (S.after) { const a = S.after; S.after = null; return startIntent(a); }
     render();
   }
 
-  async function ensurePass() {
-    const has = (S.me.passes || []).find((p) => p.event === EV);
-    if (has) { S.passOk = true; return; }
-    try {
-      await A.urpc("join_event", { p_event: EV });
-      S.passOk = true;
-      S.me = await A.urpc("me");
-    } catch (e) { S.passOk = false; }
+  /* نية بعد تسجيل الدخول: شراء الجواز أو التسجيل كشريك */
+  function startIntent(kind) {
+    if (!S.me) return requireLogin(kind);
+    if (kind === "buy") { S.tab = "pass"; S.sub = myPassRef() ? null : { name: "checkout" }; }
+    else if (kind === "partner") { S.tab = "account"; S.sub = { name: "partner" }; }
+    render();
   }
+  function requireLogin(intent) {
+    S.after = intent; S.authOpen = true; S.authStep = "login"; renderAuth();
+  }
+
+  async function loadEvInfo() {
+    try { S.ev = await A.rpc("event_info", { p_event: EV }); } catch (e) { S.ev = S.ev || null; }
+    return S.ev;
+  }
+  const myPassRef = () => S.me && (S.me.passes || []).find((p) => p.event === EV);
+  const price = () => (S.ev && S.ev.price_baisa) || 0;
+  const fmtPrice = (b) => !b ? "مجانًا" : b % 1000 === 0 ? (b === 1000 ? "1 ريال" : `${b / 1000} ريالات`) : b < 1000 ? `${b} بيسة` : `${(b / 1000).toFixed(3)} ر.ع`;
+  const canSell = () => !!(S.ev && S.ev.active);
 
   /* =========================================================
      التبويبات
      ========================================================= */
+  const staffStalls = () => ((S.me && S.me.stalls) || []).filter((s) => s.event === EV || true);
+  const approvedStalls = () => staffStalls().filter((s) => s.status === "approved" && s.active !== false);
+  const isStaff = () => staffStalls().length > 0;
+  const isOrg = () => !!(S.me && S.me.organizer);
+  const myName = () => (S.me && S.me.profile && S.me.profile.name) || "";
+
   function tabs() {
     const t = [["home", "الرئيسية", "home"], ["pass", "جوازي", "award"]];
     if (isStaff() || isOrg()) t.push(["work", isStaff() && isOrg() ? "عملي" : isStaff() ? "كشكي" : "الإدارة", isStaff() ? "scan" : "chart"]);
-    t.push(["events", "الفعاليات", "compass"], ["account", "حسابي", "user"]);
+    t.push(["events", "الفعاليات", "compass"], ["account", S.me ? "حسابي" : "دخول", "user"]);
     return t;
   }
   function renderBar() {
@@ -233,17 +248,18 @@
     bar.innerHTML = tabs().map(([k, l, i]) => `<button data-a="go-tab" data-tab="${k}" ${S.tab === k ? 'aria-current="page"' : ""}>${ic(i, 22, S.tab === k ? 2.1 : 1.8)}${l}</button>`).join("");
   }
 
-  let refreshT;
+  let refreshT, railRAF;
   function render() {
-    clearInterval(refreshT);
+    clearInterval(refreshT); cancelAnimationFrame(railRAF);
     stopScanner();
     scr.className = "screen";
     renderBar();
     window.scrollTo(0, 0);
-    if (S.sub) { scr.innerHTML = SUB[S.sub.name](S.sub); afterSub(); return; }
+    if (S.sub && SUB[S.sub.name]) { const h = SUB[S.sub.name](S.sub); if (typeof h === "string") scr.innerHTML = h; afterSub(S.sub); return; }
     ({ home: renderHome, pass: renderPass, work: renderWork, events: renderEvents, account: renderAccount }[S.tab] || renderHome)();
   }
   const head = (title, back = true, extra = "") => `<div class="phead">${back ? `<button class="iconbtn" data-a="back" aria-label="رجوع">${ic("back", 24, 2)}</button>` : ""}<h2>${esc(title)}</h2>${extra}</div>`;
+  const loginBtn = () => `<button class="btn btn-dark btn-sm" data-a="login" style="width:auto;padding:0 16px">${ic("user", 18)} دخول</button>`;
 
   /* ---------------- الرئيسية ---------------- */
   function renderHome() {
@@ -251,50 +267,99 @@
     const c = ev.colors || { from: "#1A2E28", to: "#2E5148" };
     const others = (D.events || []).filter((e) => e.id !== EV);
     const prog = (ev.page && ev.page.program && ev.page.program.items) || [];
+    const ref = myPassRef();
     const services = [];
-    if (S.passOk) services.push({ t: "الجواز الرقمي", d: "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", i: "award", bg: "linear-gradient(135deg,#7B5BA7,#5F4486)", a: 'data-a="go-tab" data-tab="pass"', cta: "افتح جوازي" });
+    services.push({ t: "الجواز الرقمي", d: `بطاقة ولاء لكل شريك: اجمع الأختام واحصل على المكافآت. ${price() ? "السعر " + fmtPrice(price()) + "." : ""}`, i: "award", bg: "linear-gradient(135deg,#7B5BA7,#5F4486)", a: 'data-a="go-tab" data-tab="pass"', cta: ref ? "افتح جوازي" : "اشترِ الجواز" });
     if (ev.page && ev.page.packages) services.push({ t: "الباقات", d: "باقات من الأكشاك المشاركة تناسب ميزانيتك.", i: "box", bg: "linear-gradient(135deg,#E4573D,#C7432B)", a: 'data-a="sub" data-name="packages"', cta: "تصفّح الباقات" });
     prog.filter((p) => p.link && !/index\.html/.test(p.link.href)).forEach((p) => services.push({ t: p.title, d: p.desc, i: "users", bg: `linear-gradient(135deg,${p.color || "#3D8BE0"},#1E3F8F)`, href: img(p.link.href), cta: p.link.label }));
     prog.filter((p) => !p.link).forEach((p) => services.push({ t: p.title, d: p.desc, i: "food", bg: `linear-gradient(135deg,${p.color || "#A63FB0"},#5F4486)`, a: `data-a="sub" data-name="program" data-title="${esc(p.title)}"`, cta: "التفاصيل" }));
 
+    let passCard;
+    if (!ref) passCard = `<button class="card row" data-a="buy" style="gap:14px;border:1.5px solid var(--purple)"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic("award", 22)}</span>
+        <span class="grow"><b>احصل على جوازك الرقمي</b><span class="sub" style="display:block">اجمع أختام الأكشاك واحصل على مكافآتها${price() ? " · " + fmtPrice(price()) : ""}</span></span>${ic("fwd", 18, 2)}</button>`;
+    else if (ref.status === "pending_payment") passCard = `<button class="card row" data-a="go-tab" data-tab="pass" style="gap:14px;background:var(--warn-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--warn)">${ic("clock", 22)}</span>
+        <span class="grow"><b>جوازك بانتظار الدفع</b><span class="sub" style="display:block;color:var(--ink)">ادفع ${fmtPrice(price())} لدى منصة المنظمين واعرض رمزك</span></span>${ic("fwd", 18, 2)}</button>`;
+    else passCard = `<button class="card row" data-a="go-tab" data-tab="pass" id="homePass" style="gap:14px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic("award", 22)}</span><span class="grow"><span class="skel" style="display:block;min-height:40px"></span></span></button>`;
+
     scr.innerHTML = `
-      <div class="phead"><div class="grow"><div class="sub">${greet()}</div><h2 style="font-size:21px">${esc(firstName(myName()))}</h2></div>
-        <button class="avatar" data-a="go-tab" data-tab="account" aria-label="حسابي">${esc(firstName(myName()).charAt(0))}</button></div>
+      <div class="phead"><div class="grow"><div class="sub">${S.me ? greet() : "أهلًا بك في شُرفة"}</div><h2 style="font-size:21px">${S.me ? esc(firstName(myName())) : "اكتشف فعاليات عُمان"}</h2></div>
+        ${S.me ? `<button class="avatar" data-a="go-tab" data-tab="account" aria-label="حسابي">${esc(firstName(myName()).charAt(0))}</button>` : loginBtn()}</div>
       <section class="hero" style="background:linear-gradient(150deg,${esc(c.from)},${esc(c.to)})">
         ${ev.image ? `<div class="bg" style="background-image:url('${esc(img(ev.image))}')"></div>` : ""}
-        <div class="between">${ev.logo ? `<img class="logo" src="${esc(img(ev.logo))}" alt="">` : "<span></span>"}${S.passOk ? '<span class="st st-glass">الجواز الرقمي مفعّل</span>' : statusChip(ev.status)}</div>
+        <div class="between">${ev.logo ? `<img class="logo" src="${esc(img(ev.logo))}" alt="">` : "<span></span>"}${canSell() ? '<span class="st st-glass">الجواز الرقمي متاح</span>' : statusChip(ev.status)}</div>
         <h3>${esc((ev.name || "").split("—")[0].trim())}</h3>
         <div class="meta">${ev.date ? `<span class="row" style="gap:6px">${ic("cal", 16)}${esc(ev.date)}</span>` : ""}
           ${ev.page && ev.page.facts ? ev.page.facts.slice(1, 3).map((f) => `<span class="row" style="gap:6px">${ic(f.icon === "i-pin" ? "pin" : "clock", 16)}${esc(f.text)}</span>`).join("") : ""}</div>
-        ${S.passOk ? `<button class="btn btn-soft" data-a="go-tab" data-tab="pass" style="margin-top:4px">${ic("qr", 20)} اعرض جوازي للكشك</button>`
-          : `<a class="btn btn-soft" href="${esc(img(ev.url || ""))}" style="margin-top:4px">تفاصيل الفعالية</a>`}
+        ${ref && ref.status === "active" ? `<button class="btn btn-soft" data-a="go-tab" data-tab="pass" style="margin-top:4px">${ic("qr", 20)} اعرض جوازي للكشك</button>`
+          : `<button class="btn btn-soft" data-a="sub" data-name="event" data-id="${esc(EV)}" style="margin-top:4px">تفاصيل الفعالية وخدماتها</button>`}
       </section>
       <div class="sp"></div>
-      ${S.passOk ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="pass" id="homePass" style="gap:14px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic("award", 22)}</span><span class="grow"><span class="skel" style="display:block;min-height:40px"></span></span></button></div><div class="sp"></div>` : ""}
-      ${isStaff() || isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--teal-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--teal-ink)">${ic(isStaff() ? "scan" : "chart", 22)}</span><span class="grow"><b>${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</b><span class="sub" style="display:block;color:var(--ink)">${isStaff() ? "امسح جوازات الزوار وأضف الأختام" : "مؤشرات الفعالية مباشرة"}</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
+      ${canSell() || ref ? `<div class="pad">${passCard}</div><div class="sp"></div>` : ""}
+      ${isStaff() || isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--teal-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--teal-ink)">${ic(isStaff() ? "scan" : "chart", 22)}</span><span class="grow"><b>${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</b><span class="sub" style="display:block;color:var(--ink)">${isStaff() ? "امسح جوازات الزوار وأضف الأختام" : "الجوازات والشركاء ومؤشرات الفعالية"}</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
+      <div id="railWrap"></div>
       ${services.length ? `<div class="pad"><h3 class="sec-t">خدمات الفعالية</h3></div>
       <div class="hscroll" style="padding-top:10px">${services.map((s) => `${s.href ? `<a class="svc" href="${esc(s.href)}">` : `<button class="svc" ${s.a}>`}
         <span class="art" style="background:${s.bg}">${ic(s.i, 34, 1.6)}</span>
         <span class="b"><b style="font-size:16px">${esc(s.t)}</b><span class="sub" style="line-height:1.6">${esc(s.d || "")}</span><span class="linkbtn" style="padding:0;min-height:28px;margin-top:auto">${esc(s.cta)} ←</span></span>
         ${s.href ? "</a>" : "</button>"}`).join("")}</div><div class="sp"></div>` : ""}
-      ${S.passOk ? `<div class="pad between"><h3 class="sec-t">عروض الأكشاك</h3><button class="linkbtn" data-a="pass-tab" data-k="offers">الكل</button></div>
-      <div class="pad stack" id="homeOffers" style="padding-top:8px"><div class="skel"></div></div><div class="sp"></div>` : ""}
       ${others.length ? `<div class="pad between"><h3 class="sec-t">استكشف فعاليات شُرفة</h3><button class="linkbtn" data-a="go-tab" data-tab="events">الكل</button></div>
-      <div class="hscroll" style="padding-top:8px">${others.map((e) => eventCard(e)).join("")}</div>` : ""}
+      <div class="hscroll" style="padding-top:8px">${others.map((e) => eventCard(e)).join("")}</div><div class="sp"></div>` : ""}
+      <div class="pad"><button class="card row" data-a="partner-join" style="gap:14px;background:var(--gold-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--gold-ink)">${ic("users", 22)}</span>
+        <span class="grow"><b>عندك مطعم أو كشك أو مشروع؟</b><span class="sub" style="display:block;color:var(--ink)">سجّل كشريك وصمّم بطاقة الولاء الخاصة بك</span></span>${ic("fwd", 18, 2)}</button></div>
       <div class="sp"></div>`;
 
-    if (S.passOk) {
+    loadStalls().then(() => {
+      const w = $("#railWrap"); if (!w) return;
+      const list = S.stalls || [];
+      w.innerHTML = list.length ? `<div class="pad between"><h3 class="sec-t">شركاء الفعالية</h3><button class="linkbtn" data-a="pass-tab" data-k="offers">العروض</button></div>${railHTML(list)}<div class="sp"></div>` : "";
+      if (list.length) startRail();
+    });
+    if (ref && ref.status === "active") {
       loadPass().then(() => {
-        const p = S.pass, el = $("#homePass .grow"); if (!el || !p) return;
+        const p = S.pass, el = $("#homePass .grow"); if (!el || !p || !p.ok) return;
         const ready = (p.cards || []).filter((c) => A.cardState(c).done >= c.required).length;
         el.innerHTML = `<span class="between"><b>جوازي الرقمي</b><b class="num" style="color:var(--purple)">${p.visits} ${p.visits === 1 ? "زيارة" : "زيارات"}</b></span>
           <span class="sub" style="display:block;margin-top:4px">${p.cards.length ? `${plural(p.cards.length, "بطاقة واحدة", "بطاقتان", "بطاقات", "بطاقة")}${ready ? ` · ${ready} مكافأة بانتظارك` : ""}` : "اعرض رمزك عند أول كشك لتبدأ"}</span>`;
       });
-      loadStalls().then(() => {
-        const el = $("#homeOffers"); if (!el) return;
-        el.innerHTML = offersHTML((S.stalls || []).slice(0, 3)) || `<div class="card flat sub" style="text-align:center">تُعلن الأكشاك المشاركة وعروضها قريبًا.</div>`;
-      });
     }
+  }
+
+  /* ---------- شريط شعارات الشركاء (يتحرك تلقائيًا ويمكن سحبه) ---------- */
+  const initials = (n) => String(n || "").trim().split(/\s+/).slice(0, 2).map((w) => w.charAt(0)).join("");
+  const logoTile = (s, size = 64) => s.logo
+    ? `<img src="${esc(s.logo)}" alt="" loading="lazy" style="width:${size}px;height:${size}px;border-radius:${size / 4}px;object-fit:cover;background:#fff">`
+    : `<span style="width:${size}px;height:${size}px;border-radius:${size / 4}px;display:flex;align-items:center;justify-content:center;background:var(--gold-soft);color:var(--gold-ink);font-weight:700;font-size:${size / 3}px">${esc(initials(s.name))}</span>`;
+  function railHTML(list) {
+    let items = list.slice();
+    while (items.length < 8) items = items.concat(list);
+    const one = items.map((s) => `<button class="rail-item" data-a="sub" data-name="stall" data-id="${esc(s.id)}" aria-label="${esc(s.name)}">${logoTile(s)}<span>${esc(s.name)}</span></button>`).join("");
+    return `<div class="rail" id="rail" dir="ltr"><div class="rail-track">${one}${one}</div></div>`;
+  }
+  function startRail() {
+    const rail = $("#rail"); if (!rail) return;
+    let pausedUntil = 0, dragging = false, startX = 0, startLeft = 0, moved = 0, acc = 0;
+    const reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const half = () => rail.firstElementChild.scrollWidth / 2;
+    const step = () => {
+      if (!document.body.contains(rail)) return;
+      if (!reduce && !dragging && Date.now() > pausedUntil) {
+        acc += 0.5; const px = Math.floor(acc); acc -= px;      // حركة هادئة
+        rail.scrollLeft += px;
+      }
+      if (rail.scrollLeft >= half()) rail.scrollLeft -= half();
+      if (rail.scrollLeft <= 0 && half() > 0) rail.scrollLeft += half();
+      railRAF = requestAnimationFrame(step);
+    };
+    const pause = () => { pausedUntil = Date.now() + 2500; };
+    rail.addEventListener("touchstart", pause, { passive: true });
+    rail.addEventListener("wheel", pause, { passive: true });
+    rail.addEventListener("scroll", () => { if (dragging) pause(); }, { passive: true });
+    rail.addEventListener("pointerdown", (e) => { if (e.pointerType !== "mouse") { pause(); return; } dragging = true; moved = 0; startX = e.clientX; startLeft = rail.scrollLeft; rail.classList.add("drag"); });
+    window.addEventListener("pointermove", (e) => { if (!dragging) return; const dx = e.clientX - startX; moved = Math.max(moved, Math.abs(dx)); rail.scrollLeft = startLeft - dx; });
+    window.addEventListener("pointerup", () => { if (!dragging) return; dragging = false; pause(); rail.classList.remove("drag"); });
+    rail.addEventListener("click", (e) => { if (moved > 6) { e.stopPropagation(); e.preventDefault(); moved = 0; } }, true);
+    rail.scrollLeft = 1;
+    railRAF = requestAnimationFrame(step);
   }
 
   const eventCard = (e, full) => `<button class="evc${full ? " full" : ""}" data-a="sub" data-name="event" data-id="${esc(e.id)}">
@@ -304,12 +369,15 @@
       <span class="sub row" style="gap:6px">${ic("cal", 14)}${esc(e.date || e.dateNote || "يُعلن قريبًا")}</span></span></button>`;
 
   function offersHTML(list) {
-    return list.map((s) => `<div class="card row" style="gap:12px"><span class="ico-tile" style="background:var(--gold-soft);color:var(--gold-ink)">${ic(KIND_ICON[s.kind] || "star", 20)}</span>
-      <span class="grow"><b>${esc(s.name)}</b><span class="sub" style="display:block">${esc(A.offerText(s))}</span></span></div>`).join("");
+    return list.map((s) => `<button class="card row" data-a="sub" data-name="stall" data-id="${esc(s.id)}" style="gap:12px">${logoTile(s, 44)}
+      <span class="grow"><b>${esc(s.name)}</b><span class="sub" style="display:block">${esc(A.offerText(s))}</span></span>${ic("fwd", 16, 2)}</button>`).join("");
   }
 
   async function loadPass() {
-    try { S.pass = await A.urpc("my_pass", { p_event: EV }); } catch (e) { if (e.code === "not_signed_in") return signedOut(); }
+    try { S.pass = await A.urpc("my_pass", { p_event: EV }); }
+    catch (e) { if (e.code === "not_signed_in") return signedOut(); S.pass = null; }
+    // تحديث حالة الجواز في الذاكرة (بعد تفعيله من المنظم)
+    const ref = myPassRef(); if (ref && S.pass && S.pass.status) ref.status = S.pass.status;
   }
   async function loadStalls() {
     try { S.stalls = await A.rpc("list_stalls", { p_event: EV }); } catch (e) { S.stalls = S.stalls || []; }
@@ -318,32 +386,67 @@
   /* ---------------- جوازي ---------------- */
   function renderPass() {
     const ev = evById(EV) || {};
-    if (!S.passOk) {
-      scr.innerHTML = head("جوازي الرقمي", false) + `<div class="pad"><div class="empty card">${ic("award", 36)}<b>الجواز الرقمي غير مفعّل لهذه الفعالية بعد</b><span>سيظهر هنا عند إطلاقه.</span></div></div>`;
+    const evName = esc((ev.name || "").split("—")[0].trim());
+    const ref = myPassRef();
+    const benefits = `<div class="card stack" style="gap:10px">
+        ${[["award", "بطاقة ولاء لكل شريك", "كل زيارة لكشك = ختم في بطاقته"], ["gift", "مكافآت حقيقية", "خصومات ووجبات مجانية يحددها كل شريك"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند كل زيارة"]]
+          .map(([i, t, d]) => `<div class="row" style="gap:12px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple);width:38px;height:38px">${ic(i, 18)}</span><div><b style="font-size:14px">${t}</b><div class="sub">${d}</div></div></div>`).join("")}</div>`;
+
+    if (!S.me || !ref) {
+      scr.innerHTML = `${head("جوازي الرقمي", false)}
+        <section class="pp-cover"><span style="font-size:12.5px;opacity:.9">جواز شُرفة · ${evName}</span>
+          <b style="font-size:24px;font-family:var(--head)">جوازك الرقمي للفعالية</b>
+          <p style="opacity:.92;font-size:14px">اجمع أختام الأكشاك المشاركة، وكل بطاقة تكتمل تفتح لك مكافأة.</p>
+          <div class="between" style="background:rgba(255,255,255,.14);border-radius:14px;padding:12px 14px"><span>سعر الجواز</span><b style="font-size:22px">${fmtPrice(price())}</b></div></section>
+        <div class="sp"></div><div class="pad stack">${benefits}
+          ${canSell() ? `<button class="btn btn-cta" data-a="buy">${S.me ? `اشترِ الجواز · ${fmtPrice(price())}` : "سجّل دخولك لشراء الجواز"}</button>`
+            : `<div class="card flat sub" style="text-align:center">بيع الجواز لهذه الفعالية غير متاح حاليًا.</div>`}
+          ${S.me ? "" : `<p class="sub" style="text-align:center">ليس لديك حساب؟ <button class="linkbtn" data-a="signup" style="padding:0;min-height:auto">أنشئ حسابًا</button></p>`}
+        </div><div class="sp"></div>`;
       return;
     }
+
+    const pending = ref.status === "pending_payment";
     const tab = S.passTab;
     scr.innerHTML = `${head("جوازي الرقمي", false)}
       <section class="pp-cover">
-        <div class="between"><span style="font-size:12.5px;opacity:.9">جواز شُرفة · ${esc((ev.name || "").split("—")[0].trim())}</span><span class="st st-glass">${esc(TYPE[(S.me.profile || {}).type] || "")}</span></div>
+        <div class="between"><span style="font-size:12.5px;opacity:.9">جواز شُرفة · ${evName}</span>${pending ? '<span class="st" style="background:var(--gold);color:var(--ink)">بانتظار الدفع</span>' : `<span class="st st-glass">${esc(TYPE[(S.me.profile || {}).type] || "")}</span>`}</div>
         <b style="font-size:20px;font-family:var(--head)">${esc(myName())}</b>
         <div class="qr" id="ppQr"></div>
-        <div class="pp-code" id="ppCode">${esc(((S.me.passes || []).find((p) => p.event === EV) || {}).code || "")}</div>
-        <p style="text-align:center;font-size:13px;opacity:.9">اعرض هذا الرمز لموظف الكشك عند كل زيارة</p>
-        <div class="pp-stats"><div><b class="num" id="ppVisits">–</b><span>زيارات</span></div><div><b class="num" id="ppCards">–</b><span>بطاقات</span></div><div><b class="num" id="ppRewards">–</b><span>مكافآت</span></div></div>
+        <div class="pp-code">${esc(ref.code)}</div>
+        <p style="text-align:center;font-size:13px;opacity:.9">${pending ? "اعرض هذا الرمز في منصة المنظمين عند الدفع" : "اعرض هذا الرمز لموظف الكشك عند كل زيارة"}</p>
+        ${pending ? "" : `<div class="pp-stats"><div><b class="num" id="ppVisits">–</b><span>زيارات</span></div><div><b class="num" id="ppCards">–</b><span>بطاقات</span></div><div><b class="num" id="ppRewards">–</b><span>مكافآت</span></div></div>`}
       </section>
-      <div class="pad" style="padding-top:14px;padding-bottom:14px"><div class="seg" role="group" aria-label="أقسام الجواز">
+      ${pending ? `<div class="sp"></div><div class="pad stack">
+          <div class="card stack" style="gap:10px;border:1.5px solid var(--gold)">
+            <div class="between"><b>إتمام الدفع</b><b class="num" style="font-size:20px">${fmtPrice(price())}</b></div>
+            <div class="row" style="gap:10px;align-items:flex-start"><span class="ico-tile" style="width:36px;height:36px;background:var(--gold-soft);color:var(--gold-ink)">1</span><span class="grow" style="font-size:14px">توجّه إلى منصة المنظمين في الفعالية.</span></div>
+            <div class="row" style="gap:10px;align-items:flex-start"><span class="ico-tile" style="width:36px;height:36px;background:var(--gold-soft);color:var(--gold-ink)">2</span><span class="grow" style="font-size:14px">ادفع ${fmtPrice(price())} نقدًا أو بالتحويل البنكي.</span></div>
+            <div class="row" style="gap:10px;align-items:flex-start"><span class="ico-tile" style="width:36px;height:36px;background:var(--gold-soft);color:var(--gold-ink)">3</span><span class="grow" style="font-size:14px">يمسح المنظم رمزك، فيتفعّل جوازك هنا تلقائيًا.</span></div>
+            ${S.ev && S.ev.pay_note ? `<p class="sub">${esc(S.ev.pay_note)}</p>` : ""}
+          </div>
+          <div class="card flat row" style="gap:10px">${ic("lock", 20)}<span class="grow sub">الدفع الإلكتروني (Apple Pay والبطاقة البنكية) يُتاح قريبًا عبر بوابة دفع آمنة.</span></div>
+        </div><div class="sp"></div>`
+      : `<div class="pad" style="padding-top:14px;padding-bottom:14px"><div class="seg" role="group" aria-label="أقسام الجواز">
         ${[["cards", "بطاقاتي"], ["offers", "العروض"], ["log", "السجل"]].map(([k, l]) => `<button data-a="pass-tab" data-k="${k}" aria-pressed="${tab === k}">${l}</button>`).join("")}</div></div>
-      <div class="pad stack" id="ppBody"><div class="skel"></div></div><div class="sp"></div>`;
-    const code = $("#ppCode").textContent.trim();
-    if (code) A.qr($("#ppQr"), "SHURFA:" + code, 190);
+      <div class="pad stack" id="ppBody"><div class="skel"></div></div><div class="sp"></div>`}`;
+    A.qr($("#ppQr"), "SHURFA:" + ref.code, 190);
+
+    if (pending) {
+      refreshT = setInterval(async () => {
+        if (document.visibilityState !== "visible") return;
+        await loadPass();
+        if (S.pass && S.pass.status === "active") { toast("تم تفعيل جوازك! 🎉", "ok"); render(); }
+      }, 8000);
+      return;
+    }
     const fill = () => {
-      const p = S.pass; if (!p || !$("#ppBody")) return;
+      const p = S.pass; if (!p || !p.ok || !$("#ppBody")) return;
       $("#ppVisits").textContent = p.visits; $("#ppCards").textContent = p.cards.length; $("#ppRewards").textContent = p.rewards;
       let h = "";
       if (S.passTab === "cards") {
         h = p.cards.length ? p.cards.map((c) => { const st = A.cardState(c); return `<div class="loyalty">
-            <div class="loyalty-head"><b>${esc(c.stall)}</b>${st.done > c.required || (st.done === c.required) ? '<span class="st st-warn">مكافأة بانتظارك</span>' : `<span class="st st-purple">${st.done}/${c.required}</span>`}</div>
+            <div class="loyalty-head"><span class="row" style="gap:10px">${logoTile({ name: c.stall, logo: c.logo }, 36)}<b>${esc(c.stall)}</b></span>${st.done >= c.required ? '<span class="st st-warn">مكافأة بانتظارك</span>' : `<span class="st st-purple">${st.done}/${c.required}</span>`}</div>
             <div class="slots">${A.slotsHTML(c)}</div><p class="loyalty-next">${esc(st.next)}</p></div>`; }).join("")
           : `<div class="empty card">${ic("award", 36)}<b>لا توجد أختام بعد</b><span>اعرض رمزك عند أي كشك مشارك، وستظهر بطاقته هنا مباشرة.</span></div>`;
       } else if (S.passTab === "offers") {
@@ -359,39 +462,79 @@
     refreshT = setInterval(() => { if (document.visibilityState === "visible") loadPass().then(fill); }, 15000);
   }
 
-  /* ---------------- عملي: الكشك + المنظم ---------------- */
-  let scanner = null, lastScan = { code: "", at: 0 };
+  /* ---------------- الماسح (مشترك: الكشك والمنظم) ---------------- */
+  let scanner = null, lastScan = { code: "", at: 0 }, onScan = null;
   async function stopScanner() {
     try { if (scanner && scanner.isScanning) await scanner.stop(); } catch (e) { /* ignore */ }
   }
+  async function toggleScan() {
+    const r = $("#reader"), b = $("#scanBtn");
+    if (scanner && scanner.isScanning) { await stopScanner(); r.hidden = true; b.querySelector("b").textContent = b.dataset.label; return; }
+    if (!window.Html5Qrcode) return toast("تعذّر تحميل قارئ الكاميرا — أدخل الرمز يدويًا.", "err");
+    r.hidden = false;
+    try {
+      scanner = new window.Html5Qrcode("reader");
+      await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 230, height: 230 } }, (t) => scanned(t), () => {});
+      b.querySelector("b").textContent = "إيقاف الكاميرا";
+    } catch (e) {
+      r.hidden = true;
+      toast("لم نتمكن من فتح الكاميرا. اسمح للمتصفح باستخدامها أو أدخل الرمز يدويًا.", "err");
+    }
+  }
+  function scanned(raw) {
+    const code = String(raw || "").trim().replace(/^SHURFA:/i, "").toUpperCase();
+    if (!/^[A-Z0-9]{7}$/.test(code)) return showRes("err", "x", "رمز غير صالح", "هذا ليس رمز جواز شُرفة.");
+    if (code === lastScan.code && Date.now() - lastScan.at < 4000) return;
+    lastScan = { code, at: Date.now() };
+    if (onScan) onScan(code);
+  }
+  const scanUI = (label, sub) => `<div id="reader" hidden></div>
+    <button class="otile" data-a="scan-toggle" id="scanBtn" data-label="${esc(label)}"><span class="ico-tile" style="background:rgba(250,246,240,.14);color:var(--cream)">${ic("scan", 26)}</span><span class="grow"><b style="font-size:18px">${esc(label)}</b><span style="display:block;font-size:12.5px;opacity:.85">${esc(sub)}</span></span></button>
+    <form class="manual" data-f="manual"><input class="input" id="manualCode" maxlength="7" placeholder="أو أدخل الرمز" aria-label="رمز الجواز" autocomplete="off"><button class="btn btn-dark btn-sm" type="submit">تحقق</button></form>
+    <div id="scanRes"></div>`;
+  function showRes(k, icon, title, body, extra = "") {
+    const h = `<div class="result r-${k}" role="alert"><span class="big">${ic(icon, 30, 2.4)}</span><h3>${esc(title)}</h3><span class="sub" style="color:var(--ink)">${body}</span>${extra}</div>`;
+    const el = $("#scanRes"); if (el) el.innerHTML = h;
+    return h;
+  }
 
+  /* ---------------- عملي: الكشك + المنظم ---------------- */
   function renderWork() {
     const W = S.work;
-    if (isStaff() && isOrg()) {
-      // يملك الدورين: مبدّل
-    } else W.mode = isStaff() ? "stall" : "org";
+    if (!(isStaff() && isOrg())) W.mode = isStaff() ? "stall" : "org";
     const sw = isStaff() && isOrg() ? `<div class="seg" role="group" aria-label="الواجهة" style="background:rgba(250,246,240,.12)">
       <button data-a="work-mode" data-k="stall" aria-pressed="${W.mode === "stall"}" style="color:var(--cream)">كشكي</button><button data-a="work-mode" data-k="org" aria-pressed="${W.mode === "org"}" style="color:var(--cream)">الإدارة</button></div>` : "";
     if (W.mode === "org") return renderOrg(sw);
 
-    const stalls = S.me.stalls || [];
-    if (!W.stall || !stalls.find((s) => s.id === W.stall)) W.stall = (A.local.get("work-stall") && stalls.find((s) => s.id === A.local.get("work-stall")) || stalls[0]).id;
-    const s = stalls.find((x) => x.id === W.stall);
+    const ok = approvedStalls();
+    if (!ok.length) {
+      const st = staffStalls()[0] || {};
+      const rejected = st.status === "rejected";
+      scr.innerHTML = `<div class="ohead">${sw}<div><div style="font-size:12.5px;opacity:.85">واجهة الشريك</div><h2>${esc(st.name || "كشكي")}</h2></div></div>
+        <div class="pad stack" style="padding-top:16px">
+          <div class="result ${rejected ? "r-err" : "r-warn"}"><span class="big">${ic(rejected ? "x" : "clock", 30, 2.4)}</span><h3>${rejected ? "لم يُعتمد الطلب" : "طلبك قيد المراجعة"}</h3>
+            <span class="sub" style="color:var(--ink)">${rejected ? "راجع ملاحظة المنظم وعدّل بياناتك ثم أعد الإرسال." : "سيراجع منظمو الفعالية بياناتك وبطاقة الولاء. بعد الاعتماد تظهر هنا أداة مسح جوازات الزوار."}</span></div>
+          <button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} بياناتي وبطاقة الولاء</button>
+        </div>`;
+      return;
+    }
+    if (!W.stall || !ok.find((s) => s.id === W.stall)) W.stall = ((A.local.get("work-stall") && ok.find((s) => s.id === A.local.get("work-stall"))) || ok[0]).id;
+    const s = ok.find((x) => x.id === W.stall);
+    onScan = addVisit;
     scr.innerHTML = `<div class="ohead">${sw}
         <div class="between"><div><div style="font-size:12.5px;opacity:.85">${s.role === "manager" ? "مدير الكشك" : "موظف الكشك"} · ${esc(firstName(myName()))}</div><h2>${esc(s.name)}</h2></div><span class="row" style="gap:6px;font-size:12px"><span style="width:9px;height:9px;border-radius:5px;background:#5BD6A8;display:inline-block"></span>متصل</span></div>
-        ${stalls.length > 1 ? `<select data-c="work-stall" aria-label="الكشك">${stalls.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>` : ""}
-        <span style="font-size:13px;opacity:.9">العرض: ${esc(A.offerText(s))}</span>
+        ${ok.length > 1 ? `<select data-c="work-stall" aria-label="الكشك">${ok.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>` : ""}
+        <span style="font-size:13px;opacity:.9">بطاقة الولاء: ${esc(A.offerText(s))}</span>
       </div>
       <div class="pad stack" style="padding-top:16px">
-        <div id="reader" hidden></div>
-        <button class="otile" data-a="scan-toggle" id="scanBtn"><span class="ico-tile" style="background:rgba(250,246,240,.14);color:var(--cream)">${ic("scan", 26)}</span><span class="grow"><b style="font-size:18px">امسح جواز الزائر</b><span style="display:block;font-size:12.5px;opacity:.85">بالكاميرا الخلفية</span></span></button>
-        <form class="manual" data-f="manual"><input class="input" id="manualCode" maxlength="7" placeholder="أو أدخل الرمز" aria-label="رمز الجواز" autocomplete="off"><button class="btn btn-dark btn-sm" type="submit">إضافة</button></form>
-        <div id="scanRes">${W.res || ""}</div>
+        ${scanUI("امسح جواز الزائر", "بالكاميرا الخلفية")}
         <h3 class="sec-t">اليوم في ${esc(s.name)}</h3>
         <div class="kpis3" id="stKpis"><div><b>–</b><span>زيارات اليوم</span></div><div><b>–</b><span>مكافآت اليوم</span></div><div><b>–</b><span>زوار الكشك</span></div></div>
         <div class="between"><h3 class="sec-t">آخر العمليات</h3><button class="linkbtn" data-a="work-refresh">تحديث</button></div>
         <div class="card" style="padding:4px 16px" id="stRecent"><div class="li sub">…</div></div>
+        ${s.role === "manager" ? `<button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} بيانات الشريك وبطاقة الولاء</button>` : ""}
       </div>`;
+    if (W.res) $("#scanRes").innerHTML = W.res;
     loadStaffStats();
     refreshT = setInterval(() => { if (document.visibilityState === "visible") loadStaffStats(); }, 20000);
   }
@@ -406,82 +549,101 @@
     } catch (e) { if (e.code === "not_signed_in") signedOut(); }
   }
 
-  async function addVisit(raw) {
-    const code = String(raw || "").trim().replace(/^SHURFA:/i, "").toUpperCase();
-    if (!/^[A-Z0-9]{7}$/.test(code)) return showRes("err", "x", "رمز غير صالح", "هذا ليس رمز جواز شُرفة.");
-    if (code === lastScan.code && Date.now() - lastScan.at < 4000) return;          // نفس الرمز أمام الكاميرا
-    lastScan = { code, at: Date.now() };
+  async function addVisit(code) {
     if (S.work.busy) return; S.work.busy = true;
     try {
       const d = await A.urpc("staff_scan", { p_stall: S.work.stall, p_code: code });
       S.work.last = code;
-      if (navigator.vibrate) navigator.vibrate(d.kind === "reward" ? [80, 60, 80] : 60);
-      if (d.kind === "reward") showRes("gold", "gift", "مكافأة: " + d.reward, `الزائر: <b>${esc(d.visitor)}</b> · طبّق المكافأة على الطلب`, true);
-      else showRes("ok", "check", "تمت إضافة الختم", `الزائر: <b>${esc(d.visitor)}</b> · ختم ${d.position} من ${d.required}`, true);
+      try { if (navigator.vibrate) navigator.vibrate(d.kind === "reward" ? [80, 60, 80] : 60); } catch (e) { /* ignore */ }
+      const undo = `<button class="linkbtn" data-a="undo" style="color:var(--err)">${ic("undo", 16)} تراجع عن هذه العملية</button>`;
+      S.work.res = d.kind === "reward"
+        ? showRes("gold", "gift", "مكافأة: " + d.reward, `الزائر: <b>${esc(d.visitor)}</b> · طبّق المكافأة على الطلب`, undo)
+        : showRes("ok", "check", "تمت إضافة الختم", `الزائر: <b>${esc(d.visitor)}</b> · ختم ${d.position} من ${d.required}`, undo);
       loadStaffStats();
     } catch (e) {
-      if (e.code === "cooldown") {
-        const d = e.data || {};
-        showRes("warn", "clock", "تمت زيارة قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`);
-      } else showRes("err", "x", "لم تتم الإضافة", esc(errMsg(e)));
+      const d = e.data || {};
+      if (e.code === "cooldown") S.work.res = showRes("warn", "clock", "تمت زيارة قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`);
+      else if (e.code === "pass_not_paid") S.work.res = showRes("warn", "lock", "الجواز غير مفعّل", `${esc(d.visitor || "الزائر")} لم يُكمل الدفع بعد. وجّهه إلى منصة المنظمين.`);
+      else S.work.res = showRes("err", "x", "لم تتم الإضافة", esc(errMsg(e)));
     } finally { S.work.busy = false; }
   }
-  function showRes(k, icon, title, body, undo) {
-    const h = `<div class="result r-${k}" role="alert"><span class="big">${ic(icon, 30, 2.4)}</span><h3>${esc(title)}</h3><span class="sub" style="color:var(--ink)">${body}</span>
-      ${undo ? `<button class="linkbtn" data-a="undo" style="color:var(--err)">${ic("undo", 16)} تراجع عن هذه العملية</button>` : ""}</div>`;
-    S.work.res = h;
-    const el = $("#scanRes"); if (el) el.innerHTML = h;
-  }
 
-  async function toggleScan() {
-    const r = $("#reader"), b = $("#scanBtn");
-    if (scanner && scanner.isScanning) { await stopScanner(); r.hidden = true; b.querySelector("b").textContent = "امسح جواز الزائر"; return; }
-    if (!window.Html5Qrcode) return toast("تعذّر تحميل قارئ الكاميرا — استخدم الإدخال اليدوي.", "err");
-    r.hidden = false;
-    try {
-      scanner = new window.Html5Qrcode("reader");
-      await scanner.start({ facingMode: "environment" }, { fps: 10, qrbox: { width: 230, height: 230 } }, (t) => addVisit(t), () => {});
-      b.querySelector("b").textContent = "إيقاف الكاميرا";
-    } catch (e) {
-      r.hidden = true;
-      toast("لم نتمكن من فتح الكاميرا. اسمح للمتصفح باستخدامها أو أدخل الرمز يدويًا.", "err");
-    }
-  }
-
+  /* ---------- المنظم ---------- */
   async function renderOrg(sw) {
     const ev = evById(EV) || {};
+    onScan = orgLookup;
     scr.innerHTML = `<div class="ohead">${sw}
         <div><div style="font-size:12.5px;opacity:.85">منظم · ${esc(firstName(myName()))}</div><h2>${esc((ev.name || EV).split("—")[0].trim())}</h2></div></div>
-      <div class="pad stack" style="padding-top:16px" id="orgBody"><div class="skel"></div><div class="skel"></div></div>`;
+      <div class="pad stack" style="padding-top:16px">
+        <h3 class="sec-t">تفعيل جواز بعد الدفع</h3>
+        ${scanUI("امسح جواز الزائر", "لتأكيد الدفع وتفعيل الجواز")}
+        <div id="orgBody" class="stack"><div class="skel"></div><div class="skel"></div></div>
+      </div>`;
+    loadOrg();
+  }
+  async function loadOrg() {
     try {
-      const s = await A.urpc("admin_stats", { p_event: EV });
-      const bt = s.by_type || {};
+      const [s, apps] = await Promise.all([A.urpc("admin_stats", { p_event: EV }), A.urpc("admin_list_applications", { p_event: EV })]);
       const el = $("#orgBody"); if (!el) return;
-      el.innerHTML = `<div class="kpis3"><div><b class="num">${s.visitors}</b><span>زوار مسجلون</span></div><div><b class="num">${s.visitors_today}</b><span>تسجيلات اليوم</span></div><div><b class="num">${(s.stalls || []).length}</b><span>أكشاك</span></div></div>
-        <div class="kpis3"><div><b class="num">${s.stamps}</b><span>أختام</span></div><div><b class="num">${s.rewards}</b><span>مكافآت</span></div><div><b class="num">${s.teams}</b><span>فرق البطولة</span></div></div>
-        <div class="card stack" style="gap:6px"><b>فئات الزوار</b>${Object.entries(TYPE).map(([k, l]) => { const n = bt[k] || 0, pct = s.visitors ? Math.round((n / s.visitors) * 100) : 0; return `<div><div class="between sub"><span>${l}</span><span class="num">${n}</span></div><div class="prog"><i style="width:${pct}%;background:var(--teal)"></i></div></div>`; }).join("")}</div>
-        <h3 class="sec-t">أداء الأكشاك</h3>
-        <div class="card" style="padding:4px 16px">${(s.stalls || []).length ? s.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;background:var(--gold-soft);color:var(--gold-ink)">${ic(KIND_ICON[x.kind] || "star", 18)}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visitors} زائر · ${x.visits} زيارة · ${x.rewards} مكافأة</div></div>${x.active ? "" : '<span class="st st-mute">متوقف</span>'}</div>`).join("") : '<div class="li sub">لا توجد أكشاك بعد.</div>'}</div>
-        <a class="btn btn-dark" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)} لوحة التحكم الكاملة</a>
-        <p class="sub" style="text-align:center">إضافة الأكشاك وموظفيها، قوائم الزوار والفرق، والتصدير — من لوحة التحكم.</p>`;
+      const pend = apps.filter((a) => a.status === "pending");
+      el.innerHTML = `<div class="kpis3"><div><b class="num">${s.paid}</b><span>جوازات مفعّلة</span></div><div><b class="num">${s.pending_payment}</b><span>بانتظار الدفع</span></div><div><b class="num" style="font-size:18px">${s.revenue_baisa ? fmtPrice(s.revenue_baisa) : "0"}</b><span>المبيعات</span></div></div>
+        <div class="kpis3"><div><b class="num">${s.visitors_today}</b><span>طلبات اليوم</span></div><div><b class="num">${s.stamps}</b><span>أختام</span></div><div><b class="num">${s.rewards}</b><span>مكافآت</span></div></div>
+        <div class="between"><h3 class="sec-t">طلبات الشركاء ${pend.length ? `<span class="st st-warn">${pend.length} جديد</span>` : ""}</h3><button class="linkbtn" data-a="org-refresh">تحديث</button></div>
+        ${apps.length ? apps.map(appCard).join("") : `<div class="card flat sub" style="text-align:center">لا توجد طلبات شركاء بعد. شارك رابط التسجيل: <b dir="ltr">${esc(location.origin + location.pathname)}?join=partner</b></div>`}
+        <h3 class="sec-t">أداء الأكشاك المعتمدة</h3>
+        <div class="card" style="padding:4px 16px">${(s.stalls || []).length ? s.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;background:var(--gold-soft);color:var(--gold-ink)">${ic(KIND_ICON[x.kind] || "star", 18)}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visitors} زائر · ${x.visits} زيارة · ${x.rewards} مكافأة</div></div>${x.active ? "" : '<span class="st st-mute">متوقف</span>'}</div>`).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
+        <a class="btn btn-dark" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)} لوحة التحكم الكاملة</a>`;
     } catch (e) {
       const el = $("#orgBody"); if (el) el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`;
     }
+  }
+  const STATUS_AR = { pending: ["قيد المراجعة", "st-warn"], approved: ["معتمد", "st-ok"], rejected: ["مرفوض", "st-err"] };
+  const appCard = (a) => `<div class="card stack" style="gap:10px">
+      <div class="row" style="gap:12px">${logoTile(a, 52)}<div class="grow"><b>${esc(a.name)}</b><div class="sub">${esc(A.KIND[a.kind] || a.kind)} · <span dir="ltr">${esc(a.owner_email || "")}</span></div></div><span class="st ${STATUS_AR[a.status][1]}">${STATUS_AR[a.status][0]}</span></div>
+      ${a.description ? `<p style="font-size:14px">${esc(a.description)}</p>` : ""}
+      <div class="card flat" style="padding:10px 12px"><span class="sub">بطاقة الولاء</span><div><b>${esc(A.offerText(a))}</b></div><span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span></div>
+      ${a.phone || a.instagram ? `<span class="sub">${a.phone ? `<span dir="ltr">${esc(a.phone)}</span>` : ""}${a.instagram ? ` · <span dir="ltr">@${esc(a.instagram)}</span>` : ""}</span>` : ""}
+      ${a.note ? `<span class="sub">ملاحظة: ${esc(a.note)}</span>` : ""}
+      ${a.status === "pending" ? `<div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="1">${ic("check", 18, 2)} اعتماد</button><button class="btn btn-danger btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="0">رفض</button></div>`
+        : a.status === "approved" ? `<button class="linkbtn" data-a="review" data-id="${esc(a.stall)}" data-ok="0" style="color:var(--err);align-self:flex-start">إيقاف الشريك</button>` : `<button class="linkbtn" data-a="review" data-id="${esc(a.stall)}" data-ok="1" style="align-self:flex-start">اعتماد</button>`}
+    </div>`;
+
+  async function orgLookup(code) {
+    try {
+      const d = await A.urpc("admin_pass_lookup", { p_event: EV, p_code: code });
+      if (d.status === "active") return showRes("ok", "check", "الجواز مفعّل", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · ${d.pay_method === "free" ? "مجاني" : "مدفوع"} ${d.paid_at ? esc(dayTime(d.paid_at)) : ""}`);
+      showRes("warn", "lock", "بانتظار الدفع", `<b>${esc(d.name)}</b> · ${esc(TYPE[d.type] || "")} · المبلغ ${fmtPrice(d.amount_baisa || price())}`,
+        `<div class="row" style="gap:8px;width:100%;margin-top:6px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="cash">استلمت نقدًا</button><button class="btn btn-line btn-sm" style="flex:1" data-a="activate" data-code="${esc(d.code)}" data-m="transfer">تحويل بنكي</button></div>`);
+    } catch (e) { showRes("err", "x", "لم يُعثر على الجواز", esc(errMsg(e))); }
   }
 
   /* ---------------- الفعاليات ---------------- */
   function renderEvents() {
     const list = D.events || [];
-    scr.innerHTML = `${head("فعاليات شُرفة", false)}
+    scr.innerHTML = `${head("فعاليات شُرفة", false, S.me ? "" : loginBtn())}
       <div class="pad stack"><p class="sub">الفعاليات والمهرجانات المستضافة على شُرفة. اضغط على أي فعالية لتفاصيلها وخدماتها.</p>
       ${list.map((e) => eventCard(e, true)).join("")}</div><div class="sp"></div>`;
   }
 
   /* ---------------- حسابي ---------------- */
   function renderAccount() {
+    if (!S.me) {
+      scr.innerHTML = `${head("حسابي", false)}
+        <div class="pad stack">
+          <div class="card stack" style="align-items:center;text-align:center;gap:10px;padding:26px 18px"><span class="avatar lg">${ic("user", 26)}</span>
+            <b style="font-size:18px">سجّل دخولك إلى شُرفة</b><span class="sub">لشراء الجواز الرقمي وجمع الأختام، أو للتسجيل كشريك.</span>
+            <button class="btn btn-dark" data-a="login">تسجيل الدخول</button><button class="btn btn-line" data-a="signup">إنشاء حساب</button></div>
+          <div class="card" style="padding:0;overflow:hidden">
+            <button class="menu-btn" data-a="partner-join">${ic("users", 20)}<span class="grow">انضم كشريك</span>${ic("fwd", 16, 2)}</button>
+            <button class="menu-btn" data-a="go-tab" data-tab="events">${ic("compass", 20)}<span class="grow">فعاليات شُرفة</span>${ic("fwd", 16, 2)}</button>
+            <a class="menu-btn" href="privacy.html">${ic("shield", 20)}<span class="grow">الخصوصية والبيانات</span>${ic("fwd", 16, 2)}</a>
+            <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
+          </div></div><div class="sp"></div>`;
+      return;
+    }
     const p = S.me.profile || {};
     const roles = ['<span class="st st-purple">زائر</span>'];
-    if (isStaff()) roles.push('<span class="st st-warn">شريك</span>');
+    if (S.me.partner || isStaff()) roles.push('<span class="st st-warn">شريك</span>');
     if (isOrg()) roles.push('<span class="st st-teal">منظم</span>');
     scr.innerHTML = `${head("حسابي", false)}
       <div class="pad"><div class="card row"><span class="avatar lg">${esc(firstName(p.name).charAt(0))}</span><div class="grow"><b style="font-size:17px">${esc(p.name)}</b>
@@ -490,14 +652,15 @@
       <div class="sp"></div>
       <div class="pad"><div class="card" style="padding:0;overflow:hidden">
         <button class="menu-btn" data-a="go-tab" data-tab="pass">${ic("award", 20)}<span class="grow">جوازي الرقمي</span>${ic("fwd", 16, 2)}</button>
+        <button class="menu-btn" data-a="sub" data-name="partner">${ic("users", 20)}<span class="grow">${S.me.partner ? "بيانات الشريك وبطاقة الولاء" : "انضم كشريك"}</span>${ic("fwd", 16, 2)}</button>
         ${isStaff() || isOrg() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic(isStaff() ? "scan" : "chart", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</span>${ic("fwd", 16, 2)}</button>` : ""}
         ${isOrg() ? `<a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>` : ""}
         <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
-        <button class="menu-btn" data-a="go-tab" data-tab="events">${ic("compass", 20)}<span class="grow">فعاليات شُرفة</span>${ic("fwd", 16, 2)}</button>
       </div></div>
       <div class="sp"></div>
       <div class="pad"><div class="card" style="padding:0;overflow:hidden">
         <a class="menu-btn" href="privacy.html">${ic("shield", 20)}<span class="grow">الخصوصية والبيانات</span>${ic("fwd", 16, 2)}</a>
+        <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
         <button class="menu-btn danger" data-a="delete-data">${ic("trash", 20)}<span class="grow">حذف بياناتي وجوازاتي</span></button>
         <button class="menu-btn danger" data-a="logout">${ic("logout", 20)}<span class="grow">تسجيل الخروج</span></button>
       </div></div>
@@ -510,16 +673,57 @@
       const e = evById(o.id) || {};
       const svcNames = { tickets: "التذاكر", packages: "الباقات", passport: "الجواز الرقمي", safety: "سوار الأمان" };
       const svcs = (e.page && e.page.services) || [];
-      const live = e.id === EV && S.passOk;
-      return `${head(e.name || "")}
+      const isCur = e.id === EV;
+      const ref = isCur && myPassRef();
+      return `${head(e.name || "", true, S.me ? "" : loginBtn())}
         <div class="pad stack">
           <div class="evc full" style="cursor:default"><span class="img" style="height:180px;background-image:url('${esc(img(e.image))}');background-color:${esc((e.colors || {}).from || "#1A2E28")};background-position:${esc(e.imagePosition || "center")}">${statusChip(e.status)}</span>
             <span class="b"><span class="sub row" style="gap:6px">${ic("pin", 14)}${esc(e.location || "")}</span><span class="sub row" style="gap:6px">${ic("cal", 14)}${esc(e.date || e.dateNote || "يُعلن قريبًا")}</span>
             <p style="font-size:14.5px;margin-top:4px">${esc(e.summary || "")}</p></span></div>
           ${svcs.length ? `<h3 class="sec-t">الخدمات في هذه الفعالية</h3><div class="tags">${svcs.map((k) => `<span class="st st-mute">${esc(svcNames[k] || k)}</span>`).join("")}</div>` : `<div class="card flat sub">نعمل مع المنظمين على إعداد خدمات الفعالية داخل شُرفة. سنعلن عنها فور إطلاقها.</div>`}
-          ${live ? `<button class="btn btn-dark" data-a="go-tab" data-tab="pass">${ic("award", 20)} جوازي في هذه الفعالية</button>` : ""}
-          ${e.url ? `<a class="btn btn-line" href="${esc(img(e.url))}">صفحة الفعالية ${ic("ext", 16, 2)}</a>` : ""}
+          ${isCur && canSell() ? (ref ? `<button class="btn btn-dark" data-a="go-tab" data-tab="pass">${ic("award", 20)} جوازي في هذه الفعالية</button>`
+            : `<button class="btn btn-cta" data-a="buy">${ic("award", 20)} اشترِ الجواز الرقمي · ${fmtPrice(price())}</button>`) : ""}
+          ${isCur ? `<button class="btn btn-line" data-a="partner-join">${ic("users", 18)} سجّل كشريك في هذه الفعالية</button>` : ""}
+          ${e.url ? `<a class="btn btn-soft" href="${esc(img(e.url))}">صفحة الفعالية ${ic("ext", 16, 2)}</a>` : ""}
         </div><div class="sp"></div>`;
+    },
+    stall(o) {
+      const s = (S.stalls || []).find((x) => x.id === o.id);
+      if (!s) return `${head("الشريك")}<div class="pad"><div class="empty card">غير متاح</div></div>`;
+      const cyc = s.required + (s.reward2 ? 2 : 1);
+      let slots = ""; for (let i = 1; i <= cyc; i++) slots += i <= s.required ? `<span class="slot">${i}</span>` : `<span class="slot reward">${esc(i === s.required + 1 ? s.reward1 : s.reward2)}</span>`;
+      return `${head(s.name)}<div class="pad stack">
+        <div class="card stack" style="align-items:center;text-align:center;gap:10px">${logoTile(s, 96)}<b style="font-size:20px">${esc(s.name)}</b><span class="st st-mute">${esc(A.KIND[s.kind] || "")}</span>
+          ${s.description ? `<p style="font-size:14.5px">${esc(s.description)}</p>` : ""}
+          ${s.instagram ? `<a class="linkbtn" dir="ltr" href="https://instagram.com/${esc(s.instagram)}" target="_blank" rel="noopener">@${esc(s.instagram)}</a>` : ""}</div>
+        <div class="loyalty"><div class="loyalty-head"><b>بطاقة الولاء</b><span class="st st-purple">${esc(A.offerText(s))}</span></div><div class="slots">${slots}</div>
+          <p class="loyalty-next">اعرض رمز جوازك عند كل زيارة لتُضاف الأختام.</p></div>
+        ${myPassRef() ? "" : `<button class="btn btn-cta" data-a="buy">احصل على الجواز الرقمي${price() ? " · " + fmtPrice(price()) : ""}</button>`}
+      </div><div class="sp"></div>`;
+    },
+    checkout() {
+      const ev = evById(EV) || {};
+      return `${head("شراء الجواز الرقمي")}
+        <div class="pad stack">
+          <div class="card stack" style="gap:8px"><b>ملخص الطلب</b>
+            <div class="between"><span>الجواز الرقمي · ${esc((ev.name || "").split("—")[0].trim())}</span><b class="num">${fmtPrice(price())}</b></div>
+            <span class="sub">صالح طوال أيام الفعالية · بطاقة ولاء لكل كشك مشارك</span>
+            <div style="height:1px;background:var(--sand)"></div><div class="between"><b>الإجمالي</b><b class="num" style="font-size:20px">${fmtPrice(price())}</b></div></div>
+          <h3 class="sec-t">طريقة الدفع</h3>
+          <label class="opt" style="opacity:.55;cursor:not-allowed"><input type="radio" name="pm" disabled>${ic("phone", 20)}<span class="grow">Apple Pay</span><span class="st st-mute">قريبًا</span></label>
+          <label class="opt" style="opacity:.55;cursor:not-allowed"><input type="radio" name="pm" disabled>${ic("lock", 20)}<span class="grow">بطاقة بنكية (عبر بوابة دفع آمنة)</span><span class="st st-mute">قريبًا</span></label>
+          <label class="opt"><input type="radio" name="pm" value="desk" checked>${ic("users", 20)}<span class="grow">الدفع لدى منصة المنظمين<span class="sub" style="display:block;font-weight:500">نقدًا أو بالتحويل البنكي</span></span></label>
+          <div class="card flat stack" style="gap:6px"><b style="font-size:14px">كيف يتم؟</b>
+            <span class="sub">1) أكّد الطلب الآن فيظهر لك رمز جوازك.</span>
+            <span class="sub">2) ادفع ${fmtPrice(price())} لدى منصة المنظمين في الفعالية.</span>
+            <span class="sub">3) يمسح المنظم رمزك فيتفعّل جوازك فورًا، وتبدأ بجمع الأختام.</span></div>
+          <p class="sub row" style="gap:6px">${ic("shield", 14)} لا نطلب ولا نحفظ بيانات بطاقتك في شُرفة. الدفع الإلكتروني سيتم عبر بوابة دفع مرخّصة.</p>
+          <div id="coMsg"></div>
+          <button class="btn btn-cta" data-a="confirm-buy">تأكيد الطلب · ${fmtPrice(price())}</button>
+        </div><div class="sp"></div>`;
+    },
+    partner() {
+      return `${head("الشريك وبطاقة الولاء")}<div class="pad stack" id="ptBody"><div class="skel"></div><div class="skel"></div></div>`;
     },
     packages() {
       const ev = evById(EV) || {}, pk = (ev.page && ev.page.packages) || { items: [], presets: {} };
@@ -538,14 +742,95 @@
         ${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div></div>`;
     }
   };
-  function afterSub() { /* لا شيء حاليًا */ }
+  function afterSub(o) {
+    if (o.name === "partner") loadPartnerForm();
+  }
+
+  /* ---------- نموذج الشريك + مصمم بطاقة الولاء ---------- */
+  let ptLogo = null;   // رابط الشعار بعد الرفع
+  async function loadPartnerForm() {
+    const box = $("#ptBody"); if (!box) return;
+    if (!S.me) return requireLogin("partner");
+    let d = { partner: null, stalls: [] };
+    try { d = await A.urpc("my_partner"); } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
+    const p = d.partner || {}, st = (d.stalls || []).find((x) => x.event === EV) || {};
+    ptLogo = p.logo || null;
+    const locked = st.status === "approved";
+    const ev = evById(EV) || {};
+    const statusBox = st.status ? `<div class="result ${st.status === "approved" ? "r-ok" : st.status === "rejected" ? "r-err" : "r-warn"}" style="padding:14px">
+        <h3 style="font-size:17px">${st.status === "approved" ? "معتمد في " : st.status === "rejected" ? "لم يُعتمد في " : "قيد المراجعة في "}${esc((ev.name || "").split("—")[0].trim())}</h3>
+        ${st.note ? `<span class="sub" style="color:var(--ink)">ملاحظة المنظم: ${esc(st.note)}</span>` : ""}
+        ${st.status === "approved" ? `<button class="btn btn-dark btn-sm" data-a="go-tab" data-tab="work">${ic("scan", 18)} افتح واجهة الكشك</button>` : ""}</div>` : "";
+    box.innerHTML = `${statusBox}
+      <form class="stack" data-f="partner" novalidate>
+        <div class="card stack" style="gap:12px"><b>بيانات المشروع</b>
+          <div class="row" style="gap:14px"><span id="ptLogoPrev">${logoTile({ name: p.name || "؟", logo: ptLogo }, 72)}</span>
+            <label class="btn btn-soft btn-sm" style="cursor:pointer">${ic("edit", 16)} ${ptLogo ? "تغيير الشعار" : "رفع الشعار"}<input type="file" accept="image/png,image/jpeg,image/webp" data-c="pt-logo" hidden></label></div>
+          <div class="field"><label for="pt-name">اسم المشروع / الكشك</label><input class="input" id="pt-name" name="name" maxlength="60" value="${esc(p.name || "")}" required></div>
+          <div class="field"><label for="pt-kind">النوع</label><select class="input" id="pt-kind" name="kind">${Object.entries(A.KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+          <div class="field"><label for="pt-desc">نبذة قصيرة</label><textarea class="input" id="pt-desc" name="description" maxlength="300" rows="3" style="height:auto;padding:10px 14px">${esc(p.description || "")}</textarea></div>
+          <div class="field"><label for="pt-phone">رقم التواصل</label><input class="input" id="pt-phone" name="phone" inputmode="tel" dir="ltr" style="text-align:right" value="${esc(p.phone || (S.me.profile || {}).phone || "")}"></div>
+          <div class="field"><label for="pt-ig">انستقرام (اختياري)</label><input class="input" id="pt-ig" name="instagram" dir="ltr" placeholder="@shop" value="${esc(p.instagram ? "@" + p.instagram : "")}"></div>
+        </div>
+        <div class="card stack" style="gap:12px"><b>بطاقة الولاء</b>
+          <span class="sub">هذه البطاقة تظهر في الجواز الرقمي لكل زائر، وتُضاف الأختام عليها عند كل زيارة.</span>
+          ${locked ? `<div class="msg info">البطاقة معتمدة ولا يمكن تغييرها أثناء الفعالية. تواصل مع المنظم لأي تعديل.</div>` : ""}
+          <div class="field"><label for="pt-req">عدد الزيارات قبل المكافأة</label><input class="input" id="pt-req" name="required" type="number" min="1" max="20" value="${esc(st.required || 3)}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
+          <div class="field"><label for="pt-r1">المكافأة الأولى</label><input class="input" id="pt-r1" name="reward1" maxlength="40" placeholder="مثال: خصم 30%" value="${esc(st.reward1 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
+          <div class="field"><label for="pt-r2">مكافأة ثانية (اختياري)</label><input class="input" id="pt-r2" name="reward2" maxlength="40" placeholder="مثال: الوجبة مجانًا" value="${esc(st.reward2 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
+          <div class="field"><label for="pt-cd">الفاصل بين ختمين (دقائق)</label><input class="input" id="pt-cd" name="cooldown" type="number" min="0" max="1440" value="${esc(st.cooldown ?? 30)}" ${locked ? "disabled" : ""}><span class="sub">يمنع إضافة أكثر من ختم للزائر نفسه خلال هذه المدة.</span></div>
+          <div class="loyalty" style="background:var(--cream)"><div class="loyalty-head"><b>معاينة البطاقة</b><span class="st st-purple" id="ptOffer"></span></div><div class="slots" id="ptSlots"></div></div>
+        </div>
+        <div class="card stack" style="gap:10px"><b>المشاركة</b>
+          <label class="opt"><input type="radio" name="event" value="${esc(EV)}" checked><span class="grow">${esc((ev.name || EV).split("—")[0].trim())}<span class="sub" style="display:block;font-weight:500">يراجع المنظم طلبك قبل ظهوره للزوار</span></span></label>
+          <label class="opt"><input type="radio" name="event" value=""><span class="grow">شريك في شُرفة بشكل عام<span class="sub" style="display:block;font-weight:500">نحفظ بياناتك ونتواصل معك للفعاليات القادمة</span></span></label>
+        </div>
+        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>أؤكد صحة البيانات، وألتزم بتقديم مكافآت بطاقة الولاء للزوار كما حددتها.</span></label>
+        <div id="ptMsg"></div>
+        <button class="btn btn-cta" type="submit">${st.status ? "حفظ التعديلات" : "إرسال طلب الشراكة"}</button>
+      </form>`;
+    previewCard();
+  }
+  function previewCard() {
+    const f = $("form[data-f=partner]"); if (!f) return;
+    const req = Math.min(20, Math.max(1, parseInt(f.required.value || "3", 10) || 3));
+    const c = { required: req, reward1: f.reward1.value.trim() || "المكافأة", reward2: f.reward2.value.trim() || null, visits: 0 };
+    $("#ptSlots").innerHTML = A.slotsHTML(c);
+    $("#ptOffer").textContent = A.offerText(c);
+  }
+  async function uploadLogo(file) {
+    if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw { code: "bad_logo" };
+    const bmp = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = URL.createObjectURL(file); });
+    const n = 400, sc = Math.min(1, n / Math.max(bmp.width, bmp.height));
+    const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * sc); cv.height = Math.round(bmp.height * sc);
+    cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+    URL.revokeObjectURL(bmp.src);
+    let blob = await new Promise((r) => cv.toBlob(r, "image/webp", 0.86));
+    if (!blob || blob.type !== "image/webp") blob = await new Promise((r) => cv.toBlob(r, "image/png"));
+    if (blob.size > 1048576) throw { code: "bad_logo" };
+    const token = await A.auth.token();
+    const me = await A.call("/auth/v1/user", { method: "GET", token });
+    const uid = me && me.id; if (!uid) throw { code: "upload_failed" };
+    const path = `${uid}/logo-${Date.now()}.${blob.type === "image/webp" ? "webp" : "png"}`;
+    const base = A.SB.url.replace(/\/$/, "");
+    const r = await fetch(`${base}/storage/v1/object/logos/${path}`, {
+      method: "POST", headers: { apikey: A.SB.anonKey, Authorization: "Bearer " + token, "Content-Type": blob.type, "x-upsert": "true" }, body: blob
+    });
+    if (!r.ok) throw { code: "upload_failed" };
+    return `${base}/storage/v1/object/public/logos/${path}`;
+  }
 
   /* ---------------- الخروج ---------------- */
   async function signedOut() {
     await A.auth.signOut();
-    S.me = null; S.pass = null; S.sub = null; S.tab = "home"; S.authStep = "login";
+    S.me = null; S.pass = null; S.sub = null; S.tab = "home";
     toast(A.errText("not_signed_in"), "err");
-    renderAuth();
+    render();
+  }
+  async function logout() {
+    await A.auth.signOut(); A.session.del("pending-email");
+    S.me = null; S.pass = null; S.tab = "home"; S.sub = null; S.email = ""; S.work = { stall: null, mode: "stall", res: null, last: null, busy: false };
+    render();
   }
 
   /* =========================================================
@@ -554,23 +839,50 @@
   document.addEventListener("click", async (ev) => {
     const b = ev.target.closest("[data-a]"); if (!b) return;
     const a = b.dataset.a;
-    if (a === "go-tab") { S.tab = b.dataset.tab; S.sub = null; render(); }
+    if (a === "go-tab") { S.tab = b.dataset.tab; S.sub = null; S.authOpen = false; render(); }
     else if (a === "sub") { S.sub = { name: b.dataset.name, id: b.dataset.id, title: b.dataset.title }; render(); }
     else if (a === "back") { S.sub = null; render(); }
-    else if (a === "pass-tab") { S.passTab = b.dataset.k; if (S.tab !== "pass" || S.sub) { S.tab = "pass"; S.sub = null; render(); } else render(); }
+    else if (a === "login") requireLogin(null);
+    else if (a === "signup") { S.after = null; S.authOpen = true; goAuth("signup"); }
+    else if (a === "browse") { S.authOpen = false; S.after = null; A.session.del("pending-email"); render(); }
+    else if (a === "buy") { if (!canSell()) return toast("بيع الجواز غير متاح حاليًا.", "err"); startIntent("buy"); }
+    else if (a === "partner-join") startIntent("partner");
+    else if (a === "confirm-buy") {
+      b.disabled = true;
+      try {
+        const d = await A.urpc("join_event", { p_event: EV });
+        S.me = await A.urpc("me");
+        S.sub = null; S.tab = "pass"; render();
+        toast(d.status === "active" ? "جوازك مفعّل!" : "تم إنشاء طلبك. أكمل الدفع لدى منصة المنظمين.", "ok");
+      } catch (e) { const m = $("#coMsg"); if (m) m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; b.disabled = false; }
+    }
+    else if (a === "pass-tab") { S.passTab = b.dataset.k; S.tab = "pass"; S.sub = null; render(); }
     else if (a === "work-mode") { S.work.mode = b.dataset.k; render(); }
     else if (a === "work-refresh") loadStaffStats();
+    else if (a === "org-refresh") loadOrg();
     else if (a === "scan-toggle") toggleScan();
     else if (a === "undo") {
       if (!S.work.last) return;
       try { await A.urpc("staff_undo", { p_stall: S.work.stall, p_code: S.work.last }); S.work.res = ""; $("#scanRes").innerHTML = ""; toast("تم التراجع عن آخر عملية", "ok"); loadStaffStats(); }
       catch (e) { toast(errMsg(e), "err"); }
     }
-    else if (a === "edit-profile") { S.authStep = "profile"; renderAuth(); }
-    else if (a === "logout") { await A.auth.signOut(); A.session.del("pending-email"); S.me = null; S.tab = "home"; S.sub = null; S.authStep = "login"; S.email = ""; renderAuth(); }
+    else if (a === "activate") {
+      b.disabled = true;
+      try { const d = await A.urpc("admin_activate_pass", { p_event: EV, p_code: b.dataset.code, p_method: b.dataset.m }); showRes("ok", "check", "تم تفعيل الجواز", `<b>${esc(d.name)}</b> · ${b.dataset.m === "cash" ? "نقدًا" : "تحويل بنكي"}`); loadOrg(); }
+      catch (e) { b.disabled = false; toast(e.code === "already_active" ? "الجواز مفعّل مسبقًا." : errMsg(e), "err"); }
+    }
+    else if (a === "review") {
+      const okv = b.dataset.ok === "1";
+      let note = null;
+      if (!okv) { note = prompt("سبب الرفض أو الإيقاف (يظهر للشريك):", ""); if (note === null) return; }
+      try { await A.urpc("admin_review_stall", { p_stall: b.dataset.id, p_approve: okv, p_note: note }); toast(okv ? "تم اعتماد الشريك" : "تم تحديث الحالة", "ok"); loadOrg(); }
+      catch (e) { toast(errMsg(e), "err"); }
+    }
+    else if (a === "edit-profile") { S.authOpen = true; goAuth("profile"); }
+    else if (a === "logout") logout();
     else if (a === "delete-data") {
       if (!confirm("سيتم حذف بياناتك وجوازاتك وأختامها نهائيًا من شُرفة. هل أنت متأكد؟")) return;
-      try { await A.urpc("delete_my_data"); await A.auth.signOut(); S.me = null; S.authStep = "login"; S.email = ""; renderAuth(); toast("حُذفت بياناتك", "ok"); }
+      try { await A.urpc("delete_my_data"); await logout(); toast("حُذفت بياناتك", "ok"); }
       catch (e) { toast(errMsg(e), "err"); }
     }
     else if (a === "auth-go") { if (b.dataset.k === "login") A.session.del("pending-email"); goAuth(b.dataset.k); }
@@ -580,17 +892,45 @@
     else if (a === "reload") boot();
   });
 
-  document.addEventListener("change", (ev) => {
+  document.addEventListener("change", async (ev) => {
     const t = ev.target;
     if (t.dataset.c === "work-stall") { S.work.stall = t.value; S.work.res = ""; A.local.set("work-stall", t.value); render(); }
+    else if (t.dataset.c === "pt-logo" && t.files && t.files[0]) {
+      const m = $("#ptMsg"); m.innerHTML = `<div class="msg info">جارٍ رفع الشعار…</div>`;
+      try { ptLogo = await uploadLogo(t.files[0]); $("#ptLogoPrev").innerHTML = logoTile({ name: "", logo: ptLogo }, 72); m.innerHTML = `<div class="msg ok">تم رفع الشعار.</div>`; }
+      catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code === "bad_logo" ? "bad_logo" : "upload_failed"))}</div>`; }
+    }
   });
+  document.addEventListener("input", (ev) => { if (ev.target.dataset && ev.target.dataset.c === "pt-card") previewCard(); });
 
   document.addEventListener("submit", async (ev) => {
     const f = ev.target.closest("form[data-f]"); if (!f) return;
     ev.preventDefault();
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
-    if (k === "manual") { const i = $("#manualCode"); addVisit(i.value); i.value = ""; return; }
+    if (k === "manual") { const i = $("#manualCode"); scanned(i.value); i.value = ""; return; }
+    if (k === "partner") {
+      const m = $("#ptMsg"); m.innerHTML = "";
+      const req = parseInt(f.required.value, 10);
+      const err = (c) => { m.innerHTML = `<div class="msg err">${esc(A.errText(c))}</div>`; };
+      if (f.name.value.trim().length < 2) return err("bad_name");
+      if (!f.required.disabled && (!(req >= 1 && req <= 20) || !f.reward1.value.trim())) return err("bad_card");
+      if (!f.consent.checked) return err("consent_required");
+      btn.disabled = true;
+      try {
+        const evSel = (f.querySelector("input[name=event]:checked") || {}).value || "";
+        const d = await A.urpc("partner_apply", {
+          p_name: f.name.value.trim(), p_kind: f.kind.value, p_description: f.description.value.trim(), p_phone: f.phone.value.replace(/[\s-]/g, ""),
+          p_instagram: f.instagram.value.trim(), p_logo: ptLogo, p_event: evSel || null, p_required: req || 3,
+          p_reward1: f.reward1.value.trim() || "مكافأة", p_reward2: f.reward2.value.trim() || null, p_cooldown: parseInt(f.cooldown.value || "30", 10)
+        });
+        S.me = await A.urpc("me");
+        toast(d.status === "pending" ? "تم إرسال طلبك للمنظم" : "حُفظت بياناتك", "ok");
+        renderBar(); loadPartnerForm(); window.scrollTo(0, 0);
+      } catch (e) { err(e.code); }
+      finally { if (document.body.contains(btn)) btn.disabled = false; }
+      return;
+    }
     authMsg("");
     btn.disabled = true;
     try {
@@ -598,7 +938,7 @@
         const id = f.ident.value.trim(), pass = f.password.value;
         if (!id || !pass) throw { code: "bad_login" };
         let email = id.toLowerCase();
-        if (!id.includes("@")) {          // رقم هاتف (حتى لو اختار تبويب البريد)
+        if (!id.includes("@")) {
           const d = await A.rpc("login_email_for_phone", { p_phone: id.replace(/[\s-]/g, ""), p_password: pass });
           email = d.email;
         } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw { code: "bad_email" };
@@ -650,8 +990,8 @@
         const first = !(S.me && S.me.profile);
         await A.urpc("save_profile", { p_name: f.name.value.trim(), p_phone: phone, p_type: (f.querySelector("input[name=type]:checked") || {}).value || "visitor", p_consent: true });
         S.me = await A.urpc("me");
-        if (first) { await ensurePass(); S.tab = "pass"; } else { S.tab = "account"; toast("حُفظت بياناتك", "ok"); }
-        render();
+        S.authOpen = false;
+        if (first) { await boot(); } else { S.tab = "account"; toast("حُفظت بياناتك", "ok"); render(); }
       }
     } catch (e) {
       if (e && e.code === "not_signed_in") return signedOut();

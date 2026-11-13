@@ -82,19 +82,27 @@
       if (url) {
         a.href = url;
       } else {
-        a.href = "#download";
+        // إلى أن يُعتمد التطبيق في المتاجر: الزر يفتح تطبيق الويب
+        a.href = "app/";
         a.removeAttribute("target");
-        a.classList.add("is-pending");
-        a.setAttribute("aria-label", `${a.textContent.trim()} — الرابط قريبًا`);
-        a.addEventListener("click", (e) => {
-          e.preventDefault();
-          toast("رابط التحميل سيتوفر قريبًا — تابعنا ليصلك الإعلان.");
-        });
+        a.setAttribute("aria-label", `${a.textContent.trim()} — استخدم شُرفة من المتصفح الآن`);
       }
     });
 
     const note = $("#storeNote");
     if (note && anyLink) note.hidden = true;
+    if (note && !anyLink) {
+      note.innerHTML = 'إلى أن يُتاح التطبيق في المتاجر، استخدم شُرفة من المتصفح مباشرة: <a href="app/" style="color:inherit;font-weight:700;text-decoration:underline">افتح تطبيق شُرفة</a>';
+    }
+
+    // زر الدخول في رأس كل الصفحات
+    $$(".header-actions").forEach((box) => {
+      if (box.querySelector("[data-login]")) return;
+      const a = document.createElement("a");
+      a.className = "btn btn-ghost btn-sm"; a.href = "app/?login=1"; a.dataset.login = "1";
+      a.innerHTML = '<svg class="ico"><use href="#i-users"/></svg><span>دخول</span>';
+      box.insertBefore(a, box.firstChild);
+    });
 
     const renderQR = () => {
       $$("[data-qr]").forEach((box) => {
