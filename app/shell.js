@@ -63,7 +63,7 @@
     tab: "home", sub: null, // شاشة فرعية فوق التبويب
     passTab: "cards",
     work: { stall: null, mode: "stall", res: null, last: null, busy: false },
-    authOpen: false, after: null,
+    authOpen: false, after: null, role: "visitor",
     authStep: "login", loginBy: "email", email: "", resendAt: 0, signup: null
   };
 
@@ -73,43 +73,55 @@
   function renderAuth() {
     bar.hidden = true; scr.className = "screen no-tabs";
     const ev = evById(EV), st = S.authStep;
+    const R = S.role || "visitor";
+    const evName = ev ? esc(ev.name.split("—")[0].trim()) : "";
+    const TL = {
+      visitor: ["أهلًا بك في شُرفة", "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام" + (evName ? " في " + evName : "") + "."],
+      partner: ["بوابة الشركاء", "للمطاعم والأكشاك والمشاريع: أدر بطاقة الولاء وامسح جوازات الزوار."],
+      organizer: ["دخول المنظمين", "لحسابات منظمي الفعاليات المعتمدة من شُرفة."]
+    };
     const T = {
-      login: ["أهلًا بك في شُرفة", "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام" + (ev ? " في " + esc(ev.name.split("—")[0].trim()) : "") + "."],
-      signup: ["إنشاء حساب", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
-      code: ["تأكيد البريد", "خطوة أخيرة لحماية حسابك."],
+      login: TL[R],
+      signup: R === "partner" ? ["تسجيل شريك جديد", "الخطوة 1 من 2: حساب المسؤول عن المشروع. بعدها تُدخل بيانات المشروع وبطاقة الولاء."]
+        : ["إنشاء حساب زائر", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
+      code: ["تأكيد البريد", R === "partner" ? "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء." : "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
       profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بياناتك", "لإصدار جوازك الرقمي."]
     }[st] || ["شُرفة", ""];
-    const top = `<div class="auth-top"><img src="../assets/img/brand/monogram-160.png" alt=""><h1>${T[0]}</h1><p>${T[1]}</p>${["login", "signup", "forgot", "code"].includes(st) ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
+    const topBg = R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : "";
+    const badge = R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "";
+    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge && st !== "profile" ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["login", "signup", "forgot", "code"].includes(st) ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
       <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="8" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
     let body = "";
     if (st === "login") {
-      const byPhone = S.loginBy === "phone";
       body = `<form class="auth-body" data-f="login" novalidate>
-        <div class="seg" role="group" aria-label="طريقة الدخول"><button type="button" data-a="login-by" data-k="email" aria-pressed="${!byPhone}">البريد الإلكتروني</button><button type="button" data-a="login-by" data-k="phone" aria-pressed="${byPhone}">رقم الهاتف</button></div>
-        ${byPhone ? `<div class="field"><label for="au-id">رقم الهاتف</label><input class="input" id="au-id" name="ident" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" required></div>`
-          : `<div class="field"><label for="au-id">البريد الإلكتروني</label><input class="input" id="au-id" name="ident" type="email" inputmode="email" autocomplete="username" dir="ltr" placeholder="name@example.com" value="${esc(S.email)}" required></div>`}
+        <div class="field"><span>أدخل بصفتك</span>
+          <div class="seg" role="group" aria-label="نوع الحساب">${[["visitor", "زائر"], ["partner", "شريك"], ["organizer", "منظم"]].map(([k, l]) => `<button type="button" data-a="role" data-k="${k}" aria-pressed="${R === k}">${l}</button>`).join("")}</div></div>
+        <div class="field"><label for="au-id">البريد الإلكتروني أو رقم الهاتف</label><input class="input" id="au-id" name="ident" autocomplete="username" dir="ltr" style="text-align:right" placeholder="name@example.com / 9xxxxxxx" value="${esc(S.email)}" required></div>
         ${pw("password", "كلمة المرور", "current-password")}
         <button type="button" class="linkbtn" data-a="auth-go" data-k="forgot" style="align-self:flex-start;padding:0;min-height:30px">نسيت كلمة المرور؟</button>
         <div id="au-msg"></div>
-        <button class="btn btn-dark" type="submit">تسجيل الدخول</button>
-        <div class="row" style="justify-content:center;gap:6px"><span class="sub">ليس لديك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">أنشئ حسابًا</button></div>
+        <button class="btn btn-dark" type="submit">${R === "partner" ? "دخول الشريك" : R === "organizer" ? "دخول المنظم" : "تسجيل الدخول"}</button>
+        ${R === "organizer"
+          ? `<div class="card flat sub" style="text-align:center">حسابات المنظمين يصدرها فريق شُرفة لمنظمي الفعاليات المعتمدة. لطلب حساب تواصل معنا.</div>`
+          : `<div class="row" style="justify-content:center;gap:6px"><span class="sub">${R === "partner" ? "شريك جديد؟" : "ليس لديك حساب؟"}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">${R === "partner" ? "سجّل مشروعك" : "أنشئ حسابًا"}</button></div>`}
       </form>`;
     } else if (st === "signup") {
       const v = S.signup || {};
       body = `<form class="auth-body" data-f="signup" novalidate>
-        <div class="field"><label for="su-name">الاسم</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
+        ${R === "partner" ? `<div class="row" style="gap:8px"><span class="st st-warn">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 المشروع وبطاقة الولاء</span></div>` : ""}
+        <div class="field"><label for="su-name">${R === "partner" ? "اسم المسؤول عن المشروع" : "الاسم"}</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
         <div class="field"><label for="su-phone">رقم الهاتف</label><input class="input" id="su-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(v.phone || "")}" required></div>
         <div class="field"><label for="su-email">البريد الإلكتروني</label><input class="input" id="su-email" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(v.email || "")}" required></div>
         ${pw("password", "كلمة المرور", "new-password", "8 أحرف على الأقل.")}
         ${pw("password2", "تأكيد كلمة المرور", "new-password")}
-        <div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(v.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>
-        <label class="check"><input type="checkbox" name="consent"> <span>أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط. <a href="privacy.html">سياسة الخصوصية</a></span></label>
+        ${R === "partner" ? "" : `<div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(v.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>`}
+        <label class="check"><input type="checkbox" name="consent"> <span>${R === "partner" ? "أوافق على استخدام بياناتي لإدارة حساب الشريك والتواصل بخصوص الفعاليات." : "أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
         <div id="au-msg"></div>
-        <button class="btn btn-cta" type="submit">إنشاء الحساب</button>
+        <button class="btn btn-cta" type="submit">${R === "partner" ? "التالي: بيانات المشروع" : "إنشاء الحساب"}</button>
         <div class="row" style="justify-content:center;gap:6px"><span class="sub">لديك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="login">سجّل الدخول</button></div>
       </form>`;
     } else if (st === "code") {
@@ -171,6 +183,7 @@
      التشغيل
      ========================================================= */
   async function boot() {
+    if (A.session.get("role")) S.role = A.session.get("role");
     if (!A.ready) {
       scr.innerHTML = `<div class="empty" style="padding-top:80px">${ic("lock", 36)}<b>النظام قيد التجهيز</b><span>سيُفعَّل قريبًا.</span></div>`;
       return;
@@ -202,7 +215,14 @@
     await loadEvInfo();
     const q =new URLSearchParams(location.search);
     if (q.get("tab") && tabs().some((t) => t[0] === q.get("tab"))) S.tab = q.get("tab");
-    if (q.get("join") === "partner") { history.replaceState(null, "", location.pathname + "?e=" + EV); return startIntent("partner"); }
+    if (!S.after && A.session.get("after")) S.after = A.session.get("after");
+    const qr = q.get("role");
+    if (q.get("join") === "partner" || qr === "partner") {
+      history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("partner");
+      if (!S.me) { S.after = "partner"; A.session.set("after", "partner"); S.authOpen = true; goAuth(q.get("join") ? "signup" : "login"); return; }
+      return startIntent("partner");
+    }
+    if (qr === "organizer") { history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("organizer"); return S.me ? startIntent("organizer") : requireLogin("organizer", "organizer"); }
     if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null); }
     if (S.after) { const a = S.after; S.after = null; return startIntent(a); }
     render();
@@ -211,13 +231,24 @@
   /* نية بعد تسجيل الدخول: شراء الجواز أو التسجيل كشريك */
   function startIntent(kind) {
     if (!S.me) return requireLogin(kind);
+    A.session.del("after");
     if (kind === "buy") { S.tab = "pass"; S.sub = myPassRef() ? null : { name: "checkout" }; }
-    else if (kind === "partner") { S.tab = "account"; S.sub = { name: "partner" }; }
+    else if (kind === "partner") {
+      // شريك: إن كان لديه كشك يفتح «كشكي»، وإلا نموذج المشروع
+      if (isStaff() && approvedStalls().length) { S.tab = "work"; S.work.mode = "stall"; S.sub = null; }
+      else { S.tab = isStaff() ? "work" : "account"; S.sub = isStaff() ? null : { name: "partner" }; }
+    }
+    else if (kind === "organizer") {
+      if (isOrg()) { S.tab = "work"; S.work.mode = "org"; S.sub = null; }
+      else { S.tab = "account"; S.sub = null; render(); toast("هذا الحساب ليس حساب منظم. تواصل مع فريق شُرفة.", "err"); return; }
+    }
     render();
   }
-  function requireLogin(intent) {
-    S.after = intent; S.authOpen = true; S.authStep = "login"; renderAuth();
+  function requireLogin(intent, role) {
+    if (role) setRole(role); else if (intent === "partner") setRole("partner");
+    S.after = intent; A.session.set("after", intent || null); S.authOpen = true; S.authStep = "login"; renderAuth();
   }
+  function setRole(r) { S.role = r; A.session.set("role", r); }
 
   async function loadEvInfo() {
     try { S.ev = await A.rpc("event_info", { p_event: EV }); } catch (e) { S.ev = S.ev || null; }
@@ -634,7 +665,8 @@
             <b style="font-size:18px">سجّل دخولك إلى شُرفة</b><span class="sub">لشراء الجواز الرقمي وجمع الأختام، أو للتسجيل كشريك.</span>
             <button class="btn btn-dark" data-a="login">تسجيل الدخول</button><button class="btn btn-line" data-a="signup">إنشاء حساب</button></div>
           <div class="card" style="padding:0;overflow:hidden">
-            <button class="menu-btn" data-a="partner-join">${ic("users", 20)}<span class="grow">انضم كشريك</span>${ic("fwd", 16, 2)}</button>
+            <button class="menu-btn" data-a="partner-login">${ic("users", 20)}<span class="grow">بوابة الشركاء (دخول أو تسجيل)</span>${ic("fwd", 16, 2)}</button>
+            <button class="menu-btn" data-a="org-login">${ic("chart", 20)}<span class="grow">دخول المنظمين</span>${ic("fwd", 16, 2)}</button>
             <button class="menu-btn" data-a="go-tab" data-tab="events">${ic("compass", 20)}<span class="grow">فعاليات شُرفة</span>${ic("fwd", 16, 2)}</button>
             <a class="menu-btn" href="privacy.html">${ic("shield", 20)}<span class="grow">الخصوصية والبيانات</span>${ic("fwd", 16, 2)}</a>
             <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
@@ -814,9 +846,9 @@
     const path = `${uid}/logo-${Date.now()}.${blob.type === "image/webp" ? "webp" : "png"}`;
     const base = A.SB.url.replace(/\/$/, "");
     const r = await fetch(`${base}/storage/v1/object/logos/${path}`, {
-      method: "POST", headers: { apikey: A.SB.anonKey, Authorization: "Bearer " + token, "Content-Type": blob.type, "x-upsert": "true" }, body: blob
+      method: "POST", headers: { apikey: A.SB.anonKey, Authorization: "Bearer " + token, "Content-Type": blob.type }, body: blob
     });
-    if (!r.ok) throw { code: "upload_failed" };
+    if (!r.ok) { let t = ""; try { t = await r.text(); } catch (x) { /* ignore */ } console.warn("logo upload", r.status, t); throw { code: "upload_failed" }; }
     return `${base}/storage/v1/object/public/logos/${path}`;
   }
 
@@ -830,6 +862,7 @@
   async function logout() {
     await A.auth.signOut(); A.session.del("pending-email");
     S.me = null; S.pass = null; S.tab = "home"; S.sub = null; S.email = ""; S.work = { stall: null, mode: "stall", res: null, last: null, busy: false };
+    setRole("visitor"); A.session.del("after");
     render();
   }
 
@@ -842,9 +875,12 @@
     if (a === "go-tab") { S.tab = b.dataset.tab; S.sub = null; S.authOpen = false; render(); }
     else if (a === "sub") { S.sub = { name: b.dataset.name, id: b.dataset.id, title: b.dataset.title }; render(); }
     else if (a === "back") { S.sub = null; render(); }
-    else if (a === "login") requireLogin(null);
-    else if (a === "signup") { S.after = null; S.authOpen = true; goAuth("signup"); }
-    else if (a === "browse") { S.authOpen = false; S.after = null; A.session.del("pending-email"); render(); }
+    else if (a === "login") requireLogin(null, "visitor");
+    else if (a === "signup") { S.after = null; setRole("visitor"); S.authOpen = true; goAuth("signup"); }
+    else if (a === "browse") { S.authOpen = false; S.after = null; A.session.del("after"); A.session.del("pending-email"); setRole("visitor"); render(); }
+    else if (a === "role") { setRole(b.dataset.k); S.after = b.dataset.k === "visitor" ? null : b.dataset.k; A.session.set("after", S.after); goAuth("login"); }
+    else if (a === "partner-login") requireLogin("partner", "partner");
+    else if (a === "org-login") requireLogin("organizer", "organizer");
     else if (a === "buy") { if (!canSell()) return toast("بيع الجواز غير متاح حاليًا.", "err"); startIntent("buy"); }
     else if (a === "partner-join") startIntent("partner");
     else if (a === "confirm-buy") {
@@ -952,6 +988,7 @@
         const v = { name: f.name.value.trim(), phone: f.phone.value.replace(/[\s-]/g, ""), email: f.email.value.trim().toLowerCase(),
           type: (f.querySelector("input[name=type]:checked") || {}).value || "visitor" };
         S.signup = v;
+        if (S.role === "partner") { S.after = "partner"; A.session.set("after", "partner"); }
         if (v.name.length < 2) throw { code: "bad_name" };
         if (!/^\+?[0-9]{8,15}$/.test(v.phone)) throw { code: "bad_phone" };
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) throw { code: "bad_email" };
