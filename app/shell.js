@@ -35,6 +35,8 @@
     undo: "M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3", edit: "M4 20h4L19 9l-4-4L4 16zM14 6l4 4", trash: "M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3",
     compass: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z", box: "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6z", ext: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"
   };
+  // أيقونات هوية شُرفة (Shurfah Icon Pack) — اللون الأساسي currentColor ولون التمييز --ia
+  const bi = (n, cls = "bico") => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="brand-icons.svg#b-${n}"></use></svg>`;
   const ic = (n, s = 20, w = 1.8) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n] || P.star}"></path></svg>`;
 
   /* ---------- أدوات ---------- */
@@ -365,10 +367,16 @@
     const prog = (ev.page && ev.page.program && ev.page.program.items) || [];
     const ref = myPassRef();
     const services = [];
-    services.push({ t: "الجواز الرقمي", d: `بطاقة ولاء لكل شريك: اجمع الأختام واحصل على المكافآت. ${price() ? "السعر " + fmtPrice(price()) + "." : ""}`, i: "award", bg: "linear-gradient(135deg,#7B5BA7,#5F4486)", a: 'data-a="go-tab" data-tab="pass"', cta: ref ? "افتح جوازي" : "اشترِ الجواز" });
-    if (ev.page && ev.page.packages) services.push({ t: "الباقات", d: "باقات من الأكشاك المشاركة تناسب ميزانيتك.", i: "box", bg: "linear-gradient(135deg,#E4573D,#C7432B)", a: 'data-a="sub" data-name="packages"', cta: "تصفّح الباقات" });
-    prog.filter((p) => p.link && !/index\.html/.test(p.link.href)).forEach((p) => services.push({ t: p.title, d: p.desc, i: "users", bg: `linear-gradient(135deg,${p.color || "#3D8BE0"},#1E3F8F)`, href: img(p.link.href), cta: p.link.label }));
-    prog.filter((p) => !p.link).forEach((p) => services.push({ t: p.title, d: p.desc, i: "food", bg: `linear-gradient(135deg,${p.color || "#A63FB0"},#5F4486)`, a: `data-a="sub" data-name="program" data-title="${esc(p.title)}"`, cta: "التفاصيل" }));
+    const photo = ev.image ? img(ev.image) : "";
+    const pIcon = (p) => /users/.test(p.icon || "") ? "users" : /sweet/.test(p.icon || "") ? "sweet" : /coffee/.test(p.icon || "") ? "coffee" : "food";
+    services.push({ t: "الجواز الرقمي", d: "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"],
+      c1: "#7B5BA7", c2: "#3E2A63", badge: price() ? fmtPrice(price()) : "", a: 'data-a="go-tab" data-tab="pass"', cta: ref ? "افتح جوازي" : "اشترِ الجواز" });
+    if (ev.page && ev.page.packages) services.push({ t: "الباقات", d: "باقات من الأكشاك المشاركة تناسب ميزانيتك.", main: "box", deco: ["food", "coffee", "sweet"],
+      c1: "#E4573D", c2: "#8E2A17", badge: "وفّر أكثر", a: 'data-a="sub" data-name="packages"', cta: "تصفّح الباقات" });
+    prog.filter((p) => p.link && !/index\.html/.test(p.link.href)).forEach((p) => services.push({ t: p.title, d: p.desc, main: pIcon(p), deco: ["game", "star", "gift"],
+      c1: p.color || "#3D8BE0", c2: "#16306E", badge: (p.rows && p.rows[0] && p.rows[0][1]) || "", href: img(p.link.href), cta: p.link.label }));
+    prog.filter((p) => !p.link).forEach((p) => services.push({ t: p.title, d: p.desc, main: pIcon(p), deco: ["spark", "gift", "star"],
+      c1: p.color || "#A63FB0", c2: "#4B1A55", badge: p.note && /جوائز/.test(p.note) ? "جوائز" : "", a: `data-a="sub" data-name="program" data-title="${esc(p.title)}"`, cta: "التفاصيل" }));
 
     let passCard;
     if (!ref) passCard = `<button class="card row" data-a="buy" style="gap:14px;border:1.5px solid var(--purple)"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic("award", 22)}</span>
@@ -397,8 +405,13 @@
       <div id="railWrap"></div>
       ${services.length ? `<div class="pad"><h3 class="sec-t">خدمات الفعالية</h3></div>
       <div class="hscroll" style="padding-top:10px">${services.map((s) => `${s.href ? `<a class="svc" href="${esc(s.href)}">` : `<button class="svc" ${s.a}>`}
-        <span class="art" style="background:${s.bg}">${ic(s.i, 34, 1.6)}</span>
-        <span class="b"><b style="font-size:16px">${esc(s.t)}</b><span class="sub" style="line-height:1.6">${esc(s.d || "")}</span><span class="linkbtn" style="padding:0;min-height:28px;margin-top:auto">${esc(s.cta)} ←</span></span>
+        <span class="art svc-art" style="--c1:${esc(s.c1)};--c2:${esc(s.c2)};${photo ? `--photo:url('${esc(photo)}')` : ""}">
+          <span class="svc-pattern"></span>
+          ${s.deco.map((d, i) => `<span class="svc-deco d${i + 1}">${bi(d)}</span>`).join("")}
+          <span class="svc-main">${bi(s.main)}</span>
+          ${s.badge ? `<span class="svc-badge">${esc(s.badge)}</span>` : ""}
+        </span>
+        <span class="b"><b style="font-size:16px">${esc(s.t)}</b><span class="sub" style="line-height:1.6">${esc(s.d || "")}</span><span class="svc-cta" style="--c1:${esc(s.c1)}">${esc(s.cta)} ${ic("fwd", 16, 2.2)}</span></span>
         ${s.href ? "</a>" : "</button>"}`).join("")}</div><div class="sp"></div>` : ""}
       ${others.length ? `<div class="pad between"><h3 class="sec-t">استكشف فعاليات شُرفة</h3><button class="linkbtn" data-a="go-tab" data-tab="events">الكل</button></div>
       <div class="hscroll" style="padding-top:8px">${others.map((e) => eventCard(e)).join("")}</div><div class="sp"></div>` : ""}

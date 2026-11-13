@@ -289,3 +289,24 @@ body { background: var(--cream); }
   .hscroll:not(.rail) { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .appbar-in { padding-inline: 2rem; }
 }
+
+/* بطاقات خدمات الفعالية — أيقونات الهوية + خلفية تمثل كل خدمة */
+.bico { width: 1em; height: 1em; display: block; color: currentColor; }
+.svc { width: 15rem; transition: transform .2s ease, box-shadow .2s ease; }
+.svc:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(26,46,40,.14); }
+.svc .svc-art { display: block; position: relative; height: 9.5rem; overflow: hidden; isolation: isolate;
+  background-image: linear-gradient(150deg, color-mix(in srgb, var(--c1) 88%, transparent), color-mix(in srgb, var(--c2) 94%, transparent)), var(--photo, none);
+  background-color: var(--c2); background-size: cover; background-position: center; }
+.svc-pattern { position: absolute; inset: 0; background: url("../assets/img/brand/pattern.png") center / 14rem repeat; opacity: .12; mix-blend-mode: screen; z-index: 0; }
+.svc-art::after { content: ""; position: absolute; width: 12rem; height: 12rem; border-radius: 50%; inset-inline-start: -3rem; bottom: -6rem; background: rgba(255,255,255,.12); z-index: 0; }
+.svc-main { position: absolute; z-index: 2; inset-inline-start: 1rem; bottom: 1rem; width: 4.25rem; height: 4.25rem; border-radius: 1.25rem; display: grid; place-items: center;
+  background: rgba(255,255,255,.96); color: var(--c2); font-size: 2.6rem; --ia: var(--c1); box-shadow: 0 8px 18px rgba(0,0,0,.18); }
+.svc-deco { position: absolute; z-index: 1; display: grid; place-items: center; border-radius: 50%; background: rgba(255,255,255,.16); color: #fff; --ia: #FFD27A; backdrop-filter: blur(2px); }
+.svc-deco.d1 { width: 3rem; height: 3rem; font-size: 1.6rem; inset-inline-end: 1rem; top: 1rem; transform: rotate(-10deg); }
+.svc-deco.d2 { width: 2.4rem; height: 2.4rem; font-size: 1.25rem; inset-inline-end: 4.4rem; top: 3.6rem; transform: rotate(8deg); }
+.svc-deco.d3 { width: 2rem; height: 2rem; font-size: 1.05rem; inset-inline-end: 1.6rem; top: 5.4rem; }
+.svc-badge { position: absolute; z-index: 2; inset-inline-start: 1rem; top: 1rem; background: var(--gold); color: var(--ink); font-size: .78rem; font-weight: 700; padding: .25rem .65rem; border-radius: 999px; box-shadow: 0 4px 10px rgba(0,0,0,.15); }
+.svc-cta { margin-top: auto; align-self: flex-start; display: inline-flex; align-items: center; gap: .35rem; padding: .45rem .9rem; border-radius: 999px; font-size: .85rem; font-weight: 700;
+  background: color-mix(in srgb, var(--c1) 12%, #fff); color: color-mix(in srgb, var(--c1) 80%, #000); }
+@media (prefers-reduced-motion: reduce) { .svc, .svc:hover { transition: none; transform: none; } }
+@media (min-width: 768px) { .svc .svc-art { height: 11rem; } }
