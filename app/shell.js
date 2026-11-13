@@ -83,8 +83,9 @@
     const T = {
       login: TL[R],
       signup: R === "partner" ? ["تسجيل شريك جديد", "الخطوة 1 من 2: حساب المسؤول عن المشروع. بعدها تُدخل بيانات المشروع وبطاقة الولاء."]
+        : R === "organizer" ? ["تسجيل منظم فعالية", "الخطوة 1 من 2: حساب المسؤول. بعدها تُدخل بيانات الجهة والفعالية، ويعتمدها فريق شُرفة."]
         : ["إنشاء حساب زائر", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
-      code: ["تأكيد البريد", R === "partner" ? "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء." : "خطوة أخيرة لحماية حسابك."],
+      code: ["تأكيد البريد", R === "partner" ? "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء." : R === "organizer" ? "بعد التأكيد تنتقل لبيانات الجهة والفعالية." : "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
       profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بياناتك", "لإصدار جوازك الرقمي."]
@@ -105,23 +106,23 @@
         <button type="button" class="linkbtn" data-a="auth-go" data-k="forgot" style="align-self:flex-start;padding:0;min-height:30px">نسيت كلمة المرور؟</button>
         <div id="au-msg"></div>
         <button class="btn btn-dark" type="submit">${R === "partner" ? "دخول الشريك" : R === "organizer" ? "دخول المنظم" : "تسجيل الدخول"}</button>
-        ${R === "organizer"
-          ? `<div class="card flat sub" style="text-align:center">حسابات المنظمين يصدرها فريق شُرفة لمنظمي الفعاليات المعتمدة. لطلب حساب تواصل معنا.</div>`
-          : `<div class="row" style="justify-content:center;gap:6px"><span class="sub">${R === "partner" ? "شريك جديد؟" : "ليس لديك حساب؟"}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">${R === "partner" ? "سجّل مشروعك" : "أنشئ حسابًا"}</button></div>`}
+        <div class="row" style="justify-content:center;gap:6px"><span class="sub">${R === "partner" ? "شريك جديد؟" : R === "organizer" ? "منظم جديد؟" : "ليس لديك حساب؟"}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="signup">${R === "partner" ? "سجّل مشروعك" : R === "organizer" ? "سجّل جهتك وفعاليتك" : "أنشئ حسابًا"}</button></div>
+        ${R === "organizer" ? `<p class="sub" style="text-align:center">يراجع فريق شُرفة طلبات المنظمين قبل تفعيل لوحة الإدارة.</p>` : ""}
       </form>`;
     } else if (st === "signup") {
       const v = S.signup || {};
       body = `<form class="auth-body" data-f="signup" novalidate>
         ${R === "partner" ? `<div class="row" style="gap:8px"><span class="st st-warn">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 المشروع وبطاقة الولاء</span></div>` : ""}
-        <div class="field"><label for="su-name">${R === "partner" ? "اسم المسؤول عن المشروع" : "الاسم"}</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
+        ${R === "organizer" ? `<div class="row" style="gap:8px"><span class="st st-teal">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 الجهة والفعالية</span></div>` : ""}
+        <div class="field"><label for="su-name">${R === "partner" ? "اسم المسؤول عن المشروع" : R === "organizer" ? "اسم المسؤول" : "الاسم"}</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
         <div class="field"><label for="su-phone">رقم الهاتف</label><input class="input" id="su-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(v.phone || "")}" required></div>
         <div class="field"><label for="su-email">البريد الإلكتروني</label><input class="input" id="su-email" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(v.email || "")}" required></div>
         ${pw("password", "كلمة المرور", "new-password", "8 أحرف على الأقل.")}
         ${pw("password2", "تأكيد كلمة المرور", "new-password")}
-        ${R === "partner" ? "" : `<div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(v.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>`}
-        <label class="check"><input type="checkbox" name="consent"> <span>${R === "partner" ? "أوافق على استخدام بياناتي لإدارة حساب الشريك والتواصل بخصوص الفعاليات." : "أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
+        ${R !== "visitor" ? "" : `<div class="field"><span>أنت</span><div class="opts">${Object.entries(TYPE).map(([k, l]) => `<label class="opt"><input type="radio" name="type" value="${k}" ${(v.type || "student") === k ? "checked" : ""}>${l}</label>`).join("")}</div></div>`}
+        <label class="check"><input type="checkbox" name="consent"> <span>${R !== "visitor" ? "أوافق على استخدام بياناتي لإدارة حسابي والتواصل بخصوص الفعاليات." : "أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
         <div id="au-msg"></div>
-        <button class="btn btn-cta" type="submit">${R === "partner" ? "التالي: بيانات المشروع" : "إنشاء الحساب"}</button>
+        <button class="btn btn-cta" type="submit">${R === "partner" ? "التالي: بيانات المشروع" : R === "organizer" ? "التالي: بيانات الجهة" : "إنشاء الحساب"}</button>
         <div class="row" style="justify-content:center;gap:6px"><span class="sub">لديك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="login">سجّل الدخول</button></div>
       </form>`;
     } else if (st === "code") {
@@ -240,7 +241,7 @@
     }
     else if (kind === "organizer") {
       if (isOrg()) { S.tab = "work"; S.work.mode = "org"; S.sub = null; }
-      else { S.tab = "account"; S.sub = null; render(); toast("هذا الحساب ليس حساب منظم. تواصل مع فريق شُرفة.", "err"); return; }
+      else { S.tab = "account"; S.sub = { name: "orgapply" }; }
     }
     render();
   }
@@ -327,6 +328,7 @@
       <div class="sp"></div>
       ${canSell() || ref ? `<div class="pad">${passCard}</div><div class="sp"></div>` : ""}
       ${isStaff() || isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--teal-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--teal-ink)">${ic(isStaff() ? "scan" : "chart", 22)}</span><span class="grow"><b>${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</b><span class="sub" style="display:block;color:var(--ink)">${isStaff() ? "امسح جوازات الزوار وأضف الأختام" : "الجوازات والشركاء ومؤشرات الفعالية"}</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
+      ${S.me && S.me.shurfa_admin ? `<div class="pad"><button class="card row" data-a="sub" data-name="platform" style="gap:14px;background:var(--purple-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--purple)">${ic("shield", 22)}</span><span class="grow"><b>إدارة شُرفة</b><span class="sub" style="display:block;color:var(--ink)">مراجعة طلبات المنظمين</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
       <div id="railWrap"></div>
       ${services.length ? `<div class="pad"><h3 class="sec-t">خدمات الفعالية</h3></div>
       <div class="hscroll" style="padding-top:10px">${services.map((s) => `${s.href ? `<a class="svc" href="${esc(s.href)}">` : `<button class="svc" ${s.a}>`}
@@ -686,7 +688,9 @@
         <button class="menu-btn" data-a="go-tab" data-tab="pass">${ic("award", 20)}<span class="grow">جوازي الرقمي</span>${ic("fwd", 16, 2)}</button>
         <button class="menu-btn" data-a="sub" data-name="partner">${ic("users", 20)}<span class="grow">${S.me.partner ? "بيانات الشريك وبطاقة الولاء" : "انضم كشريك"}</span>${ic("fwd", 16, 2)}</button>
         ${isStaff() || isOrg() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic(isStaff() ? "scan" : "chart", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : "واجهة المنظم"}</span>${ic("fwd", 16, 2)}</button>` : ""}
-        ${isOrg() ? `<a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>` : ""}
+        ${isOrg() ? `<a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>`
+          : `<button class="menu-btn" data-a="sub" data-name="orgapply">${ic("chart", 20)}<span class="grow">سجّل كمنظم فعالية</span>${S.me.org_request === "pending" ? '<span class="st st-warn">قيد المراجعة</span>' : ""}${ic("fwd", 16, 2)}</button>`}
+        ${S.me.shurfa_admin ? `<button class="menu-btn" data-a="sub" data-name="platform">${ic("shield", 20)}<span class="grow">إدارة شُرفة: طلبات المنظمين</span>${ic("fwd", 16, 2)}</button>` : ""}
         <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
       </div></div>
       <div class="sp"></div>
@@ -757,6 +761,12 @@
     partner() {
       return `${head("الشريك وبطاقة الولاء")}<div class="pad stack" id="ptBody"><div class="skel"></div><div class="skel"></div></div>`;
     },
+    orgapply() {
+      return `${head("طلب منظم فعالية")}<div class="pad stack" id="oaBody"><div class="skel"></div><div class="skel"></div></div>`;
+    },
+    platform() {
+      return `${head("إدارة شُرفة")}<div class="pad stack"><p class="sub">طلبات المنظمين. الاعتماد يفعّل لهم تبويب «الإدارة» لفعالياتهم.</p><div class="stack" id="pfBody"><div class="skel"></div></div></div><div class="sp"></div>`;
+    },
     packages() {
       const ev = evById(EV) || {}, pk = (ev.page && ev.page.packages) || { items: [], presets: {} };
       const item = (id) => pk.items.find((i) => i.id === id) || {};
@@ -776,6 +786,74 @@
   };
   function afterSub(o) {
     if (o.name === "partner") loadPartnerForm();
+    if (o.name === "orgapply") loadOrgApply();
+    if (o.name === "platform") loadPlatform();
+  }
+
+  /* ---------- طلب المنظم ---------- */
+  async function loadOrgApply() {
+    const box = $("#oaBody"); if (!box) return;
+    if (!S.me) return requireLogin("organizer", "organizer");
+    let r = null, evs = [];
+    try { [r, evs] = await Promise.all([A.urpc("my_organizer_request"), A.rpc("list_events")]); r = r.request; }
+    catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
+    r = r || {};
+    const st = r.status;
+    const statusBox = st ? `<div class="result ${st === "approved" ? "r-ok" : st === "rejected" ? "r-err" : "r-warn"}" style="padding:14px">
+        <h3 style="font-size:17px">${st === "approved" ? "تم اعتمادك كمنظم" : st === "rejected" ? "لم يُعتمد الطلب" : "طلبك قيد مراجعة فريق شُرفة"}</h3>
+        <span class="sub" style="color:var(--ink)">${st === "approved" ? "تبويب «الإدارة» متاح لك الآن." : st === "rejected" ? (r.review_note ? "ملاحظة: " + esc(r.review_note) : "يمكنك تعديل البيانات وإعادة الإرسال.") : "سنراجع بيانات الجهة والفعالية ونفعّل لوحة الإدارة بعد الاعتماد."}</span>
+        ${st === "approved" ? `<button class="btn btn-dark btn-sm" data-a="org-open">${ic("chart", 18)} افتح الإدارة</button>` : ""}</div>` : "";
+    if (st === "approved") { box.innerHTML = statusBox; return; }
+    const evOpts = evs.map((e) => `<label class="opt"><input type="radio" name="event" value="${esc(e.id)}" ${r.event === e.id || (!r.event && !r.event_name && e.id === EV) ? "checked" : ""}><span class="grow">${esc(e.name)}</span></label>`).join("");
+    box.innerHTML = `${statusBox}
+      ${st ? "" : `<div class="row" style="gap:8px"><span class="st st-mute">1 الحساب ✓</span><span class="sub">←</span><span class="st st-teal">2 الجهة والفعالية</span></div>`}
+      <form class="stack" data-f="orgapply" novalidate>
+        <div class="card stack" style="gap:12px"><b>الجهة المنظمة</b>
+          <div class="field"><label for="oa-org">اسم الجهة</label><input class="input" id="oa-org" name="org" maxlength="80" placeholder="مثال: جماعة التجارة — جامعة السلطان قابوس" value="${esc(r.org || "")}" required></div>
+          <div class="field"><label for="oa-pos">منصبك</label><input class="input" id="oa-pos" name="position" maxlength="60" placeholder="مثال: رئيس اللجنة المنظمة" value="${esc(r.position || "")}"></div>
+          <div class="field"><label for="oa-ph">رقم التواصل</label><input class="input" id="oa-ph" name="phone" inputmode="tel" dir="ltr" style="text-align:right" value="${esc(r.phone || (S.me.profile || {}).phone || "")}"></div>
+        </div>
+        <div class="card stack" style="gap:10px"><b>الفعالية</b>
+          ${evOpts}
+          <label class="opt"><input type="radio" name="event" value="" ${!r.event && r.event_name ? "checked" : ""}><span class="grow">فعالية جديدة غير موجودة في شُرفة</span></label>
+          <div class="stack" id="oaNew" style="gap:10px">
+            <div class="field"><label for="oa-en">اسم الفعالية</label><input class="input" id="oa-en" name="event_name" maxlength="80" value="${esc(r.event_name || "")}"></div>
+            <div class="field"><label for="oa-ed">التاريخ</label><input class="input" id="oa-ed" name="event_date" maxlength="60" placeholder="مثال: 20 – 25 ديسمبر 2026" value="${esc(r.event_date || "")}"></div>
+            <div class="field"><label for="oa-el">المكان</label><input class="input" id="oa-el" name="event_location" maxlength="80" value="${esc(r.event_location || "")}"></div>
+          </div>
+        </div>
+        <div class="field"><label for="oa-note">ملاحظات (اختياري)</label><textarea class="input" id="oa-note" name="note" maxlength="400" rows="3" style="height:auto;padding:10px 14px">${esc(r.note || "")}</textarea></div>
+        <label class="check"><input type="checkbox" name="consent" ${r.org ? "checked" : ""}> <span>أؤكد أنني مخوّل بتمثيل الجهة المنظمة، وألتزم بحماية بيانات الزوار.</span></label>
+        <div id="oaMsg"></div>
+        <button class="btn btn-cta" type="submit">${st ? "إعادة إرسال الطلب" : "إرسال الطلب لفريق شُرفة"}</button>
+      </form>`;
+    toggleNewEvent();
+  }
+  function toggleNewEvent() {
+    const f = $("form[data-f=orgapply]"); if (!f) return;
+    const v = (f.querySelector("input[name=event]:checked") || {}).value;
+    $("#oaNew").hidden = !!v;
+  }
+
+  /* ---------- إدارة شُرفة: اعتماد المنظمين ---------- */
+  async function loadPlatform() {
+    const box = $("#pfBody"); if (!box) return;
+    try {
+      const list = await A.urpc("shurfa_list_org_requests");
+      const ST = { pending: ["قيد المراجعة", "st-warn"], approved: ["معتمد", "st-ok"], rejected: ["مرفوض", "st-err"] };
+      box.innerHTML = list.length ? list.map((r) => `<div class="card stack" style="gap:8px">
+          <div class="between"><b>${esc(r.org)}</b><span class="st ${ST[r.status][1]}">${ST[r.status][0]}</span></div>
+          <span class="sub">${esc(r.name || "")}${r.position ? " · " + esc(r.position) : ""}</span>
+          <span class="sub" dir="ltr" style="text-align:right">${esc(r.email || "")}${r.phone ? " · " + esc(r.phone) : ""}</span>
+          <div class="card flat" style="padding:10px 12px"><span class="sub">الفعالية</span><div><b>${esc(r.event_title || r.event_name || "")}</b></div>
+            ${r.event ? "" : `<span class="sub">${esc([r.event_date, r.event_location].filter(Boolean).join(" · "))} · فعالية جديدة (تُضاف لاحقًا)</span>`}</div>
+          ${r.note ? `<span class="sub">ملاحظات: ${esc(r.note)}</span>` : ""}
+          ${r.review_note ? `<span class="sub">ملاحظة المراجعة: ${esc(r.review_note)}</span>` : ""}
+          ${r.status === "pending" ? `<div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="org-review" data-id="${esc(r.id)}" data-ok="1">${ic("check", 18, 2)} اعتماد</button><button class="btn btn-danger btn-sm" style="flex:1" data-a="org-review" data-id="${esc(r.id)}" data-ok="0">رفض</button></div>`
+            : r.status === "approved" ? `<button class="linkbtn" data-a="org-review" data-id="${esc(r.id)}" data-ok="0" style="color:var(--err);align-self:flex-start">إيقاف صلاحية المنظم</button>`
+            : `<button class="linkbtn" data-a="org-review" data-id="${esc(r.id)}" data-ok="1" style="align-self:flex-start">اعتماد</button>`}
+        </div>`).join("") : `<div class="empty card">${ic("users", 36)}<b>لا توجد طلبات منظمين بعد</b><span>رابط تسجيل المنظمين: <b dir="ltr">${esc(location.origin + location.pathname)}?role=organizer</b></span></div>`;
+    } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
   }
 
   /* ---------- نموذج الشريك + مصمم بطاقة الولاء ---------- */
@@ -896,6 +974,13 @@
     else if (a === "work-mode") { S.work.mode = b.dataset.k; render(); }
     else if (a === "work-refresh") loadStaffStats();
     else if (a === "org-refresh") loadOrg();
+    else if (a === "org-open") { S.me = await A.urpc("me"); S.tab = "work"; S.work.mode = "org"; S.sub = null; render(); }
+    else if (a === "org-review") {
+      const okv = b.dataset.ok === "1"; let note = null;
+      if (!okv) { note = prompt("سبب الرفض أو الإيقاف (يظهر للمنظم):", ""); if (note === null) return; }
+      try { await A.urpc("shurfa_review_org_request", { p_id: b.dataset.id, p_approve: okv, p_note: note }); toast(okv ? "تم اعتماد المنظم" : "تم تحديث الحالة", "ok"); loadPlatform(); }
+      catch (e) { toast(errMsg(e), "err"); }
+    }
     else if (a === "scan-toggle") toggleScan();
     else if (a === "undo") {
       if (!S.work.last) return;
@@ -937,6 +1022,7 @@
       catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code === "bad_logo" ? "bad_logo" : "upload_failed"))}</div>`; }
     }
   });
+  document.addEventListener("change", (ev) => { if (ev.target.name === "event" && ev.target.closest("form[data-f=orgapply]")) toggleNewEvent(); });
   document.addEventListener("input", (ev) => { if (ev.target.dataset && ev.target.dataset.c === "pt-card") previewCard(); });
 
   document.addEventListener("submit", async (ev) => {
@@ -945,6 +1031,24 @@
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
     if (k === "manual") { const i = $("#manualCode"); scanned(i.value); i.value = ""; return; }
+    if (k === "orgapply") {
+      const m = $("#oaMsg"); m.innerHTML = "";
+      const err = (c) => { m.innerHTML = `<div class="msg err">${esc(A.errText(c))}</div>`; };
+      const evSel = (f.querySelector("input[name=event]:checked") || {}).value;
+      if (f.org.value.trim().length < 2) return err("bad_org");
+      if (evSel === undefined || (!evSel && f.event_name.value.trim().length < 2)) return err("bad_event");
+      if (!f.consent.checked) return err("consent_required");
+      btn.disabled = true;
+      try {
+        await A.urpc("organizer_apply", { p_org: f.org.value.trim(), p_position: f.position.value.trim(), p_phone: f.phone.value.replace(/[\s-]/g, ""),
+          p_event: evSel || null, p_event_name: evSel ? null : f.event_name.value.trim(), p_event_date: evSel ? null : f.event_date.value.trim(),
+          p_event_location: evSel ? null : f.event_location.value.trim(), p_note: f.note.value.trim() });
+        S.me = await A.urpc("me");
+        toast("تم إرسال طلبك لفريق شُرفة", "ok"); loadOrgApply(); window.scrollTo(0, 0);
+      } catch (e) { err(e.code); }
+      finally { if (document.body.contains(btn)) btn.disabled = false; }
+      return;
+    }
     if (k === "partner") {
       const m = $("#ptMsg"); m.innerHTML = "";
       const req = parseInt(f.required.value, 10);
@@ -988,7 +1092,7 @@
         const v = { name: f.name.value.trim(), phone: f.phone.value.replace(/[\s-]/g, ""), email: f.email.value.trim().toLowerCase(),
           type: (f.querySelector("input[name=type]:checked") || {}).value || "visitor" };
         S.signup = v;
-        if (S.role === "partner") { S.after = "partner"; A.session.set("after", "partner"); }
+        if (S.role === "partner" || S.role === "organizer") { S.after = S.role; A.session.set("after", S.role); }
         if (v.name.length < 2) throw { code: "bad_name" };
         if (!/^\+?[0-9]{8,15}$/.test(v.phone)) throw { code: "bad_phone" };
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) throw { code: "bad_email" };
