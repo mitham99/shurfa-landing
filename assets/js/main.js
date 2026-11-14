@@ -546,3 +546,24 @@
   if (!document.getElementById("explore")) onVisible($("#ppSlots"), startPassport);
   setupReveal();
 })();
+
+/* ---------- الفعاليات المخفية (من «الإدارة» في التطبيق) ---------- */
+(() => {
+  "use strict";
+  const sb = (window.SHURFA_CONFIG || {}).supabase || {};
+  if (!sb.url || !sb.anonKey || !window.fetch) return;
+  fetch(sb.url.replace(/\/$/, "") + "/rest/v1/rpc/list_events", {
+    method: "POST", headers: { apikey: sb.anonKey, "Content-Type": "application/json" }, body: "{}"
+  }).then((r) => (r.ok ? r.json() : [])).then((list) => {
+    const hidden = new Set((Array.isArray(list) ? list : []).filter((e) => e && e.visible === false).map((e) => e.id));
+    if (!hidden.size) return;
+    // صفحة فعالية مخفية ← الصفحة الرئيسية
+    const root = document.getElementById("eventRoot");
+    if (root && hidden.has(root.dataset.event)) { location.replace("index.html#events"); return; }
+    hidden.forEach((id) => {
+      document.querySelectorAll(`a[href="${id}.html"], a[href^="${id}.html#"]`).forEach((a) => (a.closest("li") || a).remove());
+      document.querySelectorAll(`[data-ev-id="${id}"]`).forEach((el) => el.remove());
+    });
+    document.dispatchEvent(new CustomEvent("shurfa:hidden", { detail: hidden }));
+  }).catch(() => {});
+})();

@@ -46,7 +46,7 @@
         ? `<a class="btn btn-primary btn-sm ev-btn" href="${href}">استكشف الفعالية${icon("i-arrow")}</a>`
         : `<span class="btn btn-sm ev-btn is-disabled">${ev.status === "ended" ? "انتهت الفعالية" : "تفاصيل قريبًا"}</span>`;
       return `
-        <article class="event-card ${ev.status === "ended" ? "is-ended" : ""}" data-status="${esc(ev.status)}" style="${style}">
+        <article class="event-card ${ev.status === "ended" ? "is-ended" : ""}" data-ev-id="${esc(ev.id)}" data-status="${esc(ev.status)}" style="${style}">
           <div class="ev-cover">${cover}<span class="st ${st.cls}">${st.label}</span>${ev.logo ? `<span class="ev-card-logo"><img src="${esc(ev.logo)}" alt="شعار ${esc(ev.name)}" loading="lazy"></span>` : ""}</div>
           <div class="ev-body">
             <h3>${href ? `<a href="${href}">${esc(ev.name)}</a>` : esc(ev.name)}</h3>
@@ -81,14 +81,15 @@
     if (filters && statuses.length > 1) {
       const opts = [["all", "الكل"], ...["available", "soon", "ended"].filter((s) => statuses.includes(s)).map((s) => [s, EVENT_STATUS[s].label])];
       filters.innerHTML = opts.map(([k, l], i) => `<button class="chip-btn${i === 0 ? " is-active" : ""}" data-f="${k}" aria-pressed="${i === 0}">${l}</button>`).join("");
-      filters.addEventListener("click", (e) => {
+      filters.hidden = false;
+      filters.onclick = (e) => {
         const b = e.target.closest("[data-f]");
         if (!b) return;
         filters.querySelectorAll("[data-f]").forEach((x) => { x.classList.toggle("is-active", x === b); x.setAttribute("aria-pressed", String(x === b)); });
         render(b.dataset.f);
-      });
+      };
     } else if (filters) {
-      filters.hidden = true;
+      filters.hidden = true; filters.innerHTML = "";
     }
     render("all");
   }
@@ -169,6 +170,11 @@
   }
 
   renderEvents();
+  // الفعاليات التي أخفتها إدارة شُرفة من التطبيق تختفي من الموقع أيضًا (main.js يرسل القائمة)
+  document.addEventListener("shurfa:hidden", (e) => {
+    DATA.events = (DATA.events || []).filter((x) => !e.detail.has(x.id));
+    renderEvents();
+  });
   renderServices();
   renderPartners();
   setupPassportHow();
