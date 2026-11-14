@@ -56,14 +56,14 @@
       id, name: x.name || b.name || id, summary: x.summary || b.summary || "", location: x.location || b.location || "",
       date: x.date || b.date || "", status: x.status || b.status || "soon", image: x.image || b.image || "", logo: x.logo || b.logo || "",
       colors: Object.assign({}, b.colors || {}, x.color_from ? { from: x.color_from } : {}, x.color_to ? { to: x.color_to } : {}),
-      hours: x.hours || "", sort: x.sort != null ? x.sort : 100, db: x
+      hours: x.hours || "", sort: x.sort != null ? x.sort : 100, visible: x.visible !== false, db: x
     });
     if (!m.page) m.page = {};
     return m;
   }
   const allEvents = () => {
     const ids = [...new Set([...(D.events || []).map((e) => e.id), ...Object.keys(EVDB)])];
-    return ids.map(evById).filter(Boolean).sort((a, b) => (a.sort - b.sort));
+    return ids.map(evById).filter((e) => e && (e.visible || isAdmin())).sort((a, b) => (a.sort - b.sort));
   };
   const img = (p) => (!p ? "" : /^https:\/\//.test(p) ? p : "../" + p.replace(/^\/+/, ""));
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
@@ -254,6 +254,8 @@
       S.email = A.session.get("pending-email"); S.authOpen = true; goAuth("code"); return;
     }
     if (S.me && !S.me.profile) { S.authOpen = true; goAuth("profile"); return; }
+    S.myGames = [];
+    if (S.me) { try { S.myGames = await A.urpc("my_games"); } catch (e) { S.myGames = []; } }
     S.authOpen = false;
 
     await loadEvInfo();
@@ -269,9 +271,12 @@
     if (qr === "admin") { history.replaceState(null, "", location.pathname); setRole("admin"); return S.me ? startIntent("admin") : requireLogin("admin", "admin"); }
     if (qr === "organizer") { history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("organizer"); return S.me ? startIntent("organizer") : requireLogin("organizer", "organizer"); }
     if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null, null); }
+    // فعالية مخفية: الزوار ينتقلون لأول فعالية ظاهرة
+    { const cur = evById(EV); if (cur && !cur.visible && !isAdmin()) { const alt = allEvents()[0]; if (alt) { toast("هذه الفعالية غير متاحة حاليًا"); location.replace(location.pathname + "?e=" + encodeURIComponent(alt.id)); return; } } }
     if (isAdmin() && !q.get("tab")) S.tab = "admin";
-    if (!q.get("tab") && S.tab === "home" && (isStaff() || isOrg())) S.tab = "work";
+    if (!q.get("tab") && S.tab === "home" && isWorker()) S.tab = "work";
     if (S.me) loadBands();
+    await loadGames(); if (S.me) await loadTickets();
     const bandQ = (q.get("band") || "").toUpperCase(), goQ = q.get("go");
     if (bandQ || goQ) history.replaceState(null, "", location.pathname + "?e=" + EV);
     setGuard(); startPulse();
@@ -282,6 +287,7 @@
     if (goQ === "pass") S.tab = "pass";
     else if (goQ === "bands") S.sub = { name: "bands" };
     else if (goQ === "packages") S.sub = { name: "packages" };
+    else if (goQ === "games") S.sub = { name: "games" };
     else if (goQ === "soon" && q.get("k")) S.sub = { name: "soon", id: q.get("k") };
     if (S.after) { const a = S.after; S.after = null; return startIntent(a); }
     render();
@@ -292,6 +298,7 @@
     if (!S.me) return requireLogin(kind);
     A.session.del("after");
     if (kind === "buy") { S.tab = "pass"; S.sub = myPassRef() ? null : { name: "checkout" }; }
+    else if (kind === "games") { S.tab = "home"; S.sub = { name: "games" }; }
     else if (kind === "band") { S.tab = "home"; S.sub = { name: "bands", code: A.session.get("band") || "" }; A.session.del("band"); }
     else if (kind === "partner") {
       // شريك: إن كان لديه كشك يفتح «كشكي»، وإلا نموذج المشروع
@@ -337,12 +344,14 @@
   const orgEvents = () => (S.me && S.me.org_events) || [];
   const isOrg = () => orgEvents().length > 0;
   const isAdmin = () => !!(S.me && S.me.shurfa_admin);
+  const isOperator = () => !!(S.myGames && S.myGames.length);     // مشغّل اللعبة (صاحب اللعبة أو الماسك لها)
+  const isWorker = () => isStaff() || isOrg() || isOperator();
   const myName = () => (S.me && S.me.profile && S.me.profile.name) || "";
 
   function tabs() {
     if (isAdmin()) return [["admin", "الإدارة", "shield"], ["home", "الرئيسية", "home"], ["events", "الفعاليات", "compass"], ["pass", "الجواز", "award"], ["account", "حسابي", "user"]];
     const t = [["home", "الرئيسية", "home"], ["pass", "جوازي", "award"]];
-    if (isStaff() || isOrg()) t.push(["work", isStaff() && isOrg() ? "عملي" : isStaff() ? "كشكي" : "الاعتماد", "scan"]);
+    if (isWorker()) { const n = [isStaff(), isOrg(), isOperator()].filter(Boolean).length; t.push(["work", n > 1 ? "عملي" : isStaff() ? "كشكي" : isOrg() ? "الاعتماد" : "لعبتي", "scan"]); }
     if (isAdmin()) t.push(["admin", "شُرفة", "shield"]);
     t.push(["events", "الفعاليات", "compass"], ["account", S.me ? "حسابي" : "دخول", "user"]);
     return t;
@@ -361,7 +370,7 @@
   /* سجل التنقل: زر الرجوع في المتصفح/الجوال يبقى داخل التطبيق.
      أول سطر في السجل «حارس» يعيد المستخدم لصفحته الأساسية بدل صفحة الهبوط. */
   let restoring = false;
-  const homeTab = () => isAdmin() ? "admin" : (isStaff() || isOrg()) ? "work" : "home";
+  const homeTab = () => isAdmin() ? "admin" : isWorker() ? "work" : "home";
   const sameNav = (st) => st && st.s && !st.guard && st.tab === S.tab && JSON.stringify(st.sub || null) === JSON.stringify(S.sub || null);
   function pushNav() {
     if (restoring) return;
@@ -383,7 +392,7 @@
 
   function render() {
     clearInterval(refreshT); cancelAnimationFrame(railRAF);
-    stopScanner(); S.passFill = null; onScan = null; onBand = null;
+    stopScanner(); S.passFill = null; onScan = null; onBand = null; onTicket = null;
     pushNav();
     scr.className = "screen";
     renderBar();
@@ -434,6 +443,7 @@
       <div class="sp"></div>
       ${canSell() || ref ? `<div class="pad">${passCard}</div><div class="sp"></div>` : ""}
       ${isStaff() || isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--teal-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--teal-ink)">${ic(isStaff() ? "scan" : "chart", 22)}</span><span class="grow"><b>${isStaff() ? "واجهة الكشك" : "اعتماد الجوازات"}</b><span class="sub" style="display:block;color:var(--ink)">${isStaff() ? "امسح جوازات الزوار وأضف الأختام" : "امسح رمز الزائر بعد الدفع لتفعيل جوازه"}</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
+      ${isOperator() && !isStaff() && !isOrg() ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="work" style="gap:14px;background:var(--gold-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--gold-ink)">${bi("game")}</span><span class="grow"><b>مشغّل اللعبة</b><span class="sub" style="display:block;color:var(--ink)">امسح تذاكر الزوار: استلم الدفع وسجّل الدخول</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
       ${S.me && S.me.shurfa_admin ? `<div class="pad"><button class="card row" data-a="go-tab" data-tab="admin" style="gap:14px;background:var(--purple-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--purple)">${ic("shield", 22)}</span><span class="grow"><b>إدارة شُرفة</b><span class="sub" style="display:block;color:var(--ink)">المنظمون والشركاء والمؤشرات</span></span>${ic("fwd", 18, 2)}</button></div><div class="sp"></div>` : ""}
       <div id="railWrap"></div>
       ${services.length ? `<div class="pad"><h3 class="sec-t">خدمات الفعالية</h3></div>
@@ -523,6 +533,15 @@
     // تحديث حالة الجواز في الذاكرة (بعد تفعيله من المنظم)
     const ref = myPassRef(); if (ref && S.pass && S.pass.status) ref.status = S.pass.status;
   }
+  async function loadGames() {
+    try { S.games = await A.rpc("list_games", { p_event: EV }); } catch (e) { S.games = S.games || []; }
+    return S.games;
+  }
+  async function loadTickets() {
+    if (!S.me) { S.tickets = []; return S.tickets; }
+    try { S.tickets = await A.urpc("my_tickets", { p_event: EV }); } catch (e) { S.tickets = S.tickets || []; }
+    return S.tickets;
+  }
   async function loadStalls() {
     try { S.stalls = await A.rpc("list_stalls", { p_event: EV }); } catch (e) { S.stalls = S.stalls || []; }
   }
@@ -531,7 +550,9 @@
   const featList = (e) => { const l = (e && e.page && e.page.services) || []; return l.length ? l.filter((k) => ["tickets", "packages", "passport", "safety"].includes(k)) : ["passport"]; };
   function feat(k, e, cur) {
     const F = {
-      tickets: { t: "التذاكر", d: "احجز تذكرة دخول الفعالية واحتفظ بها في جوالك، وتُمسح عند البوابة.", main: "ticket", deco: ["star", "calendar", "spark"], c1: "#F5A623", c2: "#9A5B00", soon: true },
+      tickets: { t: "تذاكر الألعاب", d: "احجز تذاكر دخول الألعاب والأنشطة واحتفظ بها في جوالك، وتُمسح عند الدخول.", main: "ticket", deco: ["star", "calendar", "spark"], c1: "#F5A623", c2: "#9A5B00",
+        soon: cur ? !(S.games || []).length : false, go: "games", cta: cur && (S.tickets || []).length ? "تذاكري" : "احجز تذكرتك",
+        badge: cur && (S.games || []).length ? (Math.min(...S.games.map((g) => g.price_baisa)) ? "من " + fmtPrice(Math.min(...S.games.map((g) => g.price_baisa))) : "مجانًا") : "" },
       packages: { t: "الباقات", d: e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
         soon: !(e.page && e.page.packages), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
       passport: { t: "الجواز الرقمي", d: "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
@@ -540,12 +561,13 @@
         badge: "للأطفال", go: "bands", cta: (S.bands || []).length ? "أساوري" : "فعّل سوار طفلك" }
     }[k];
     if (F.soon) { F.badge = "قريبًا"; F.cta = "التفاصيل"; F.go = "soon"; }
+    if (!cur && k === "tickets") F.badge = "";
     F.key = k;
     F.a = !cur ? `data-a="ev-go" data-id="${esc(e.id)}" data-go="${F.go}" data-k="${k}"` : F.go === "pass" ? 'data-a="go-tab" data-tab="pass"' : `data-a="sub" data-name="${F.go}" data-id="${k}"`;
     return F;
   }
   const SOON = {
-    tickets: ["التذاكر", "ticket", "#F5A623", ["اختر عدد التذاكر من التطبيق", "ادفع وتصلك تذكرة رقمية برمز QR", "يمسحها المنظم عند بوابة الفعالية"]],
+    tickets: ["تذاكر الألعاب", "ticket", "#F5A623", ["اختر اللعبة وعدد التذاكر من التطبيق", "ادفع لمشغّل اللعبة وتتفعّل تذكرتك برمز QR", "اعرضها عند دخول اللعبة ليمسحها مشغّلها"]],
     packages: ["الباقات", "box", "#E4573D", ["اختر باقة جاهزة (عائلة، أصدقاء) أو كوّن باقتك", "ادفع مرة واحدة وتصلك قسيمة لكل مكوّن", "اعرض القسيمة عند الكشك أو البوابة"]]
   };
 
@@ -632,6 +654,7 @@
   async function pulse() {
     if (document.visibilityState !== "visible" || !S.me || S.authOpen) return;
     if (!$("#ovl .r-alert")) bandTick();
+    if ((S.tickets || []).length) ticketsTick();
     if (!myPassRef()) return;
     if (S.tab !== "pass" && (pulseN++ % 2)) return;
     let d; try { d = await A.urpc("pass_pulse", { p_event: EV }); } catch (e) { return; }
@@ -650,6 +673,28 @@
     }
     if (d.n > prevN && S.pass && S.pass.last) notifyStamp(S.pass.last);
     if (S.passFill) S.passFill();
+  }
+  let tickSig = null;
+  async function ticketsTick() {
+    let d; try { d = await A.urpc("tickets_pulse", { p_event: EV }); } catch (e) { return; }
+    if (!d || !d.ok) return;
+    if (tickSig === null) { tickSig = d.sig; return; }
+    if (d.sig === tickSig) return;
+    tickSig = d.sig;
+    const before = Object.fromEntries((S.tickets || []).map((t) => [t.code, t]));
+    await loadTickets();
+    for (const t of S.tickets) {
+      const o = before[t.code]; if (!o) continue;
+      if (o.status === "pending_payment" && t.status === "active") {
+        try { if (navigator.vibrate) navigator.vibrate([80, 50, 80]); } catch (e) { /* ignore */ }
+        overlay({ k: "ok", icon: "b:ticket", title: "تم تفعيل تذكرتك 🎟️", body: `<b>${esc(t.game)}</b> · ${tktCount(t.qty)}<br>اعرض الرمز لمشغّل اللعبة عند الدخول.`, auto: 7000 }); break;
+      }
+      if (t.used > o.used) {
+        try { if (navigator.vibrate) navigator.vibrate(70); } catch (e) { /* ignore */ }
+        overlay({ k: "ok", icon: "check", title: "استمتع باللعبة! 🎉", body: `<b>${esc(t.game)}</b> · دخل ${t.used - o.used}${t.qty - t.used ? `<br>المتبقي: ${t.qty - t.used}` : "<br>استُخدمت التذكرة بالكامل"}`, auto: 6000 }); break;
+      }
+    }
+    if (S.sub && S.sub.name === "tickets") render();
   }
   function notifyStamp(L) {
     const st = esc(L.stall), pos = L.position || 0, req = L.required || 0, logo = logoTile({ name: L.stall, logo: L.logo }, 64);
@@ -671,7 +716,7 @@
 
   /* ---------------- الماسح (مشترك: الكشك والمنظم) ---------------- */
   /* قراءة واحدة لكل فتح للكاميرا: أول قراءة صحيحة توقف الكاميرا فورًا وتظهر النتيجة في نافذة واضحة */
-  let scanner = null, scanBusy = false, scanLock = false, lastScan = { code: "", at: 0 }, onScan = null, onBand = null;
+  let scanner = null, scanBusy = false, scanLock = false, lastScan = { code: "", at: 0 }, onScan = null, onBand = null, onTicket = null;
   async function stopScanner() {
     const sc = scanner; scanner = null;
     if (sc) {
@@ -719,6 +764,13 @@
       if (onScan) overlay({ k: "wait", icon: "scan", title: "جارٍ إبلاغ ولي الأمر…", body: "" });
       return onBand(bc);
     }
+    const tm = txt.match(/^SHURFA-T:([A-Za-z0-9]{8})$/i) || (/^[A-Za-z0-9]{8}$/.test(txt) ? [0, txt] : null);
+    if (tm) {
+      const tc = tm[1].toUpperCase();
+      if (!onTicket) return showRes("warn", "b:ticket", "هذه تذكرة لعبة", "تذاكر الألعاب يمسحها <b>مشغّل اللعبة</b> عند الدخول.", fromCam ? scanNextBtn() : "", 7000);
+      overlay({ k: "wait", icon: "scan", title: "جارٍ التحقق…", body: `التذكرة <b dir="ltr">${esc(tc)}</b>` });
+      return onTicket(tc);
+    }
     const code = txt.replace(/^SHURFA:/i, "").toUpperCase();
     if (!/^[A-Z0-9]{7}$/.test(code)) return showRes("err", "x", "رمز غير صالح", "هذا ليس رمز جواز شُرفة. اطلب من الزائر فتح «جوازي» وعرض الرمز.", fromCam ? scanNextBtn() : "", 6000);
     if (code === lastScan.code && Date.now() - lastScan.at < 2500) return;
@@ -760,10 +812,12 @@
   /* ---------------- عملي: الكشك + المنظم ---------------- */
   function renderWork() {
     const W = S.work;
-    if (!(isStaff() && isOrg())) W.mode = isStaff() ? "stall" : "org";
-    const sw = isStaff() && isOrg() ? `<div class="seg" role="group" aria-label="الواجهة" style="background:rgba(250,246,240,.12)">
-      <button data-a="work-mode" data-k="stall" aria-pressed="${W.mode === "stall"}">كشكي</button><button data-a="work-mode" data-k="org" aria-pressed="${W.mode === "org"}">اعتماد الجوازات</button></div>` : "";
+    const modes = [isStaff() && ["stall", "كشكي"], isOrg() && ["org", "اعتماد الجوازات"], isOperator() && ["game", "لعبتي"]].filter(Boolean);
+    if (!modes.some((m) => m[0] === W.mode)) W.mode = modes[0][0];
+    const sw = modes.length > 1 ? `<div class="seg" role="group" aria-label="الواجهة" style="background:rgba(250,246,240,.12)">
+      ${modes.map(([k, l]) => `<button data-a="work-mode" data-k="${k}" aria-pressed="${W.mode === k}">${l}</button>`).join("")}</div>` : "";
     if (W.mode === "org") return renderOrg(sw);
+    if (W.mode === "game") return renderOperator(sw);
 
     const ok = approvedStalls();
     if (!ok.length) {
@@ -863,12 +917,13 @@
   function renderAdmin() {
     const t = S.adminTab || "content", evs = allEvents(), cur = adminEv();
     scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div class="between"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>${esc(((evById(cur) || {}).name || cur).split("—")[0].trim())}</h2></div></div>
-        <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}">${esc(e.name.split("—")[0].trim())}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
-        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
+        <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}"${e.visible ? "" : ' style="opacity:.65"'}>${e.visible ? "" : ic("lock", 14) + " "}${esc(e.name.split("—")[0].trim())}${e.visible ? "" : " · مخفية"}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
+        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["games", "الألعاب"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
       <div class="pad stack wrap-md" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
     if (t === "content") renderEventForm(S.newEvent ? null : cur);
     else if (t === "orgs") loadPlatform();
     else if (t === "partners") loadAdminPartners();
+    else if (t === "games") loadGamesAdmin(cur);
     else loadAdminStats();
   }
   const media = {};
@@ -880,6 +935,9 @@
     el.innerHTML = `<form class="stack" data-f="event" novalidate>
       ${id ? "" : `<div class="msg info">فعالية جديدة: اختر معرّفًا قصيرًا بالإنجليزية (مثل: winter-fest-2026). لا يمكن تغييره لاحقًا.</div>
         <div class="field"><label for="ev-id">المعرّف</label><input class="input" id="ev-id" name="id" dir="ltr" maxlength="40" placeholder="my-event-2026" required></div>`}
+      <div class="card stack" style="gap:10px;${e.visible === false ? "border:1.5px solid var(--err)" : ""}"><b>ظهور الفعالية</b>
+        <label class="check"><input type="checkbox" name="visible" ${e.visible === false ? "" : "checked"}> <span>إظهار الفعالية في شُرفة للزوار والشركاء</span></label>
+        <span class="sub">عند الإخفاء تختفي الفعالية من التطبيق، ويتوقف بيع الجواز وتسجيل الشركاء. لا يُحذف شيء: الجوازات والأختام والشركاء والإحصاءات تبقى محفوظة، وتقدر ترجّعها في أي وقت.</span></div>
       <div class="card stack" style="gap:12px"><b>المحتوى الظاهر للزوار</b>
         <div class="field"><label for="ev-name">اسم الفعالية</label><input class="input" id="ev-name" name="name" maxlength="80" value="${esc(x.name || e.name || "")}" required></div>
         <div class="field"><label for="ev-sum">نبذة</label><textarea class="input" id="ev-sum" name="summary" maxlength="400" rows="3" style="height:auto;padding:10px 14px">${esc(x.summary || e.summary || "")}</textarea></div>
@@ -910,6 +968,58 @@
       <div id="evMsg"></div>
       <button class="btn btn-cta" type="submit">${id ? "حفظ المحتوى" : "إضافة الفعالية"}</button>
       ${id ? `<button type="button" class="btn btn-line" data-a="admin-preview">${ic("eye", 18)} معاينة كما يراها الزائر</button>` : ""}
+    </form>`;
+  }
+  const gameMedia = { image: null };
+  async function loadGamesAdmin(ev) {
+    const box = $("#pfBody"); if (!box) return;
+    S.gameEv = ev;
+    if (S.gameEdit) return renderGameForm(box);
+    let list = [];
+    try { list = await A.urpc("admin_list_games", { p_event: ev }); } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
+    S.gamesAdmin = list;
+    setTimeout(() => list.forEach((g) => loadGameStaff(g.id)), 0);
+    box.innerHTML = `<div class="between"><b>ألعاب ${esc(((evById(ev) || {}).name || ev).split("—")[0].trim())}</b><button class="btn btn-cta btn-sm" data-a="game-new" style="width:auto;padding:0 16px">+ إضافة لعبة</button></div>
+      <p class="sub">اللعبة المفعّلة تظهر مباشرة للزوار في صفحة «تذاكر الألعاب». تذاكر كل لعبة يمسحها <b>مشغّل اللعبة</b> (صاحبها أو الماسك لها)، وليس منظم المهرجان.</p>
+      ${list.length ? list.map((g) => `<div class="card stack" style="gap:10px">
+        <div class="row" style="gap:12px"><span class="ico-tile" style="width:56px;height:56px;border-radius:14px;overflow:hidden;background:var(--gold-soft);color:var(--gold-ink)">${g.image ? `<img src="${esc(img(g.image))}" alt="" style="width:100%;height:100%;object-fit:cover">` : bi("game")}</span>
+          <div class="grow"><b>${esc(g.name)}</b><div class="sub">${fmtPrice(g.price_baisa)}${g.min_age ? ` · +${g.min_age} سنوات` : ""}${g.capacity ? ` · السعة ${g.capacity}` : " · بدون حد"}</div></div>
+          ${g.active ? '<span class="st st-ok">مفعّلة</span>' : '<span class="st st-mute">متوقفة</span>'}</div>
+        <div class="kpis3" style="grid-template-columns:repeat(4,1fr)"><div><b class="num">${g.sold}</b><span>محجوزة</span></div><div><b class="num">${g.paid}</b><span>مدفوعة</span></div><div><b class="num">${g.entered}</b><span>دخلوا</span></div><div><b class="num" style="font-size:15px">${g.revenue ? fmtPrice(g.revenue) : "0"}</b><span>الإيراد</span></div></div>
+        <div class="card flat stack" style="gap:8px;padding:12px"><b style="font-size:14px">${bi("users")} مشغّلو اللعبة</b><div class="stack" style="gap:6px" id="gs-${esc(g.id)}"><span class="sub">…</span></div>
+          <form class="row" data-f="game-staff" data-id="${esc(g.id)}" style="gap:8px"><input class="input" name="email" type="email" dir="ltr" placeholder="بريد مشغّل اللعبة" style="min-height:42px" required><button class="btn btn-dark btn-sm" type="submit" style="width:auto;padding:0 14px">إضافة</button></form>
+          <span class="sub">مشغّل اللعبة يسجّل بحسابه العادي بنفس البريد، فتظهر له «لعبتي» ليمسح تذاكرها ويستلم الدفع.</span></div>
+        <button class="btn btn-line btn-sm" data-a="game-edit" data-id="${esc(g.id)}">${ic("edit", 16)} تعديل</button></div>`).join("")
+        : `<div class="empty card">${bi("game")}<b>ما فيه ألعاب بعد</b><span>أضف أول لعبة، وتظهر مباشرة في صفحة تذاكر الألعاب.</span></div>`}`;
+  }
+  async function loadGameStaff(id) {
+    const el = $("#gs-" + id); if (!el) return;
+    try {
+      const l = await A.urpc("admin_list_game_staff", { p_game: id });
+      el.innerHTML = l.length ? l.map((x) => `<div class="between"><span dir="ltr" style="font-size:14px">${esc(x.email)}</span><span class="row" style="gap:6px">${x.linked ? '<span class="st st-ok">مسجّل</span>' : '<span class="st st-warn">لم يسجّل بعد</span>'}<button class="linkbtn" data-a="game-staff-rm" data-id="${esc(id)}" data-email="${esc(x.email)}" style="color:var(--err);padding:0;min-height:auto">حذف</button></span></div>`).join("")
+        : '<span class="sub">ما فيه مشغّل بعد.</span>';
+    } catch (e) { el.innerHTML = `<span class="sub">${esc(errMsg(e))}</span>`; }
+  }
+  function renderGameForm(box) {
+    const g = S.gameEdit === "new" ? { active: true, price_baisa: 500, sort: 100 } : ((S.gamesAdmin || []).find((x) => x.id === S.gameEdit) || {});
+    gameMedia.image = g.image || null;
+    box.innerHTML = `<form class="stack" data-f="game" novalidate>
+      <div class="between"><b>${g.id ? "تعديل اللعبة" : "لعبة جديدة"}</b><button type="button" class="linkbtn" data-a="game-back">رجوع للقائمة</button></div>
+      <label class="media-box" style="aspect-ratio:16/9">${g.image ? `<img src="${esc(img(g.image))}" alt="" style="width:100%;height:100%;object-fit:cover">` : `<span class="sub">صورة اللعبة (اختياري)</span>`}
+        <input type="file" accept="image/png,image/jpeg,image/webp" data-c="game-img" hidden></label>
+      <div class="field"><label for="gm-name">اسم اللعبة</label><input class="input" id="gm-name" name="name" maxlength="60" value="${esc(g.name || "")}" required></div>
+      <div class="field"><label for="gm-desc">وصف قصير</label><textarea class="input" id="gm-desc" name="description" maxlength="300" rows="2" style="height:auto;padding:10px 14px">${esc(g.description || "")}</textarea></div>
+      <div class="grid2">
+        <div class="field"><label for="gm-price">سعر التذكرة (بيسة)</label><input class="input" id="gm-price" name="price" type="number" min="0" max="100000" step="50" value="${esc(g.price_baisa != null ? g.price_baisa : 500)}"><span class="sub">1000 بيسة = 1 ريال · 0 = مجانية</span></div>
+        <div class="field"><label for="gm-age">أقل عمر (اختياري)</label><input class="input" id="gm-age" name="min_age" type="number" min="0" max="99" value="${esc(g.min_age != null ? g.min_age : "")}"></div>
+      </div>
+      <div class="grid2">
+        <div class="field"><label for="gm-cap">عدد التذاكر المتاحة</label><input class="input" id="gm-cap" name="capacity" type="number" min="0" max="100000" value="${esc(g.capacity || "")}" placeholder="فارغ = بدون حد"></div>
+        <div class="field"><label for="gm-sort">ترتيب الظهور</label><input class="input" id="gm-sort" name="sort" type="number" min="0" max="999" value="${esc(g.sort != null ? g.sort : 100)}"></div>
+      </div>
+      <label class="check"><input type="checkbox" name="active" ${g.active !== false ? "checked" : ""}> <span>مفعّلة: تظهر للزوار ويمكن حجزها</span></label>
+      <div id="gmMsg"></div>
+      <button class="btn btn-cta" type="submit">${g.id ? "حفظ اللعبة" : "إضافة اللعبة"}</button>
     </form>`;
   }
   async function loadAdminPartners() {
@@ -1002,9 +1112,10 @@
       <div class="sp"></div>
       <div class="pad"><div class="card" style="padding:0;overflow:hidden">
         <button class="menu-btn" data-a="go-tab" data-tab="pass">${ic("award", 20)}<span class="grow">جوازي الرقمي</span>${ic("fwd", 16, 2)}</button>
+        <button class="menu-btn" data-a="sub" data-name="tickets">${bi("ticket")}<span class="grow">تذاكري (الألعاب)</span>${(S.tickets || []).length ? `<span class="st st-ok">${S.tickets.length}</span>` : ""}${ic("fwd", 16, 2)}</button>
         <button class="menu-btn" data-a="sub" data-name="bands">${bi("band")}<span class="grow">سوار الأمان (أساوري)</span>${(S.bands || []).length ? `<span class="st st-ok">${S.bands.length}</span>` : ""}${ic("fwd", 16, 2)}</button>
         <button class="menu-btn" data-a="sub" data-name="partner">${ic("users", 20)}<span class="grow">${S.me.partner ? "بيانات الشريك وبطاقة الولاء" : "انضم كشريك"}</span>${ic("fwd", 16, 2)}</button>
-        ${isStaff() || isOrg() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic("scan", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : "اعتماد الجوازات"}</span>${ic("fwd", 16, 2)}</button>` : ""}
+        ${isWorker() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic("scan", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : isOrg() ? "اعتماد الجوازات" : "مشغّل اللعبة"}</span>${ic("fwd", 16, 2)}</button>` : ""}
         ${isOrg() ? "" : `<button class="menu-btn" data-a="sub" data-name="orgapply">${ic("chart", 20)}<span class="grow">سجّل كمنظم فعالية</span>${S.me.org_request === "pending" ? '<span class="st st-warn">قيد المراجعة</span>' : ""}${ic("fwd", 16, 2)}</button>`}
         ${isAdmin() ? `<button class="menu-btn" data-a="go-tab" data-tab="admin">${ic("shield", 20)}<span class="grow">إدارة شُرفة</span>${ic("fwd", 16, 2)}</button>
           <a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>` : ""}
@@ -1091,6 +1202,45 @@
         <div class="card stack" style="gap:10px"><b>كيف ستعمل؟</b>${steps.map((x, i) => `<div class="row" style="gap:10px"><span class="ico-tile" style="width:34px;height:34px;background:var(--sand-2);color:var(--ink)">${i + 1}</span><span class="grow" style="font-size:14px">${esc(x)}</span></div>`).join("")}</div>
         <p class="sub" style="text-align:center">نعمل مع المنظمين على إطلاق هذه الخدمة. نعلن عنها في التطبيق فور تفعيلها.</p></div><div class="sp"></div>`;
     },
+    games() {
+      const list = S.games || [], my = S.tickets || [];
+      const hero = `<div class="soon-hero" style="--c1:#F5A623;--c2:#9A5B00"><span class="feat-ico">${bi("ticket")}</span><b>تذاكر الألعاب</b><span style="font-size:13.5px;opacity:.95">احجز تذكرتك، وادفع عند اللعبة لمشغّلها، واعرض الرمز عند الدخول.</span></div>`;
+      if (!list.length) {
+        const [, , , steps] = SOON.tickets;
+        return `${head("تذاكر الألعاب")}<div class="pad stack">${hero.replace("</div>", '<span class="st st-glass">قريبًا</span></div>')}
+          <div class="card stack" style="gap:10px"><b>كيف تعمل؟</b>${steps.map((x, i) => `<div class="row" style="gap:10px"><span class="ico-tile" style="width:34px;height:34px;background:var(--sand-2);color:var(--ink)">${i + 1}</span><span class="grow" style="font-size:14px">${esc(x)}</span></div>`).join("")}</div>
+          <p class="sub" style="text-align:center">تُضاف الألعاب هنا فور إعلانها من المنظمين.</p></div><div class="sp"></div>`;
+      }
+      return `${head("تذاكر الألعاب", true, my.length ? `<button class="btn btn-dark btn-sm" data-a="sub" data-name="tickets" style="width:auto;padding:0 14px">${bi("ticket")} تذاكري (${my.length})</button>` : "")}
+        <div class="pad stack">${hero}
+        <div class="games-grid">${list.map((g) => { const out = g.remaining === 0; return `<div class="game">
+          <div class="game-img"${g.image ? ` style="background-image:url('${esc(img(g.image))}')"` : ""}>${g.image ? "" : bi("game")}${g.min_age ? `<span class="st st-glass">+${g.min_age} سنوات</span>` : ""}</div>
+          <div class="stack" style="gap:6px;padding:14px">
+            <div class="between"><b style="font-size:17px">${esc(g.name)}</b><b class="num" style="color:var(--gold-ink)">${fmtPrice(g.price_baisa)}</b></div>
+            ${g.description ? `<span class="sub" style="line-height:1.6">${esc(g.description)}</span>` : ""}
+            ${g.remaining != null ? `<span class="sub">${out ? '<span class="st st-err">نفدت التذاكر</span>' : `المتبقي: <b>${g.remaining}</b> تذكرة`}</span>` : ""}
+            ${out ? "" : `<div class="row" style="gap:10px;margin-top:6px">
+              <div class="qty"><button type="button" data-a="qty" data-id="${esc(g.id)}" data-d="-1" aria-label="أقل">−</button><b id="q-${esc(g.id)}">1</b><button type="button" data-a="qty" data-id="${esc(g.id)}" data-d="1" data-max="${Math.min(10, g.remaining == null ? 10 : g.remaining)}" aria-label="أكثر">+</button></div>
+              <button class="btn btn-cta btn-sm grow" data-a="game-book" data-id="${esc(g.id)}" data-price="${g.price_baisa}">احجز · <span id="t-${esc(g.id)}">${fmtPrice(g.price_baisa)}</span></button></div>`}
+          </div></div>`; }).join("")}</div>
+        <p class="sub" style="text-align:center">الدفع عند اللعبة لمشغّلها (نقدًا أو تحويل). الدفع الإلكتروني قريبًا.</p></div><div class="sp"></div>`;
+    },
+    tickets() {
+      const my = S.tickets || [];
+      const ST = { pending_payment: ["بانتظار الدفع", "st-warn"], active: ["صالحة", "st-ok"], used: ["مستخدمة", "st-mute"] };
+      return `${head("تذاكري")}<div class="pad stack">
+        ${my.length ? my.map((t) => `<div class="card stack ticket ${t.status}" style="gap:10px">
+          <div class="between"><b style="font-size:17px">${esc(t.game)}</b><span class="st ${ST[t.status][1]}">${ST[t.status][0]}</span></div>
+          <div class="row" style="gap:14px;align-items:center">
+            <div class="tqr" data-code="${esc(t.code)}"></div>
+            <div class="stack grow" style="gap:6px"><span class="pp-code" style="font-size:18px;letter-spacing:3px;color:var(--ink)">${esc(t.code)}</span>
+              <span class="sub">${t.qty === 1 ? "تذكرة واحدة" : t.qty === 2 ? "تذكرتان" : t.qty + " تذاكر"}${t.used ? ` · دخل ${t.used}` : ""}</span>
+              ${t.status === "pending_payment" ? `<span class="sub" style="color:var(--ink)">ادفع <b>${fmtPrice(t.amount_baisa)}</b> لمشغّل اللعبة واعرض الرمز</span>
+                <button class="linkbtn" data-a="ticket-cancel" data-code="${esc(t.code)}" style="color:var(--err);padding:0;min-height:auto;align-self:flex-start">إلغاء الحجز</button>`
+                : t.status === "active" ? `<span class="sub" style="color:var(--ink)">اعرض الرمز لمشغّل اللعبة عند الدخول</span>` : `<span class="sub">استُخدمت التذكرة بالكامل</span>`}</div></div></div>`).join("")
+          : `<div class="empty card">${bi("ticket")}<b>ما عندك تذاكر بعد</b><span>احجز من صفحة تذاكر الألعاب.</span></div>`}
+        <button class="btn btn-line" data-a="sub" data-name="games">${bi("game")} تصفّح الألعاب</button></div><div class="sp"></div>`;
+    },
     bands(o) {
       const steps = [["band", "استلم السوار من منصة المنظمين"], ["scan", "امسح رمزه من هنا واربطه بحسابك"], ["bell", "يصلك إشعار فوري إذا مسحه فريق التنظيم"]];
       return `${head("سوار الأمان")}<div class="pad stack">
@@ -1120,6 +1270,8 @@
     if (o.name === "partner") loadPartnerForm();
     if (o.name === "orgapply") loadOrgApply();
     if (o.name === "bands") loadBandsScreen(o);
+    if (o.name === "tickets") { document.querySelectorAll(".tqr").forEach((el) => A.qr(el, "SHURFA-T:" + el.dataset.code, 120)); }
+
 
   }
 
@@ -1195,6 +1347,44 @@
       const d = e.data || {};
       if (e.code === "band_unlinked") showRes("warn", "b:band", "السوار غير مفعّل", `سوار <b>${serial(d.serial)}</b> لم يربطه ولي الأمر بحسابه، فلا يمكن إرسال إشعار.<br>أبقِ الطفل في منصة المنظمين وأعلن عنه.`, scanNextBtn());
       else showRes("err", "x", "تعذّر قراءة السوار", esc(errMsg(e)), scanNextBtn(), 8000);
+    }
+  }
+
+  /* ---------- مشغّل اللعبة: «لعبتي» ---------- */
+  const opGame = () => { const l = S.myGames || []; if (!S.work.game || !l.find((g) => g.id === S.work.game)) S.work.game = (l.find((g) => g.event === EV) || l[0] || {}).id; return l.find((g) => g.id === S.work.game) || {}; };
+  function renderOperator(sw) {
+    const l = S.myGames || [], g = opGame();
+    onTicket = orgTicket;
+    onScan = () => showRes("warn", "award", "هذا جواز رقمي", "الجواز يمسحه موظف الكشك أو منظم المهرجان. امسح <b>تذكرة اللعبة</b> من «تذاكري» في جوال الزائر.", scanNextBtn(), 7000);
+    scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#B07400,#7A4F00)">${sw}
+        <div class="between"><div><div style="font-size:12.5px;opacity:.85">مشغّل اللعبة · ${esc(firstName(myName()))}</div><h2>${esc(g.name || "")}</h2></div>${g.active === false ? '<span class="st st-mute">متوقفة</span>' : ""}</div>
+        ${l.length > 1 ? `<select data-c="op-game" aria-label="اللعبة">${l.map((x) => `<option value="${esc(x.id)}" ${x.id === g.id ? "selected" : ""}>${esc(x.name)} · ${esc((x.event_name || "").split("—")[0].trim())}</option>`).join("")}</select>` : ""}
+        <span style="font-size:13px;opacity:.9">${esc((g.event_name || "").split("—")[0].trim())} · ${fmtPrice(g.price_baisa || 0)} للتذكرة${g.min_age ? ` · +${g.min_age} سنوات` : ""}</span></div>
+      <div class="pad stack" style="padding-top:16px">
+        ${scanUI("امسح تذكرة الزائر", "استلام الدفع · تسجيل الدخول")}
+        <div class="kpis3"><div><b class="num">${g.today_entered || 0}</b><span>دخلوا اليوم</span></div><div><b class="num" style="font-size:16px">${g.today_paid ? fmtPrice(g.today_paid) : "0"}</b><span>دفع اليوم</span></div><div><b class="num">${g.entered || 0}/${g.paid || 0}</b><span>دخلوا/مدفوعة</span></div></div>
+        <p class="sub" style="text-align:center">الزائر يعرض التذكرة من «تذاكري». إذا ما دفع، استلم المبلغ ثم سجّل دخوله.</p>
+      </div>`;
+  }
+  async function refreshMyGames() { try { S.myGames = await A.urpc("my_games"); } catch (e) { /* ignore */ } }
+
+  /* ---------- مشغّل اللعبة: تذاكر الألعاب ---------- */
+  const tktCount = (n) => n === 1 ? "تذكرة واحدة" : n === 2 ? "تذكرتان" : n + " تذاكر";
+  async function orgTicket(code) {
+    try {
+      const d = await A.urpc("ticket_lookup", { p_event: orgEv(), p_code: code });
+      const head = `<b>${esc(d.game)}</b> · ${esc(d.name)} · ${tktCount(d.qty)}${d.min_age ? `<br><span class="sub">العمر المسموح: +${d.min_age} سنوات</span>` : ""}`;
+      if (d.status === "pending_payment") return showRes("warn", "lock", "تذكرة بانتظار الدفع", `${head}<br>المبلغ المطلوب: <b>${fmtPrice(d.amount_baisa)}</b>`,
+        `<div class="row" style="gap:8px;width:100%"><button class="btn btn-cta btn-sm" style="flex:1" data-a="ticket-pay" data-code="${esc(d.code)}" data-m="cash">استلمت نقدًا</button><button class="btn btn-line btn-sm" style="flex:1" data-a="ticket-pay" data-code="${esc(d.code)}" data-m="transfer">تحويل بنكي</button></div>`);
+      if (d.status === "active") {
+        const left = d.qty - d.used, opts = [...new Set([1, Math.min(2, left), left])].filter((n) => n >= 1 && n <= left);
+        return showRes("ok", "b:ticket", "تذكرة صالحة", `${head}<br>المتبقي للدخول: <b>${left}</b> من ${d.qty}`,
+          `<div class="row" style="gap:8px;width:100%;flex-wrap:wrap">${opts.map((n) => `<button class="btn ${n === left ? "btn-cta" : "btn-line"} btn-sm" style="flex:1" data-a="ticket-use" data-code="${esc(d.code)}" data-n="${n}">${n === left && left > 1 ? `دخول الكل (${n})` : `دخول ${n}`}</button>`).join("")}</div>`);
+      }
+      showRes("err", "x", "التذكرة مستخدمة", `${head}<br>دخل ${d.used} من ${d.qty}.`, scanNextBtn(), 7000);
+    } catch (e) {
+      if (e.code === "ticket_other_game") return showRes("warn", "b:ticket", "تذكرة لعبة أخرى", `هذه التذكرة للعبة <b>${esc((e.data || {}).game || "")}</b>. وجّه الزائر لها.`, scanNextBtn(), 8000);
+      showRes("err", "x", "لم يُعثر على التذكرة", esc(errMsg(e)), scanNextBtn(), 7000);
     }
   }
 
@@ -1367,6 +1557,47 @@
     else if (a === "ovl-close") closeOverlay();
     else if (a === "ev-go") { const g = b.dataset.go, id = b.dataset.id; location.href = location.pathname + "?e=" + encodeURIComponent(id) + (g && g !== "home" ? "&go=" + g + (g === "soon" ? "&k=" + (b.dataset.k || "") : "") : ""); }
     else if (a === "band-login") requireLogin("band", "visitor");
+    else if (a === "qty") {
+      const id = b.dataset.id, el = $("#q-" + id), up = b.parentElement.querySelector("[data-max]"), max = +(up && up.dataset.max) || 10;
+      const n = Math.min(max, Math.max(1, (+el.textContent || 1) + (+b.dataset.d))); el.textContent = n;
+      const bk = document.querySelector(`[data-a="game-book"][data-id="${id}"]`); if (bk) $("#t-" + id).textContent = fmtPrice(+bk.dataset.price * n);
+    }
+    else if (a === "game-book") {
+      if (!S.me) return requireLogin("games", "visitor");
+      const n = +($("#q-" + b.dataset.id) || {}).textContent || 1; b.disabled = true;
+      try {
+        const d = await A.urpc("book_game", { p_game: b.dataset.id, p_qty: n });
+        await Promise.all([loadTickets(), loadGames()]); tickSig = null;
+        S.sub = { name: "tickets" }; render();
+        overlay(d.status === "active" ? { k: "ok", icon: "b:ticket", title: "تذكرتك جاهزة 🎟️", body: "اعرض الرمز لمشغّل اللعبة عند الدخول.", auto: 6000 }
+          : { k: "gold", icon: "b:ticket", title: "تم الحجز ✓", body: `ادفع <b>${fmtPrice(d.amount_baisa)}</b> عند اللعبة لمشغّلها واعرض رمز التذكرة،<br>وتتفعّل مباشرة ويوصلك إشعار.`, auto: 9000 });
+      } catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
+    }
+    else if (a === "ticket-cancel") {
+      if (!confirm("إلغاء هذا الحجز؟")) return;
+      try { await A.urpc("cancel_my_ticket", { p_code: b.dataset.code }); await Promise.all([loadTickets(), loadGames()]); tickSig = null; toast("أُلغي الحجز", "ok"); render(); } catch (e) { toast(errMsg(e), "err"); }
+    }
+    else if (a === "ticket-pay") {
+      b.disabled = true;
+      try { await A.urpc("ticket_pay", { p_event: orgEv(), p_code: b.dataset.code, p_method: b.dataset.m });
+        try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (x) { /* ignore */ }
+        toast("تم استلام الدفع · وصل الزائر إشعار", "ok"); refreshMyGames(); orgTicket(b.dataset.code); }
+      catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
+    }
+    else if (a === "ticket-use") {
+      b.disabled = true;
+      try { const d = await A.urpc("ticket_use", { p_event: orgEv(), p_code: b.dataset.code, p_count: +b.dataset.n });
+        try { if (navigator.vibrate) navigator.vibrate(60); } catch (x) { /* ignore */ }
+        showRes("ok", "check", `تم تسجيل دخول ${d.entered}`, d.qty - d.used ? `المتبقي في التذكرة: <b>${d.qty - d.used}</b> من ${d.qty}` : "استُخدمت التذكرة بالكامل.", scanNextBtn(), 6000, () => { refreshMyGames().then(() => { if (S.tab === "work" && S.work.mode === "game" && !S.sub) render(); }); }); }
+      catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
+    }
+    else if (a === "game-staff-rm") {
+      if (!confirm("حذف هذا المشغّل من اللعبة؟")) return;
+      try { await A.urpc("admin_remove_game_staff", { p_game: b.dataset.id, p_email: b.dataset.email }); loadGameStaff(b.dataset.id); } catch (e) { toast(errMsg(e), "err"); }
+    }
+    else if (a === "game-new") { S.gameEdit = "new"; loadGamesAdmin(S.gameEv); }
+    else if (a === "game-edit") { S.gameEdit = b.dataset.id; loadGamesAdmin(S.gameEv); }
+    else if (a === "game-back") { S.gameEdit = null; loadGamesAdmin(S.gameEv); }
     else if (a === "band-unlink") {
       if (!confirm("فك ربط هذا السوار من حسابك؟ لن يصلك إشعار إذا مُسح بعد ذلك.")) return;
       try { await A.urpc("band_unlink", { p_code: b.dataset.code }); toast("تم فك الربط", "ok"); render(); } catch (e) { toast(errMsg(e), "err"); }
@@ -1401,7 +1632,7 @@
     else if (a === "pass-tab") { S.passTab = b.dataset.k; S.tab = "pass"; S.sub = null; render(); }
     else if (a === "work-mode") { S.work.mode = b.dataset.k; render(); }
     else if (a === "work-refresh") loadStaffStats();
-    else if (a === "admin-tab") { S.adminTab = b.dataset.k; S.newEvent = false; render(); }
+    else if (a === "admin-tab") { S.adminTab = b.dataset.k; S.newEvent = false; S.gameEdit = null; render(); }
     else if (a === "admin-ev") { S.adminEv = b.dataset.id; S.newEvent = false; render(); }
     else if (a === "admin-new-ev") { S.newEvent = true; S.adminTab = "content"; render(); }
     else if (a === "admin-preview") { if (adminEv() !== EV) { location.href = location.pathname + "?e=" + encodeURIComponent(adminEv()) + "&tab=home"; return; } S.tab = "home"; render(); }
@@ -1455,6 +1686,13 @@
       return;
     }
     if (t.dataset.c === "org-event") { S.work.orgEvent = t.value; render(); return; }
+    if (t.dataset.c === "op-game") { S.work.game = t.value; render(); return; }
+    if (t.dataset.c === "game-img" && t.files && t.files[0]) {
+      const m = $("#gmMsg"); m.innerHTML = `<div class="msg info">جارٍ رفع الصورة…</div>`;
+      try { gameMedia.image = await uploadLogo(t.files[0], 1200); t.parentElement.querySelector("img, span").outerHTML = `<img src="${esc(gameMedia.image)}" alt="" style="width:100%;height:100%;object-fit:cover">`; m.innerHTML = `<div class="msg ok">تم رفع الصورة.</div>`; }
+      catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code === "bad_logo" ? "bad_logo" : "upload_failed"))}</div>`; }
+      return;
+    }
     if (t.dataset.c === "org-point") { A.local.set("org-point", t.value.trim().slice(0, 60) || "منصة المنظمين"); toast("حُفظت نقطة التنظيم", "ok"); return; }
     if (t.dataset.c === "work-stall") { S.work.stall = t.value; S.work.res = ""; A.local.set("work-stall", t.value); render(); }
     else if (t.dataset.c === "pt-logo" && t.files && t.files[0]) {
@@ -1471,6 +1709,27 @@
     ev.preventDefault();
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
+    if (k === "game-staff") {
+      const f = ev.target, id = f.dataset.id;
+      try { const d = await A.urpc("admin_add_game_staff", { p_game: id, p_email: f.email.value.trim() }); f.reset(); loadGameStaff(id);
+        toast(d.linked ? "أُضيف المشغّل · تظهر له «لعبتي»" : "أُضيف المشغّل · تظهر له «لعبتي» بعد ما يسجّل بنفس البريد", "ok"); }
+      catch (e) { toast(errMsg(e), "err"); }
+      return;
+    }
+    if (k === "game") {
+      const f = ev.target, m = $("#gmMsg"), btn = f.querySelector("[type=submit]"); m.innerHTML = "";
+      const num = (v) => (String(v).trim() === "" ? null : parseInt(v, 10));
+      btn.disabled = true;
+      try {
+        await A.urpc("admin_save_game", { p_id: S.gameEdit === "new" ? null : S.gameEdit, p_event: S.gameEv, p_name: f.name.value.trim(), p_description: f.description.value.trim(),
+          p_image: gameMedia.image, p_price: parseInt(f.price.value || "0", 10), p_min_age: num(f.min_age.value), p_capacity: num(f.capacity.value),
+          p_active: f.active.checked, p_sort: parseInt(f.sort.value || "100", 10) });
+        S.gameEdit = null; toast("حُفظت اللعبة · تظهر للزوار مباشرة", "ok");
+        if (S.gameEv === EV) loadGames();
+        loadGamesAdmin(S.gameEv);
+      } catch (e) { m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; btn.disabled = false; }
+      return;
+    }
     if (k === "band-add") {
       const f = ev.target, m = $("#bd-msg"), code = f.code.value.trim().toUpperCase().replace(/.*BAND=/, "");
       if (!/^[A-Z0-9]{10}$/.test(code)) { m.innerHTML = `<div class="msg err">${esc(A.errText("band_not_found"))}</div>`; return; }
@@ -1493,9 +1752,11 @@
           p_date: f.date.value.trim(), p_hours: f.hours.value.trim(), p_status: f.status.value, p_price: parseInt(f.price.value || "0", 10),
           p_pay_note: f.pay_note.value.trim(), p_active: f.active.checked, p_partner_signup: f.partner_signup.checked,
           p_image: media.image, p_logo: media.logo, p_color_from: f.color_from.value, p_color_to: f.color_to.value, p_sort: parseInt(f.sort.value || "100", 10) });
+        const vis = f.visible.checked, was = (evById(id) || {}).visible !== false;
+        if (vis !== was || !vis) await A.urpc("admin_set_event_visible", { p_id: id, p_visible: vis });
         await loadEvInfo();
         S.adminEv = id; S.newEvent = false;
-        toast("حُفظ محتوى الفعالية", "ok"); render();
+        toast(f.visible.checked ? "حُفظ محتوى الفعالية" : "حُفظت الفعالية وهي مخفية عن الزوار", "ok"); render();
       } catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code))}</div>`; }
       finally { if (document.body.contains(btn)) btn.disabled = false; }
       return;

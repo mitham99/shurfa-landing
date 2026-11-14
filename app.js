@@ -265,7 +265,18 @@
     band_not_found: "رمز السوار غير صحيح. تأكد من الرمز المطبوع على السوار.",
     band_taken: "هذا السوار مرتبط بحساب آخر.",
     band_limit: "وصلت للحد الأقصى (10 أساور) في حسابك.",
-    band_unlinked: "هذا السوار غير مرتبط بأي حساب بعد."
+    band_unlinked: "هذا السوار غير مرتبط بأي حساب بعد.",
+    bad_price: "أدخل سعرًا صحيحًا بالبيسة.",
+    bad_qty: "اختر عدد التذاكر من 1 إلى 10.",
+    game_closed: "الحجز لهذه اللعبة غير متاح حاليًا.",
+    game_not_found: "اللعبة غير موجودة.",
+    sold_out: "نفدت التذاكر المتاحة لهذه اللعبة.",
+    too_many_pending: "عندك حجوزات كثيرة بانتظار الدفع. ادفعها أو ألغِ بعضها أولًا.",
+    ticket_not_found: "لم يُعثر على التذكرة في هذه الفعالية.",
+    ticket_already_paid: "التذكرة مدفوعة مسبقًا.",
+    ticket_not_paid: "التذكرة لم تُدفع بعد.",
+    ticket_used: "التذكرة مستخدمة بالكامل.",
+    ticket_other_game: "هذه التذكرة للعبة أخرى."
   });
 
   window.ShurfaApp = { ready, SB, eventId, call, rpc, urpc, auth, ERR, errText, local, session, esc, $, $$, toast, qr, cardState, slotsHTML, offerText, KIND, csvDownload };
