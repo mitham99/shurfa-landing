@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://*.supabase.co; base-uri 'self'; object-src 'none'; form-action 'self'">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1A2E28">
+  <meta name="robots" content="noindex">
+  <title>واجهة الكشك | شُرفة</title>
+  <link rel="icon" href="../assets/img/favicon.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Alexandria:wght@600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="app.css?v=1">
+</head>
+<body>
+  <header class="app-top">
+    <span class="app-brand"><img src="../assets/img/brand/monogram-160.png" alt="">شُرفة · الكشك</span>
+    <span class="app-event"><img src="../assets/img/events/squ-eat-logo.jpg" alt="">SQU إيييت</span>
+  </header>
+
+  <main class="app-wrap">
+    <section class="card" id="notReady" hidden>
+      <h2>النظام قيد التجهيز</h2>
+      <p class="sub">سيُفعَّل قبل بداية المهرجان.</p>
+    </section>
+
+    <!-- دخول الكشك -->
+    <form class="card" id="loginView" hidden novalidate>
+      <h2>دخول الكشك</h2>
+      <p class="sub">اختر كشكك وأدخل الرمز الذي استلمته من المنظمين.</p>
+      <div id="loginMsg"></div>
+      <label class="field"><span>الكشك</span><select name="stall" required><option value="">جارٍ التحميل…</option></select></label>
+      <label class="field"><span>رمز الكشك (PIN)</span><input name="pin" type="password" required inputmode="numeric" autocomplete="off" maxlength="12" dir="ltr"></label>
+      <label class="consent"><input type="checkbox" name="remember"><span>تذكّر هذا الجهاز (لا تستخدمها على جهاز مشترك)</span></label>
+      <button class="btn btn-primary btn-block" type="submit" id="loginBtn">دخول</button>
+    </form>
+
+    <!-- المسح -->
+    <section id="scanView" hidden>
+      <div class="card">
+        <div class="btns" style="justify-content:space-between;align-items:center">
+          <div><h2 id="stallName">الكشك</h2><p class="sub" id="stallOffer" style="margin:0"></p></div>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn" type="button">خروج</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div id="reader"></div>
+        <div class="btns" style="margin-top:10px">
+          <button class="btn btn-gold" id="camBtn" type="button">📷 تشغيل الكاميرا</button>
+          <button class="btn btn-ghost" id="camStop" type="button" hidden>إيقاف</button>
+        </div>
+        <div id="result"></div>
+      </div>
+
+      <form class="card" id="manualForm" novalidate>
+        <h2>أو أدخل الرمز يدويًا</h2>
+        <p class="sub">الرمز المكتوب تحت QR في جواز الزائر (7 أحرف).</p>
+        <div class="manual">
+          <input name="code" maxlength="20" autocomplete="off" autocapitalize="characters" placeholder="ABC2345" aria-label="رمز الجواز">
+          <button class="btn btn-primary" type="submit">أضف زيارة</button>
+        </div>
+      </form>
+
+      <button class="btn btn-danger btn-block" id="undoBtn" type="button" hidden>تراجع عن آخر عملية</button>
+    </section>
+  </main>
+
+  <footer class="app-foot">شُرفة · واجهة الأكشاك المشاركة</footer>
+
+  <script src="../assets/js/config.js?v=50"></script>
+  <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="app.js?v=1"></script>
+  <script src="stall.js?v=1"></script>
+</body>
+</html>
