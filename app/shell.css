@@ -352,3 +352,18 @@ body { background: var(--cream); }
 @keyframes ring { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .r-alert .big { animation: none; } }
 .ovl-card .big .bico { width: 40px; height: 40px; --ia: rgba(255,255,255,.75); }
+
+/* ---------- تذاكر الألعاب ---------- */
+.games-grid { display: grid; gap: .9rem; }
+@media (min-width: 768px) { .games-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .games-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+.game { background: #fff; border-radius: 20px; overflow: hidden; box-shadow: 0 2px 12px rgba(26,46,40,.07); }
+.game-img { position: relative; aspect-ratio: 16/9; background: linear-gradient(150deg, #F5A623, #9A5B00) center/cover; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 3.2rem; --ia: #FAF6F0; }
+.game-img .st { position: absolute; top: 10px; right: 10px; font-size: 12px; }
+.qty { display: inline-flex; align-items: center; border: 1.5px solid var(--sand); border-radius: 14px; overflow: hidden; flex: none; }
+.qty button { width: 42px; height: 42px; font: 700 20px var(--font); color: var(--ink); background: var(--sand-2); }
+.qty b { min-width: 34px; text-align: center; font-size: 17px; }
+.tqr { flex: none; width: 120px; height: 120px; padding: 4px; background: #fff; border-radius: 12px; }
+.tqr img, .tqr canvas { width: 100% !important; height: 100% !important; }
+.ticket.used { opacity: .65; }
+.ticket.pending_payment { border: 1.5px solid var(--gold); }
