@@ -56,14 +56,14 @@
       id, name: x.name || b.name || id, summary: x.summary || b.summary || "", location: x.location || b.location || "",
       date: x.date || b.date || "", status: x.status || b.status || "soon", image: x.image || b.image || "", logo: x.logo || b.logo || "",
       colors: Object.assign({}, b.colors || {}, x.color_from ? { from: x.color_from } : {}, x.color_to ? { to: x.color_to } : {}),
-      hours: x.hours || "", sort: x.sort != null ? x.sort : 100, db: x
+      hours: x.hours || "", sort: x.sort != null ? x.sort : 100, visible: x.visible !== false, db: x
     });
     if (!m.page) m.page = {};
     return m;
   }
   const allEvents = () => {
     const ids = [...new Set([...(D.events || []).map((e) => e.id), ...Object.keys(EVDB)])];
-    return ids.map(evById).filter(Boolean).sort((a, b) => (a.sort - b.sort));
+    return ids.map(evById).filter((e) => e && (e.visible || isAdmin())).sort((a, b) => (a.sort - b.sort));
   };
   const img = (p) => (!p ? "" : /^https:\/\//.test(p) ? p : "../" + p.replace(/^\/+/, ""));
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
@@ -269,6 +269,8 @@
     if (qr === "admin") { history.replaceState(null, "", location.pathname); setRole("admin"); return S.me ? startIntent("admin") : requireLogin("admin", "admin"); }
     if (qr === "organizer") { history.replaceState(null, "", location.pathname + "?e=" + EV); setRole("organizer"); return S.me ? startIntent("organizer") : requireLogin("organizer", "organizer"); }
     if (q.get("login") === "1" && !S.me) { history.replaceState(null, "", location.pathname + "?e=" + EV); return requireLogin(null, null); }
+    // فعالية مخفية: الزوار ينتقلون لأول فعالية ظاهرة
+    { const cur = evById(EV); if (cur && !cur.visible && !isAdmin()) { const alt = allEvents()[0]; if (alt) { toast("هذه الفعالية غير متاحة حاليًا"); location.replace(location.pathname + "?e=" + encodeURIComponent(alt.id)); return; } } }
     if (isAdmin() && !q.get("tab")) S.tab = "admin";
     if (!q.get("tab") && S.tab === "home" && (isStaff() || isOrg())) S.tab = "work";
     if (S.me) loadBands();
@@ -531,7 +533,7 @@
   const featList = (e) => { const l = (e && e.page && e.page.services) || []; return l.length ? l.filter((k) => ["tickets", "packages", "passport", "safety"].includes(k)) : ["passport"]; };
   function feat(k, e, cur) {
     const F = {
-      tickets: { t: "التذاكر", d: "احجز تذكرة دخول الفعالية واحتفظ بها في جوالك، وتُمسح عند البوابة.", main: "ticket", deco: ["star", "calendar", "spark"], c1: "#F5A623", c2: "#9A5B00", soon: true },
+      tickets: { t: "تذاكر الألعاب", d: "احجز تذاكر دخول الألعاب والأنشطة واحتفظ بها في جوالك، وتُمسح عند الدخول.", main: "ticket", deco: ["star", "calendar", "spark"], c1: "#F5A623", c2: "#9A5B00", soon: true },
       packages: { t: "الباقات", d: e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
         soon: !(e.page && e.page.packages), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
       passport: { t: "الجواز الرقمي", d: "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
@@ -545,7 +547,7 @@
     return F;
   }
   const SOON = {
-    tickets: ["التذاكر", "ticket", "#F5A623", ["اختر عدد التذاكر من التطبيق", "ادفع وتصلك تذكرة رقمية برمز QR", "يمسحها المنظم عند بوابة الفعالية"]],
+    tickets: ["تذاكر الألعاب", "ticket", "#F5A623", ["اختر اللعبة وعدد التذاكر من التطبيق", "ادفع وتصلك تذكرة رقمية برمز QR", "اعرضها عند دخول اللعبة ليمسحها المشرف"]],
     packages: ["الباقات", "box", "#E4573D", ["اختر باقة جاهزة (عائلة، أصدقاء) أو كوّن باقتك", "ادفع مرة واحدة وتصلك قسيمة لكل مكوّن", "اعرض القسيمة عند الكشك أو البوابة"]]
   };
 
@@ -863,7 +865,7 @@
   function renderAdmin() {
     const t = S.adminTab || "content", evs = allEvents(), cur = adminEv();
     scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div class="between"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>${esc(((evById(cur) || {}).name || cur).split("—")[0].trim())}</h2></div></div>
-        <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}">${esc(e.name.split("—")[0].trim())}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
+        <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}"${e.visible ? "" : ' style="opacity:.65"'}>${e.visible ? "" : ic("lock", 14) + " "}${esc(e.name.split("—")[0].trim())}${e.visible ? "" : " · مخفية"}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
         <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
       <div class="pad stack wrap-md" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
     if (t === "content") renderEventForm(S.newEvent ? null : cur);
@@ -880,6 +882,9 @@
     el.innerHTML = `<form class="stack" data-f="event" novalidate>
       ${id ? "" : `<div class="msg info">فعالية جديدة: اختر معرّفًا قصيرًا بالإنجليزية (مثل: winter-fest-2026). لا يمكن تغييره لاحقًا.</div>
         <div class="field"><label for="ev-id">المعرّف</label><input class="input" id="ev-id" name="id" dir="ltr" maxlength="40" placeholder="my-event-2026" required></div>`}
+      <div class="card stack" style="gap:10px;${e.visible === false ? "border:1.5px solid var(--err)" : ""}"><b>ظهور الفعالية</b>
+        <label class="check"><input type="checkbox" name="visible" ${e.visible === false ? "" : "checked"}> <span>إظهار الفعالية في شُرفة للزوار والشركاء</span></label>
+        <span class="sub">عند الإخفاء تختفي الفعالية من التطبيق، ويتوقف بيع الجواز وتسجيل الشركاء. لا يُحذف شيء: الجوازات والأختام والشركاء والإحصاءات تبقى محفوظة، وتقدر ترجّعها في أي وقت.</span></div>
       <div class="card stack" style="gap:12px"><b>المحتوى الظاهر للزوار</b>
         <div class="field"><label for="ev-name">اسم الفعالية</label><input class="input" id="ev-name" name="name" maxlength="80" value="${esc(x.name || e.name || "")}" required></div>
         <div class="field"><label for="ev-sum">نبذة</label><textarea class="input" id="ev-sum" name="summary" maxlength="400" rows="3" style="height:auto;padding:10px 14px">${esc(x.summary || e.summary || "")}</textarea></div>
@@ -1493,9 +1498,11 @@
           p_date: f.date.value.trim(), p_hours: f.hours.value.trim(), p_status: f.status.value, p_price: parseInt(f.price.value || "0", 10),
           p_pay_note: f.pay_note.value.trim(), p_active: f.active.checked, p_partner_signup: f.partner_signup.checked,
           p_image: media.image, p_logo: media.logo, p_color_from: f.color_from.value, p_color_to: f.color_to.value, p_sort: parseInt(f.sort.value || "100", 10) });
+        const vis = f.visible.checked, was = (evById(id) || {}).visible !== false;
+        if (vis !== was || !vis) await A.urpc("admin_set_event_visible", { p_id: id, p_visible: vis });
         await loadEvInfo();
         S.adminEv = id; S.newEvent = false;
-        toast("حُفظ محتوى الفعالية", "ok"); render();
+        toast(f.visible.checked ? "حُفظ محتوى الفعالية" : "حُفظت الفعالية وهي مخفية عن الزوار", "ok"); render();
       } catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code))}</div>`; }
       finally { if (document.body.contains(btn)) btn.disabled = false; }
       return;
