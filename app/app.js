@@ -261,7 +261,11 @@
     already_active: "الجواز مفعّل مسبقًا.",
     bad_method: "طريقة دفع غير صحيحة.",
     email_send_failed: "تعذّر إرسال رسالة التأكيد إلى بريدك حاليًا. حاول بعد قليل أو تواصل مع فريق شُرفة.",
-    email_not_confirmed: "لم يتم تأكيد بريدك بعد. أدخل رمز التأكيد المرسل إليك."
+    email_not_confirmed: "لم يتم تأكيد بريدك بعد. أدخل رمز التأكيد المرسل إليك.",
+    band_not_found: "رمز السوار غير صحيح. تأكد من الرمز المطبوع على السوار.",
+    band_taken: "هذا السوار مرتبط بحساب آخر.",
+    band_limit: "وصلت للحد الأقصى (10 أساور) في حسابك.",
+    band_unlinked: "هذا السوار غير مرتبط بأي حساب بعد."
   });
 
   window.ShurfaApp = { ready, SB, eventId, call, rpc, urpc, auth, ERR, errText, local, session, esc, $, $$, toast, qr, cardState, slotsHTML, offerText, KIND, csvDownload };
