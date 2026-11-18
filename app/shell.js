@@ -111,6 +111,7 @@
         : ["إنشاء حساب زائر", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
       code: ["تأكيد البريد", R === "partner" ? "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء." : R === "organizer" ? "بعد التأكيد تنتقل لبيانات الجهة والفعالية." : "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
+      mfa: ["التحقق بخطوتين", "أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة في جوالك."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
       profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بيانات حسابك",
         R === "admin" ? "بيانات حساب إدارة شُرفة." : R === "organizer" ? "الاسم ورقم التواصل لحساب المنظم." : R === "partner" ? "الاسم ورقم التواصل لحساب الشريك." : "مرة واحدة، لاستخدامها في جوازك الرقمي."]
@@ -176,6 +177,15 @@
         <button type="button" class="linkbtn" data-a="au-resend" id="au-resend" ${wait ? "disabled" : ""} style="align-self:center">${wait ? `إعادة الإرسال بعد ${wait} ث` : "أعد إرسال الرمز"}</button>
         <button type="button" class="linkbtn" data-a="auth-go" data-k="login" style="align-self:center">العودة لتسجيل الدخول</button>
       </form>`;
+    } else if (st === "mfa") {
+      body = `<form class="auth-body" data-f="mfa" novalidate>
+        <div class="card flat row" style="gap:10px">${ic("lock", 20)}<span class="grow" style="font-size:14px">حسابك محمي بالتحقق بخطوتين. افتح تطبيق المصادقة (Google Authenticator أو Microsoft Authenticator) وأدخل الرمز الحالي.</span></div>
+        <div class="field"><label for="au-mfa">رمز التحقق</label>
+          <input class="input code" id="au-mfa" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" required></div>
+        <div id="au-msg"></div>
+        <button class="btn btn-dark" type="submit">تحقق ودخول</button>
+        <button type="button" class="linkbtn" data-a="logout" style="align-self:center">خروج</button>
+      </form>`;
     } else if (st === "forgot") {
       body = `<form class="auth-body" data-f="forgot" novalidate>
         <div class="field"><label for="au-femail">البريد الإلكتروني للحساب</label><input class="input" id="au-femail" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(S.email)}" required></div>
@@ -219,6 +229,15 @@
   const authMsg = (t, k = "err") => { const m = $("#au-msg"); if (m) m.innerHTML = t ? `<div class="msg ${k}">${esc(t)}</div>` : ""; };
   const goAuth = (step) => { S.authStep = step; renderAuth(); };
 
+  /* التحقق بخطوتين: هل للحساب عامل مفعّل؟ إن نعم نطلب الرمز */
+  async function needMfa() {
+    try {
+      const f = (await A.auth.factors()).find((x) => x.status === "verified");
+      if (!f) return false;
+      S.mfaFactor = f.id; S.authOpen = true; goAuth("mfa"); return true;
+    } catch (e) { return false; }
+  }
+
   /* =========================================================
      التشغيل
      ========================================================= */
@@ -249,7 +268,10 @@
     S.me = null;
     if (A.auth.signedIn()) {
       try { S.me = await A.urpc("me"); }
-      catch (e) { if (e.code === "not_signed_in" || e.status === 401) await A.auth.signOut(); S.me = null; }
+      catch (e) {
+        if (e.code === "mfa_required" && await needMfa()) return;
+        if (e.code === "not_signed_in" || e.status === 401) await A.auth.signOut(); S.me = null;
+      }
     } else if (A.session.get("pending-email")) {
       S.email = A.session.get("pending-email"); S.authOpen = true; goAuth("code"); return;
     }
@@ -556,7 +578,7 @@
       packages: { t: "الباقات", d: e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
         soon: !(e.page && e.page.packages), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
       passport: { t: "الجواز الرقمي", d: "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
-        badge: cur && price() ? fmtPrice(price()) : "", go: "pass", cta: cur && myPassRef() ? "افتح جوازي" : "احصل على الجواز" },
+        badge: cur && canSell() ? (price() ? fmtPrice(price()) : "مجانًا") : "", go: "pass", cta: cur && myPassRef() ? "افتح جوازي" : "احصل على الجواز" },
       safety: { t: "سوار الأمان", d: "سوار برمز QR مرتبط بحسابك، يصلك إشعار فوري إذا مسحه فريق التنظيم.", main: "band", deco: ["shield", "bell", "lock"], c1: "#2CA6A4", c2: "#14524F",
         badge: "للأطفال", go: "bands", cta: (S.bands || []).length ? "أساوري" : "فعّل سوار طفلك" }
     }[k];
@@ -587,7 +609,7 @@
           <p style="opacity:.92;font-size:14px">اجمع أختام الأكشاك المشاركة، وكل بطاقة تكتمل تفتح لك مكافأة.</p>
           <div class="between" style="background:rgba(255,255,255,.14);border-radius:14px;padding:12px 14px"><span>سعر الجواز</span><b style="font-size:22px">${fmtPrice(price())}</b></div></section>
         <div class="sp"></div><div class="pad stack">${benefits}
-          ${canSell() ? `<button class="btn btn-cta" data-a="buy">${S.me ? `اشترِ الجواز · ${fmtPrice(price())}` : "سجّل دخولك لشراء الجواز"}</button>`
+          ${canSell() ? `<button class="btn btn-cta" data-a="buy">${S.me ? (price() ? `اشترِ الجواز · ${fmtPrice(price())}` : "احصل على جوازك مجانًا") : (price() ? "سجّل دخولك لشراء الجواز" : "سجّل دخولك واحصل على جوازك مجانًا")}</button>`
             : `<div class="card flat sub" style="text-align:center">بيع الجواز لهذه الفعالية غير متاح حاليًا.</div>`}
           ${S.me ? "" : `<p class="sub" style="text-align:center">ليس لديك حساب؟ <button class="linkbtn" data-a="signup" style="padding:0;min-height:auto">أنشئ حسابًا</button></p>`}
         </div><div class="sp"></div>`;
@@ -918,12 +940,13 @@
     const t = S.adminTab || "content", evs = allEvents(), cur = adminEv();
     scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div class="between"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>${esc(((evById(cur) || {}).name || cur).split("—")[0].trim())}</h2></div></div>
         <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}"${e.visible ? "" : ' style="opacity:.65"'}>${e.visible ? "" : ic("lock", 14) + " "}${esc(e.name.split("—")[0].trim())}${e.visible ? "" : " · مخفية"}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
-        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["games", "الألعاب"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
+        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["games", "الألعاب"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"], ["security", "الأمان"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
       <div class="pad stack wrap-md" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
     if (t === "content") renderEventForm(S.newEvent ? null : cur);
     else if (t === "orgs") loadPlatform();
     else if (t === "partners") loadAdminPartners();
     else if (t === "games") loadGamesAdmin(cur);
+    else if (t === "security") loadSecurity();
     else loadAdminStats();
   }
   const media = {};
@@ -969,6 +992,28 @@
       <button class="btn btn-cta" type="submit">${id ? "حفظ المحتوى" : "إضافة الفعالية"}</button>
       ${id ? `<button type="button" class="btn btn-line" data-a="admin-preview">${ic("eye", 18)} معاينة كما يراها الزائر</button>` : ""}
     </form>`;
+  }
+  /* ---------- الإدارة: سجل الأمان ---------- */
+  const AUDIT_AR = { admin_session: "دخول حساب إدارة", login_failed: "محاولة دخول خاطئة", rate_limited: "تجاوز حد الطلبات", insert: "إضافة", update: "تعديل", delete: "حذف",
+    login: "تسجيل دخول", user_signedup: "حساب جديد", user_recovery_requested: "طلب استعادة كلمة المرور", user_updated_password: "تغيير كلمة المرور",
+    user_modified: "تعديل الحساب", factor_in_progress: "بدء تفعيل التحقق بخطوتين", factor_verified: "تفعيل التحقق بخطوتين", factor_unenrolled: "إيقاف التحقق بخطوتين", user_deleted: "حذف حساب" };
+  const TBL_AR = { events: "الفعاليات", stalls: "الأكشاك", partners: "الشركاء", organizers: "المنظمون", organizer_requests: "طلبات المنظمين", shurfa_admins: "مدراء شُرفة",
+    stall_staff: "موظفو الأكشاك", games: "الألعاب", game_staff: "مشغّلو الألعاب", visitors: "الجوازات", game_tickets: "تذاكر الألعاب", auth: "الحساب", bands: "الأساور" };
+  async function loadSecurity() {
+    const box = $("#pfBody"); if (!box) return;
+    let d;
+    try { d = await A.urpc("admin_security_log", { p_limit: 120 }); } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
+    const row = (at, title, sub, warn) => `<div class="li"><span class="ico-tile" style="width:34px;height:34px;${warn ? "background:var(--err-soft);color:var(--err)" : "background:var(--sand-2);color:var(--ink)"}">${ic(warn ? "lock" : "list", 16)}</span><div class="grow"><b style="font-size:14px">${title}</b><div class="sub" dir="auto">${sub}</div></div><span class="sub">${esc(dayTime(at))}</span></div>`;
+    box.innerHTML = `${d.alerts.length ? `<div class="result r-err"><span class="big">${ic("lock", 26, 2.2)}</span><h3>تنبيه: محاولات دخول خاطئة متكررة</h3>
+        <span class="sub" style="color:var(--ink)">${d.alerts.map((a) => `رقم ينتهي بـ <b dir="ltr">${esc(a.target)}</b>: ${a.fails} محاولات خلال الساعة`).join("<br>")}<br>بعد 5 محاولات يُوقف الدخول لهذا الرقم 15 دقيقة تلقائيًا.</span></div>`
+        : `<div class="result r-ok"><span class="big">${ic("shield", 26, 2.2)}</span><h3>لا توجد تنبيهات</h3><span class="sub" style="color:var(--ink)">لا محاولات دخول خاطئة متكررة خلال الساعة الماضية.</span></div>`}
+      <div class="kpis3" style="grid-template-columns:1fr 1fr"><div><b class="num">${d.blocked_now || 0}</b><span>موقوف الآن</span></div><div><b class="num">${d.alerts.length}</b><span>تنبيهات الساعة</span></div></div>
+      <h3 class="sec-t">أحداث الحسابات (Supabase Auth)</h3>
+      <div class="card" style="padding:4px 14px">${(d.auth || []).length ? d.auth.map((e) => row(e.at, esc(AUDIT_AR[e.action] || e.action), `<span dir="ltr">${esc(e.who || "")}</span>${e.ip ? ` · <span dir="ltr">${esc(e.ip)}</span>` : ""}`, /password|factor_unenrolled|deleted/.test(e.action))).join("") : '<div class="li sub">لا توجد أحداث.</div>'}</div>
+      <h3 class="sec-t">سجل العمليات</h3>
+      <div class="card" style="padding:4px 14px">${d.events.length ? d.events.map((e) => row(e.at, `${esc(AUDIT_AR[e.action] || e.action)} · ${esc(TBL_AR[e.tbl] || e.tbl || "")}`,
+          `<span dir="ltr">${esc(e.actor || "زائر")}</span>${e.details ? ` · <span dir="ltr" style="font-size:11.5px">${esc(JSON.stringify(e.details).slice(0, 140))}</span>` : ""}`, /login_failed|rate_limited|delete/.test(e.action))).join("") : '<div class="li sub">لا توجد أحداث بعد.</div>'}</div>
+      <p class="sub">كلمات المرور لا تُحفظ ولا تظهر في أي سجل. أرقام الهواتف تظهر مختصرة.</p>`;
   }
   const gameMedia = { image: null };
   async function loadGamesAdmin(ev) {
@@ -1080,6 +1125,7 @@
             <button class="menu-btn" data-a="go-tab" data-tab="admin">${ic("shield", 20)}<span class="grow">الطلبات والمؤشرات</span>${ic("fwd", 16, 2)}</button>
             <a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>
             <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
+            <button class="menu-btn" data-a="sub" data-name="mfa">${ic("shield", 20)}<span class="grow">التحقق بخطوتين</span>${ic("fwd", 16, 2)}</button>
             <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
             <button class="menu-btn danger" data-a="logout">${ic("logout", 20)}<span class="grow">تسجيل الخروج</span></button>
           </div></div>`;
@@ -1120,6 +1166,7 @@
         ${isAdmin() ? `<button class="menu-btn" data-a="go-tab" data-tab="admin">${ic("shield", 20)}<span class="grow">إدارة شُرفة</span>${ic("fwd", 16, 2)}</button>
           <a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>` : ""}
         <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
+        <button class="menu-btn" data-a="sub" data-name="mfa">${ic("shield", 20)}<span class="grow">التحقق بخطوتين</span>${ic("fwd", 16, 2)}</button>
       </div></div>
       <div class="sp"></div>
       <div class="pad"><div class="card" style="padding:0;overflow:hidden">
@@ -1149,7 +1196,7 @@
             : `<div class="card flat sub">نعمل مع المنظمين على إعداد خدمات الفعالية داخل شُرفة. سنعلن عنها فور إطلاقها.</div>`}
           ${!isCur ? `<button class="btn btn-cta" data-a="ev-go" data-id="${esc(e.id)}" data-go="home">ادخل تجربة ${esc((e.name || "").split("—")[0].trim())} في التطبيق</button>` : ""}
           ${isCur && canSell() ? (ref ? `<button class="btn btn-dark" data-a="go-tab" data-tab="pass">${ic("award", 20)} جوازي في هذه الفعالية</button>`
-            : `<button class="btn btn-cta" data-a="buy">${ic("award", 20)} اشترِ الجواز الرقمي · ${fmtPrice(price())}</button>`) : ""}
+            : `<button class="btn btn-cta" data-a="buy">${ic("award", 20)} ${price() ? "اشترِ الجواز الرقمي · " + fmtPrice(price()) : "احصل على الجواز الرقمي مجانًا"}</button>`) : ""}
           ${isCur ? `<button class="btn btn-line" data-a="partner-join">${ic("users", 18)} سجّل كشريك في هذه الفعالية</button>` : ""}
           ${e.url ? `<a class="btn btn-soft" href="${esc(img(e.url))}">صفحة الفعالية ${ic("ext", 16, 2)}</a>` : ""}
         </div><div class="sp"></div>`;
@@ -1170,6 +1217,25 @@
     },
     checkout() {
       const ev = evById(EV) || {};
+      if (!price()) {   // جواز مجاني: بدون دفع، يتفعّل فورًا
+        const when = [ev.date, ev.hours].filter(Boolean).join(" · ");
+        return `${head("الجواز الرقمي المجاني")}
+        <div class="pad stack">
+          <div class="card stack" style="gap:8px"><b>ملخص الطلب</b>
+            <div class="between"><span>الجواز الرقمي · ${esc((ev.name || "").split("—")[0].trim())}</span><b class="num" style="color:var(--ok)">مجانًا</b></div>
+            <span class="sub">بطاقة ولاء لكل كشك مشارك · بدون دفع</span></div>
+          <div class="card stack" style="gap:6px;border:1.5px solid var(--gold);background:var(--gold-soft)">
+            <b class="row" style="gap:8px">${ic("cal", 18)} متاح ${when ? "خلال الفعالية فقط" : "لفترة محدودة"}</b>
+            ${when ? `<span style="font-size:14px">${esc(when)}</span>` : ""}
+            ${S.ev && S.ev.pay_note ? `<span class="sub" style="color:var(--ink)">${esc(S.ev.pay_note)}</span>` : ""}</div>
+          <div class="card flat stack" style="gap:6px"><b style="font-size:14px">كيف يتم؟</b>
+            <span class="sub">1) اضغط «احصل على جوازك مجانًا».</span>
+            <span class="sub">2) يتفعّل جوازك فورًا ويظهر رمزك.</span>
+            <span class="sub">3) اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت.</span></div>
+          <div id="coMsg"></div>
+          <button class="btn btn-cta" data-a="confirm-buy">${ic("award", 20)} احصل على جوازك مجانًا</button>
+        </div><div class="sp"></div>`;
+      }
       return `${head("شراء الجواز الرقمي")}
         <div class="pad stack">
           <div class="card stack" style="gap:8px"><b>ملخص الطلب</b>
@@ -1201,6 +1267,11 @@
         <div class="soon-hero" style="--c1:${c}"><span class="feat-ico">${bi(icon)}</span><b>${esc(t)}</b><span class="st st-glass">قريبًا</span></div>
         <div class="card stack" style="gap:10px"><b>كيف ستعمل؟</b>${steps.map((x, i) => `<div class="row" style="gap:10px"><span class="ico-tile" style="width:34px;height:34px;background:var(--sand-2);color:var(--ink)">${i + 1}</span><span class="grow" style="font-size:14px">${esc(x)}</span></div>`).join("")}</div>
         <p class="sub" style="text-align:center">نعمل مع المنظمين على إطلاق هذه الخدمة. نعلن عنها في التطبيق فور تفعيلها.</p></div><div class="sp"></div>`;
+    },
+    mfa() {
+      return `${head("التحقق بخطوتين")}<div class="pad stack wrap-md">
+        <div class="card stack" style="gap:8px"><b>حماية إضافية لحسابك</b><span class="sub" style="line-height:1.7">بعد التفعيل، يطلب منك الدخول رمزًا متغيرًا من تطبيق المصادقة في جوالك، إضافة لكلمة المرور. حتى لو عرف أحد كلمة مرورك، ما يقدر يدخل بدون جوالك. <b>ننصح به بقوة لحسابات الإدارة والمنظمين ومشغّلي الألعاب.</b></span></div>
+        <div id="mfaBody" class="stack"><div class="skel"></div></div></div><div class="sp"></div>`;
     },
     games() {
       const list = S.games || [], my = S.tickets || [];
@@ -1270,9 +1341,26 @@
     if (o.name === "partner") loadPartnerForm();
     if (o.name === "orgapply") loadOrgApply();
     if (o.name === "bands") loadBandsScreen(o);
+    if (o.name === "mfa") loadMfaScreen();
     if (o.name === "tickets") { document.querySelectorAll(".tqr").forEach((el) => A.qr(el, "SHURFA-T:" + el.dataset.code, 120)); }
 
 
+  }
+
+  /* ---------- التحقق بخطوتين: الإعداد ---------- */
+  async function loadMfaScreen() {
+    const box = $("#mfaBody"); if (!box) return;
+    let fs = [];
+    try { fs = await A.auth.factors(); } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
+    const on = fs.find((f) => f.status === "verified");
+    box.innerHTML = on
+      ? `<div class="result r-ok"><span class="big">${ic("shield", 28, 2.2)}</span><h3>التحقق بخطوتين مفعّل</h3><span class="sub" style="color:var(--ink)">يُطلب رمز من تطبيق المصادقة عند كل دخول.</span></div>
+         <button class="btn btn-line" data-a="mfa-off" data-id="${esc(on.id)}" style="color:var(--err)">إيقاف التحقق بخطوتين</button>`
+      : `<div class="card stack" style="gap:10px"><b>خطوات التفعيل</b>
+          <span class="sub">1) نزّل تطبيق مصادقة: Google Authenticator أو Microsoft Authenticator.</span>
+          <span class="sub">2) اضغط «ابدأ التفعيل» وامسح الرمز بالتطبيق.</span>
+          <span class="sub">3) أدخل الرمز المكوّن من 6 أرقام اللي يظهر في التطبيق.</span></div>
+         <button class="btn btn-cta" data-a="mfa-start">${ic("shield", 18)} ابدأ التفعيل</button>`;
   }
 
   /* ---------- سوار الأمان: ولي الأمر ---------- */
@@ -1525,7 +1613,7 @@
     const r = await fetch(`${base}/storage/v1/object/logos/${path}`, {
       method: "POST", headers: { apikey: A.SB.anonKey, Authorization: "Bearer " + token, "Content-Type": blob.type }, body: blob
     });
-    if (!r.ok) { let t = ""; try { t = await r.text(); } catch (x) { /* ignore */ } console.warn("logo upload", r.status, t); throw { code: "upload_failed" }; }
+    if (!r.ok) { let t = ""; try { t = await r.text(); } catch (x) { /* ignore */ } throw { code: "upload_failed" }; }
     return `${base}/storage/v1/object/public/logos/${path}`;
   }
 
@@ -1557,6 +1645,23 @@
     else if (a === "ovl-close") closeOverlay();
     else if (a === "ev-go") { const g = b.dataset.go, id = b.dataset.id; location.href = location.pathname + "?e=" + encodeURIComponent(id) + (g && g !== "home" ? "&go=" + g + (g === "soon" ? "&k=" + (b.dataset.k || "") : "") : ""); }
     else if (a === "band-login") requireLogin("band", "visitor");
+    else if (a === "mfa-start") {
+      b.disabled = true;
+      try {
+        const d = await A.auth.mfaEnroll(); S.mfaFactor = d.id;
+        $("#mfaBody").innerHTML = `<div class="card stack" style="gap:12px;align-items:center;text-align:center">
+            <b>امسح الرمز بتطبيق المصادقة</b>
+            <img src="${esc(d.totp.qr_code)}" alt="رمز QR للتحقق بخطوتين" style="width:200px;height:200px;background:#fff;border-radius:12px;padding:6px">
+            <span class="sub">أو أدخل هذا المفتاح يدويًا:</span><code dir="ltr" style="word-break:break-all;font-size:14px">${esc(d.totp.secret)}</code></div>
+          <form class="card stack" data-f="mfa-enroll" style="gap:10px">
+            <div class="field"><label for="mf-code">الرمز من التطبيق</label><input class="input code" id="mf-code" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="••••••" required></div>
+            <div id="mf-msg"></div><button class="btn btn-cta" type="submit">تأكيد وتفعيل</button></form>`;
+      } catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
+    }
+    else if (a === "mfa-off") {
+      if (!confirm("إيقاف التحقق بخطوتين؟ سيصير الدخول بكلمة المرور فقط.")) return;
+      try { await A.auth.mfaUnenroll(b.dataset.id); toast("أُوقف التحقق بخطوتين", "ok"); loadMfaScreen(); } catch (e) { toast(errMsg(e), "err"); }
+    }
     else if (a === "qty") {
       const id = b.dataset.id, el = $("#q-" + id), up = b.parentElement.querySelector("[data-max]"), max = +(up && up.dataset.max) || 10;
       const n = Math.min(max, Math.max(1, (+el.textContent || 1) + (+b.dataset.d))); el.textContent = n;
@@ -1626,7 +1731,8 @@
         const d = await A.urpc("join_event", { p_event: EV });
         S.me = await A.urpc("me");
         S.sub = null; S.tab = "pass"; render();
-        toast(d.status === "active" ? "جوازك مفعّل!" : "تم إنشاء طلبك. أكمل الدفع لدى منصة المنظمين.", "ok");
+        if (d.status === "active") overlay({ k: "ok", icon: "award", title: "جوازك جاهز 🎉", body: "اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت.", auto: 6000 });
+        else toast("تم إنشاء طلبك. أكمل الدفع لدى منصة المنظمين.", "ok");
       } catch (e) { const m = $("#coMsg"); if (m) m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; b.disabled = false; }
     }
     else if (a === "pass-tab") { S.passTab = b.dataset.k; S.tab = "pass"; S.sub = null; render(); }
@@ -1709,6 +1815,13 @@
     ev.preventDefault();
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
+    if (k === "mfa-enroll") {
+      const f = ev.target, m = $("#mf-msg"), code = f.code.value.replace(/\D/g, "");
+      if (code.length !== 6) { m.innerHTML = `<div class="msg err">${esc(A.errText("mfa_bad_code"))}</div>`; return; }
+      try { await A.auth.mfaVerify(S.mfaFactor, code); toast("تم تفعيل التحقق بخطوتين ✓", "ok"); loadMfaScreen(); }
+      catch (e) { m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
+      return;
+    }
     if (k === "game-staff") {
       const f = ev.target, id = f.dataset.id;
       try { const d = await A.urpc("admin_add_game_staff", { p_game: id, p_email: f.email.value.trim() }); f.reset(); loadGameStaff(id);
@@ -1812,7 +1925,7 @@
           const d = await A.rpc("login_email_for_phone", { p_phone: id.replace(/[\s-]/g, ""), p_password: pass });
           email = d.email;
         } else if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw { code: "bad_email" };
-        try { await A.auth.signIn(email, pass); }
+        try { await A.auth.signIn(email, pass); if (await needMfa()) return; }
         catch (e) {
           if (e.code === "email_not_confirmed") { S.email = email; A.session.set("pending-email", email); try { await A.auth.resendConfirm(email); S.resendAt = Date.now() + 60000; } catch (x) { /* ignore */ } goAuth("code"); return; }
           throw e;
@@ -1835,6 +1948,11 @@
         S.email = v.email;
         if (r.session) { S.signup = null; await boot(); }
         else { A.session.set("pending-email", v.email); S.resendAt = Date.now() + 60000; goAuth("code"); }
+      } else if (k === "mfa") {
+        const code = f.code.value.replace(/\D/g, "");
+        if (code.length !== 6) throw { code: "mfa_bad_code" };
+        await A.auth.mfaVerify(S.mfaFactor, code);
+        await boot();
       } else if (k === "code") {
         const code = f.code.value.replace(/\D/g, "");
         if (code.length < 6) throw { code: "bad_otp" };

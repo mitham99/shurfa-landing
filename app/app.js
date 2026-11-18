@@ -153,14 +153,19 @@
   /* ---------- الحساب: دخول برمز البريد (Supabase Auth) ----------
      الجلسة تُحفظ في الجهاز (localStorage) وتتجدد تلقائيًا، فيبقى المستخدم مسجّلًا */
   const AUTH_KEY = "auth";
+  // انتهاء الجلسة تلقائيًا: 7 أيام كحد أقصى من الدخول، أو 24 ساعة بدون استخدام
+  const SESSION_MAX = 7 * 24 * 3600 * 1000, IDLE_MAX = 24 * 3600 * 1000;
+  const expired = (s) => !s || !s.login_at || Date.now() - s.login_at > SESSION_MAX || Date.now() - (s.last_active || s.login_at) > IDLE_MAX;
   const auth = {
     get() { return local.get(AUTH_KEY); },
-    signedIn() { const s = local.get(AUTH_KEY); return !!(s && s.refresh_token); },
+    signedIn() { const s = local.get(AUTH_KEY); if (s && s.refresh_token && expired(s)) { auth.signOut(); return false; } return !!(s && s.refresh_token); },
     email() { const s = local.get(AUTH_KEY); return s ? s.email : ""; },
-    _save(d, email) {
+    _save(d, email, keep) {
+      const prev = keep ? local.get(AUTH_KEY) : null;
       const s = { access_token: d.access_token, refresh_token: d.refresh_token,
         expires_at: Date.now() + (d.expires_in || 3600) * 1000 - 60000,
-        email: (d.user && d.user.email) || email || "" };
+        email: (d.user && d.user.email) || email || "",
+        login_at: (prev && prev.login_at) || Date.now(), last_active: Date.now() };
       local.set(AUTH_KEY, s);
       return s;
     },
@@ -221,15 +226,35 @@
     async token() {
       const s = local.get(AUTH_KEY);
       if (!s || !s.refresh_token) throw Object.assign(new Error("not_signed_in"), { code: "not_signed_in" });
+      if (expired(s)) { await auth.signOut(); throw Object.assign(new Error("session_expired"), { code: "not_signed_in" }); }
+      if (Date.now() - (s.last_active || 0) > 60000) { s.last_active = Date.now(); local.set(AUTH_KEY, s); }
       if (Date.now() < s.expires_at) return s.access_token;
       if (!auth._refreshing) {
         auth._refreshing = call("/auth/v1/token?grant_type=refresh_token", { body: { refresh_token: s.refresh_token } })
-          .then((d) => auth._save(d, s.email).access_token)
+          .then((d) => auth._save(d, s.email, true).access_token)
           .catch((e) => { if (e.status === 400 || e.status === 401) local.del(AUTH_KEY); throw Object.assign(new Error("not_signed_in"), { code: e.code === "network" ? "network" : "not_signed_in" }); })
           .finally(() => { auth._refreshing = null; });
       }
       return auth._refreshing;
     },
+    /* التحقق بخطوتين (TOTP) عبر Supabase Auth MFA */
+    async user() { return call("/auth/v1/user", { method: "GET", token: await auth.token() }); },
+    async factors() { const u = await auth.user(); return ((u && u.factors) || []).filter((f) => f.factor_type === "totp"); },
+    async mfaEnroll() {
+      const t = await auth.token();
+      for (const f of await auth.factors()) if (f.status !== "verified") { try { await call(`/auth/v1/factors/${f.id}`, { method: "DELETE", token: t }); } catch (e) { /* ignore */ } }
+      return call("/auth/v1/factors", { body: { factor_type: "totp", friendly_name: "Shurfa " + new Date().toISOString().slice(0, 16), issuer: "Shurfa" }, token: t });
+    },
+    async mfaVerify(factorId, code) {
+      const t = await auth.token();
+      const ch = await call(`/auth/v1/factors/${factorId}/challenge`, { body: {}, token: t });
+      let d;
+      try { d = await call(`/auth/v1/factors/${factorId}/verify`, { body: { challenge_id: ch.id, code }, token: t }); }
+      catch (e) { throw Object.assign(new Error("mfa_bad_code"), { code: "mfa_bad_code" }); }
+      if (d && d.access_token) auth._save(d, auth.email(), true);
+      return d;
+    },
+    async mfaUnenroll(factorId) { await call(`/auth/v1/factors/${factorId}`, { method: "DELETE", token: await auth.token() }); },
     async signOut() {
       const s = local.get(AUTH_KEY);
       local.del(AUTH_KEY);
@@ -276,7 +301,11 @@
     ticket_already_paid: "التذكرة مدفوعة مسبقًا.",
     ticket_not_paid: "التذكرة لم تُدفع بعد.",
     ticket_used: "التذكرة مستخدمة بالكامل.",
-    ticket_other_game: "هذه التذكرة للعبة أخرى."
+    ticket_other_game: "هذه التذكرة للعبة أخرى.",
+    locked_out: "أوقفنا المحاولات مؤقتًا بعد 5 محاولات خاطئة. حاول بعد 15 دقيقة، أو استعد كلمة المرور.",
+    mfa_required: "أدخل رمز التحقق بخطوتين من تطبيق المصادقة.",
+    mfa_bad_code: "رمز التحقق غير صحيح أو انتهت صلاحيته. أدخل الرمز الجديد من التطبيق.",
+    session_expired: "انتهت جلستك لحمايتك. سجّل الدخول من جديد."
   });
 
   window.ShurfaApp = { ready, SB, eventId, call, rpc, urpc, auth, ERR, errText, local, session, esc, $, $$, toast, qr, cardState, slotsHTML, offerText, KIND, csvDownload };
