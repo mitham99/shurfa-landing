@@ -95,7 +95,7 @@
   <div class="container hero-grid">
     <div class="hero-copy">
       <nav class="crumbs reveal" aria-label="مسار التنقل"><a href="index.html">${icon("i-home")}شُرفة</a><span aria-hidden="true">‹</span><a href="index.html#events">الفعاليات</a><span aria-hidden="true">‹</span><b aria-current="page">${N}</b></nav>
-      <div class="ev-cobrand reveal">${logo}<span class="ev-x" aria-hidden="true">×</span><span class="ev-by"><svg class="ev-by-mark"><use href="#logo-mark"/></svg><span>على شُرفة</span></span></div>
+      <div class="ev-cobrand reveal">${logo}${logo ? '<span class="ev-x" aria-hidden="true">×</span>' : ""}<span class="ev-by"><svg class="ev-by-mark"><use href="#logo-mark"/></svg><span>على شُرفة</span></span></div>
       <span class="eyebrow reveal"><span class="dot"></span>${esc(page.eyebrow || ev.location || "")}${statusLabel ? ` · ${statusLabel}` : ""}</span>
       <h1 class="reveal" data-delay="1">${esc(page.title || ev.name)}${page.titleHl ? `<br><span class="hl">${esc(page.titleHl)}</span>` : ""}</h1>
       <p class="lead reveal" data-delay="2">${esc(page.lead || ev.summary || "")}</p>

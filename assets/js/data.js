@@ -18,6 +18,50 @@ window.SHURFA_DATA = {
      ⚠ لا تضع تواريخ أو صورًا غير رسمية. */
   events: [
     {
+      id: "oman-national-day-2026",
+      name: "أوبريت اليوم الوطني — عُمان المحبة والسلام",
+      summary: "أوبريت اليوم الوطني «عُمان المحبة والسلام» في جامعة صحار ضمن احتفالات اليوبيل الفضي. الجواز الرقمي مجاني لهذه الأمسية: اجمع أختام الأكشاك المشاركة ومكافآتها.",
+      location: "جامعة صحار — قاعة 10-01",
+      date: "الخميس 19 نوفمبر 2026",
+      dateNote: "",
+      status: "available",
+      url: "oman-national-day.html",
+      image: "assets/img/events/oman-national-day.jpg",
+      imagePosition: "center 45%",
+      icon: "i-calendar",
+      colors: { from: "#0B1F4D", to: "#1E3A7A", accent: "#E4573D" },
+      tags: ["الجواز الرقمي مجانًا", "ليوم واحد"],
+      /* ألوان العلم العُماني فوق أزرق الدعوة */
+      theme: {
+        primary: "#C8102E",
+        secondary: "#1E3A7A",
+        ink: "#0B1F4D",
+        soft: "#EEF2FA",
+        accents: [ { c: "#C8102E", ink: "#fff" }, { c: "#1E7A3E", ink: "#fff" }, { c: "#1E3A7A", ink: "#fff" } ]
+      },
+      page: {
+        services: ["passport"],
+        eyebrow: "جامعة صحار · اليوبيل الفضي",
+        title: "أوبريت اليوم الوطني",
+        titleHl: "عُمان المحبة والسلام",
+        primaryCta: { href: "app/index.html?e=oman-national-day-2026", label: "احصل على جوازك مجانًا", icon: "i-passport" },
+        lead: "أمسية وطنية في جامعة صحار تحت رعاية سعادة الدكتور عبدالله بن علي الشبلي، وكيل وزارة التعليم للتعليم العالي. احصل على جوازك الرقمي مجانًا، واجمع أختام الأكشاك المشاركة ومكافآتها في نفس اليوم.",
+        facts: [
+          { icon: "i-calendar", text: "الخميس 19 نوفمبر 2026" },
+          { icon: "i-spark", text: "7:15 مساءً" },
+          { icon: "i-pin", text: "جامعة صحار — قاعة 10-01" },
+          { icon: "i-users", text: "اللباس: الزي الرسمي مع الخنجر" }
+        ],
+        chips: {
+          passport: ["جواز مجاني", "ليوم واحد"]
+        },
+        passportCards: [
+          { id: "food", label: "كشك مشارك", name: "كشك مشارك", icon: "i-food", stamps: 3,
+            rewards: [ { at: 4, label: "مكافأة", ordinal: "الرابعة", note: "المكافأة يحددها كل كشك" } ] }
+        ]
+      }
+    },
+    {
       id: "sohar-festival",
       name: "مهرجان صحار",
       summary: "تجربة رقمية متكاملة لزوار المهرجان: تذاكر الألعاب، باقات، بطاقات ولاء في الجواز الرقمي، وسوار أمان للأطفال.",
