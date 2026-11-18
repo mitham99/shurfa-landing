@@ -437,7 +437,7 @@
     const photo = ev.image ? img(ev.image) : "";
     const pIcon = (p) => /users/.test(p.icon || "") ? "users" : /sweet/.test(p.icon || "") ? "sweet" : /coffee/.test(p.icon || "") ? "coffee" : "food";
     featList(ev).forEach((k) => services.push(feat(k, ev, true)));
-    prog.filter((p) => p.link && !/index\.html/.test(p.link.href)).forEach((p) => services.push({ t: p.title, d: p.desc, main: pIcon(p), deco: ["game", "star", "gift"],
+    prog.filter((p) => p.link && !/(^|\/)app\/(index\.html)?(\?|$)/.test(p.link.href)).forEach((p) => services.push({ t: p.title, d: p.desc, main: pIcon(p), deco: ["game", "star", "gift"],
       c1: p.color || "#3D8BE0", c2: "#16306E", badge: (p.rows && p.rows[0] && p.rows[0][1]) || "", href: img(p.link.href), cta: p.link.label }));
     prog.filter((p) => !p.link).forEach((p) => services.push({ t: p.title, d: p.desc, main: pIcon(p), deco: ["spark", "gift", "star"],
       c1: p.color || "#A63FB0", c2: "#4B1A55", badge: p.note && /جوائز/.test(p.note) ? "جوائز" : "", a: `data-a="sub" data-name="program" data-title="${esc(p.title)}"`, cta: "التفاصيل" }));
@@ -1138,7 +1138,7 @@
             <a class="menu-btn" href="admin.html?e=${encodeURIComponent(EV)}">${ic("grid", 20)}<span class="grow">لوحة التحكم الكاملة</span>${ic("ext", 16, 2)}</a>
             <button class="menu-btn" data-a="edit-profile">${ic("edit", 20)}<span class="grow">تعديل بياناتي</span>${ic("fwd", 16, 2)}</button>
             <button class="menu-btn" data-a="sub" data-name="mfa">${ic("shield", 20)}<span class="grow">التحقق بخطوتين</span>${ic("fwd", 16, 2)}</button>
-            <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
+            <a class="menu-btn" href="/">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
             <button class="menu-btn danger" data-a="logout">${ic("logout", 20)}<span class="grow">تسجيل الخروج</span></button>
           </div></div>`;
       return;
@@ -1154,7 +1154,7 @@
             <button class="menu-btn" data-a="org-login">${ic("chart", 20)}<span class="grow">دخول المنظمين</span>${ic("fwd", 16, 2)}</button>
             <button class="menu-btn" data-a="go-tab" data-tab="events">${ic("compass", 20)}<span class="grow">فعاليات شُرفة</span>${ic("fwd", 16, 2)}</button>
             <a class="menu-btn" href="privacy.html">${ic("shield", 20)}<span class="grow">الخصوصية والبيانات</span>${ic("fwd", 16, 2)}</a>
-            <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
+            <a class="menu-btn" href="/">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
           </div></div><div class="sp"></div>`;
       return;
     }
@@ -1183,7 +1183,7 @@
       <div class="sp"></div>
       <div class="pad"><div class="card" style="padding:0;overflow:hidden">
         <a class="menu-btn" href="privacy.html">${ic("shield", 20)}<span class="grow">الخصوصية والبيانات</span>${ic("fwd", 16, 2)}</a>
-        <a class="menu-btn" href="../index.html">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
+        <a class="menu-btn" href="/">${ic("home", 20)}<span class="grow">موقع شُرفة</span>${ic("ext", 16, 2)}</a>
         <button class="menu-btn danger" data-a="delete-data">${ic("trash", 20)}<span class="grow">حذف بياناتي وجوازاتي</span></button>
         <button class="menu-btn danger" data-a="logout">${ic("logout", 20)}<span class="grow">تسجيل الخروج</span></button>
       </div></div>
