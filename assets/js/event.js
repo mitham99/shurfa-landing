@@ -104,6 +104,7 @@
         ${page.primaryCta
           ? `<a class="btn btn-primary btn-lg" href="${esc(page.primaryCta.href)}">${icon(page.primaryCta.icon || "i-passport")}${esc(page.primaryCta.label)}</a>`
           : `<a class="btn btn-primary btn-lg" href="#download">${icon("i-download")}حمّل تطبيق شُرفة</a>`}
+        ${page.partnerCta ? `<a class="btn btn-partner btn-lg" href="${esc(page.partnerCta.href)}">${icon("i-handshake")}${esc(page.partnerCta.label)}</a>` : ""}
         <a class="btn btn-ghost btn-lg" href="#explore">${services.length ? "اكتشف الخدمات" : "ما الذي ينتظرك"}${icon("i-arrow")}</a>
       </div>
       ${points ? `<ul class="hero-points reveal" data-delay="4">${points}</ul>` : ""}

@@ -19,15 +19,15 @@ window.SHURFA_DATA = {
   events: [
     {
       id: "oman-national-day-2026",
-      name: "أوبريت اليوم الوطني — عُمان المحبة والسلام",
-      summary: "أوبريت اليوم الوطني «عُمان المحبة والسلام» في جامعة صحار ضمن احتفالات اليوبيل الفضي. الجواز الرقمي مجاني لهذه الأمسية: اجمع أختام الأكشاك المشاركة ومكافآتها.",
-      location: "جامعة صحار — قاعة 10-01",
+      name: "أوبريت اليوم الوطني",
+      summary: "«عُمان المحبة والسلام» في جامعة صحار. الجواز الرقمي مجاني لهذه الأمسية: اجمع أختام الأكشاك المشاركة ومكافآتها.",
+      location: "جامعة صحار",
       date: "الخميس 19 نوفمبر 2026",
       dateNote: "",
       status: "available",
       url: "oman-national-day.html",
-      image: "assets/img/events/oman-national-day.jpg",
-      imagePosition: "center 45%",
+      image: "assets/img/events/oman-national-day-banner.jpg",
+      imagePosition: "center 40%",
       icon: "i-calendar",
       colors: { from: "#0B1F4D", to: "#1E3A7A", accent: "#E4573D" },
       tags: ["الجواز الرقمي مجانًا", "ليوم واحد"],
@@ -41,16 +41,15 @@ window.SHURFA_DATA = {
       },
       page: {
         services: ["passport"],
-        eyebrow: "جامعة صحار · اليوبيل الفضي",
+        eyebrow: "جامعة صحار · عُمان المحبة والسلام",
         title: "أوبريت اليوم الوطني",
-        titleHl: "عُمان المحبة والسلام",
         primaryCta: { href: "app/index.html?e=oman-national-day-2026", label: "احصل على جوازك مجانًا", icon: "i-passport" },
-        lead: "أمسية وطنية في جامعة صحار تحت رعاية سعادة الدكتور عبدالله بن علي الشبلي، وكيل وزارة التعليم للتعليم العالي. احصل على جوازك الرقمي مجانًا، واجمع أختام الأكشاك المشاركة ومكافآتها في نفس اليوم.",
+        partnerCta: { href: "app/index.html?e=oman-national-day-2026&join=partner", label: "سجّل كشريك تجاري" },
+        lead: "أمسية وطنية في جامعة صحار. احصل على جوازك الرقمي مجانًا، واجمع أختام الأكشاك المشاركة ومكافآتها في نفس اليوم.",
         facts: [
           { icon: "i-calendar", text: "الخميس 19 نوفمبر 2026" },
           { icon: "i-spark", text: "7:15 مساءً" },
-          { icon: "i-pin", text: "جامعة صحار — قاعة 10-01" },
-          { icon: "i-users", text: "اللباس: الزي الرسمي مع الخنجر" }
+          { icon: "i-pin", text: "جامعة صحار" }
         ],
         chips: {
           passport: ["جواز مجاني", "ليوم واحد"]
@@ -230,7 +229,7 @@ window.SHURFA_DATA = {
   ],
 
   /* بطاقة دعوة تظهر بعد الفعاليات (اجعلها false لإخفائها) */
-  showComingSoonCard: true,
+  showComingSoonCard: false,
 
   /* ---------- خدمات شُرفة ----------
      status: "live" متاح | "event" ضمن الفعاليات المشاركة | "soon" قريبًا */
