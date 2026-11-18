@@ -66,7 +66,7 @@
         <span class="ec-ico">${icon("i-plus")}</span>
         <h3>فعاليات وتجارب جديدة قريبًا</h3>
         <p>تستعد شُرفة لاستضافة فعاليات وتجارب سياحية أخرى في مختلف مناطق عُمان.</p>
-        <a class="btn btn-ghost btn-sm" href="partners.html">تنظّم فعالية؟ انضم إلى شُرفة</a>
+        <a class="btn btn-ghost btn-sm" href="partners">تنظّم فعالية؟ انضم إلى شُرفة</a>
       </article>` : "";
 
     const render = (filter) => {

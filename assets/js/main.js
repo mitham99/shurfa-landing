@@ -561,9 +561,9 @@
     if (!hidden.size) return;
     // صفحة فعالية مخفية ← الصفحة الرئيسية
     const root = document.getElementById("eventRoot");
-    if (root && hidden.has(root.dataset.event)) { location.replace("index.html#events"); return; }
+    if (root && hidden.has(root.dataset.event)) { location.replace("/#events"); return; }
     hidden.forEach((id) => {
-      document.querySelectorAll(`a[href="${id}.html"], a[href^="${id}.html#"]`).forEach((a) => (a.closest("li") || a).remove());
+      document.querySelectorAll(`a[href="${id}"], a[href^="${id}#"], a[href="${id}.html"], a[href^="${id}.html#"]`).forEach((a) => (a.closest("li") || a).remove());
       document.querySelectorAll(`[data-ev-id="${id}"]`).forEach((el) => el.remove());
     });
     document.dispatchEvent(new CustomEvent("shurfa:hidden", { detail: hidden }));

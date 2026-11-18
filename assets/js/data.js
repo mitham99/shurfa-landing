@@ -9,7 +9,7 @@ window.SHURFA_DATA = {
 
   /* ---------- الفعاليات ----------
      status: "available" متاحة | "soon" قريبًا | "ended" منتهية
-     url: صفحة الفعالية (انسخ dhahirah-festival.html باسم جديد وغيّر data-event فيه إلى id الفعالية)
+     url: صفحة الفعالية (انسخ dhahirah-festival باسم جديد وغيّر data-event فيه إلى id الفعالية)
      logo: شعار المهرجان بخلفية شفافة — theme: ألوان المهرجان — page: نصوص الصفحة والخدمات المفعّلة
      image: مسار صورة الغلاف (اختياري) — مثل "assets/img/events/sohar-festival.jpg"
      imagePosition: الجزء الظاهر من الصورة في البطاقة (اختياري) — مثل "center 60%"
@@ -25,7 +25,7 @@ window.SHURFA_DATA = {
       date: "الخميس 19 نوفمبر 2026",
       dateNote: "",
       status: "available",
-      url: "oman-national-day.html",
+      url: "oman-national-day",
       image: "assets/img/events/oman-national-day-banner.jpg",
       imagePosition: "center 40%",
       icon: "i-calendar",
@@ -43,8 +43,8 @@ window.SHURFA_DATA = {
         services: ["passport"],
         eyebrow: "جامعة صحار · عُمان المحبة والسلام",
         title: "أوبريت اليوم الوطني",
-        primaryCta: { href: "app/index.html?e=oman-national-day-2026", label: "احصل على جوازك مجانًا", icon: "i-passport" },
-        partnerCta: { href: "app/index.html?e=oman-national-day-2026&join=partner", label: "سجّل كشريك تجاري" },
+        primaryCta: { href: "app/?e=oman-national-day-2026", label: "احصل على جوازك مجانًا", icon: "i-passport" },
+        partnerCta: { href: "app/?e=oman-national-day-2026&join=partner", label: "سجّل كشريك تجاري" },
         lead: "أمسية وطنية في جامعة صحار. احصل على جوازك الرقمي مجانًا، واجمع أختام الأكشاك المشاركة ومكافآتها في نفس اليوم.",
         facts: [
           { icon: "i-calendar", text: "الخميس 19 نوفمبر 2026" },
@@ -68,7 +68,7 @@ window.SHURFA_DATA = {
       date: "",
       dateNote: "المواعيد تُعلن عبر التطبيق",
       status: "available",
-      url: "sohar-festival.html",
+      url: "sohar-festival",
       image: "assets/img/events/sohar-festival.jpg",
       imagePosition: "center 60%",
       icon: "i-festival",
@@ -101,7 +101,7 @@ window.SHURFA_DATA = {
       date: "",
       dateNote: "المواعيد تُعلن قريبًا",
       status: "soon",
-      url: "dhahirah-festival.html",
+      url: "dhahirah-festival",
       image: "assets/img/events/dhahirah-festival.jpg",
       imagePosition: "center 55%",
       icon: "i-festival",
@@ -135,7 +135,7 @@ window.SHURFA_DATA = {
       dateNote: "",
       /* «قريبًا» حتى يُفعَّل النظام الفعلي؛ غيّرها إلى "available" يوم الإطلاق */
       status: "soon",
-      url: "squ-eat.html",
+      url: "squ-eat",
       image: "assets/img/events/squ-eat.jpg",
       imagePosition: "center 42%",
       icon: "i-food",
@@ -155,7 +155,7 @@ window.SHURFA_DATA = {
         eyebrow: "جامعة السلطان قابوس · جماعة التجارة",
         title: "SQU إيييت",
         titleHl: "مهرجان الطعام على شُرفة",
-        primaryCta: { href: "app/index.html?e=squ-eat", label: "احصل على جوازك الرقمي", icon: "i-passport" },
+        primaryCta: { href: "app/?e=squ-eat", label: "احصل على جوازك الرقمي", icon: "i-passport" },
         lead: "ثلاثة أيام من الأكل والمسابقات في جامعة السلطان قابوس. كوّن باقتك من الأكشاك المشاركة، واجمع أختام كل كشك في جوازك الرقمي.",
         facts: [
           { icon: "i-calendar", text: "الأحد 15 – الثلاثاء 17 نوفمبر" },
@@ -184,7 +184,7 @@ window.SHURFA_DATA = {
             { title: "أكشاك الطعام", icon: "i-sweet", color: "#F26A2E",
               desc: "مطاعم ومقاهٍ وأكشاك مشاركة طوال أيام المهرجان — كوّن منها باقتك، واجمع أختام كل كشك في جوازك الرقمي.",
               note: "قائمة الأكشاك المشاركة تُعلن قريبًا",
-              link: { href: "app/index.html?e=squ-eat", label: "احصل على جوازك" } }
+              link: { href: "app/?e=squ-eat", label: "احصل على جوازك" } }
           ]
         },
         /* باقات توضيحية — المكونات والأسعار النهائية تُحدد مع الأكشاك المشاركة */
@@ -236,10 +236,10 @@ window.SHURFA_DATA = {
   services: [
     { name: "الجواز الرقمي", desc: "بطاقة ولاء لكل شريك تجمع أختام زياراتك له، وتوثيق لرحلتك بالصور واللحظات.", icon: "i-passport", status: "event", note: "أول تجربة: مهرجان صحار", link: "#passport", color: "var(--purple)" },
     { name: "اكتشاف الفعاليات", desc: "تصفّح الفعاليات المستضافة على شُرفة وتفاصيلها وخدماتها.", icon: "i-calendar", status: "live", link: "#events", color: "var(--gold)" },
-    { name: "الباقات السياحية", desc: "باقات جاهزة أو مخصصة تجمع الدخول والمطاعم والأنشطة في عملية شراء واحدة.", icon: "i-box", status: "event", note: "متاح في مهرجان صحار", link: "sohar-festival.html#explore", color: "var(--brick)" },
+    { name: "الباقات السياحية", desc: "باقات جاهزة أو مخصصة تجمع الدخول والمطاعم والأنشطة في عملية شراء واحدة.", icon: "i-box", status: "event", note: "متاح في مهرجان صحار", link: "sohar-festival#explore", color: "var(--brick)" },
     { name: "التجارب والأنشطة", desc: "تجارب سياحية وأنشطة خارج الفعاليات في مختلف مناطق عُمان.", icon: "i-compass", status: "soon", color: "var(--teal)" },
     { name: "برامج الولاء والمكافآت", desc: "مكافآت يحددها كل شريك عند اكتمال أختام بطاقته، مثل خصم أو زيارة مجانية.", icon: "i-gift", status: "event", note: "مع الشركاء المشاركين", color: "var(--gold)" },
-    { name: "الشركاء ومقدمو الخدمات", desc: "قناة لمقدمي الخدمات للوصول إلى زوار الفعاليات والتجارب.", icon: "i-handshake", status: "live", note: "انضم الآن", link: "partners.html", color: "var(--green)" }
+    { name: "الشركاء ومقدمو الخدمات", desc: "قناة لمقدمي الخدمات للوصول إلى زوار الفعاليات والتجارب.", icon: "i-handshake", status: "live", note: "انضم الآن", link: "partners", color: "var(--green)" }
   ],
 
   /* ---------- أنواع الشركاء (للتصفية) ---------- */
