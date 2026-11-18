@@ -658,13 +658,13 @@
         h = offersHTML(S.stalls || []) || `<div class="empty card">${ic("gift", 36)}<b>لم تُعلن العروض بعد</b></div>`;
       } else {
         h = p.history && p.history.length ? `<div class="card" style="padding:4px 16px">${p.history.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;${x.kind === "reward" ? "background:var(--gold-soft);color:var(--gold-ink)" : "background:var(--purple-soft);color:var(--purple)"}">${ic(x.kind === "reward" ? "gift" : "check", 18, 2)}</span>
-            <div class="grow"><b style="font-size:14px">${esc(x.stall)}</b><div class="sub">${x.kind === "reward" ? "مكافأة: " + esc(x.reward) : "ختم زيارة"} · ${esc(dayTime(x.at))}</div></div></div>`).join("")}</div>`
+            <div class="grow"><b style="font-size:14px">${esc(x.stall)}</b><div class="sub">${x.kind === "reward" ? "مكافأة: " + esc(x.reward) + (x.status === "pending" ? " · بانتظار تأكيدك" : x.status === "declined" ? " · لم تُستلم بعد" : "") : "ختم زيارة"} · ${esc(dayTime(x.at))}</div></div></div>`).join("")}</div>`
           : `<div class="empty card">${ic("list", 36)}<b>لا يوجد نشاط بعد</b></div>`;
       }
       $("#ppBody").innerHTML = h;
     };
     S.passFill = fill;
-    Promise.all([loadPass(), S.stalls ? null : loadStalls()]).then(fill);
+    Promise.all([loadPass(), S.stalls ? null : loadStalls()]).then(() => { fill(); if (S.pass && (S.pass.pending_rewards || []).length) askReward(S.pass.pending_rewards[0]); });
   }
 
   /* نبضة الزائر: كل 3 ثوانٍ في «جوازي» (6 في غيرها) — تفعيل الجواز أو ختم/مكافأة جديدة ⇐ إشعار فوري */
@@ -681,7 +681,7 @@
     if (S.tab !== "pass" && (pulseN++ % 2)) return;
     let d; try { d = await A.urpc("pass_pulse", { p_event: EV }); } catch (e) { return; }
     if (!d || !d.ok) return;
-    const key = `${d.status}:${d.last_id || 0}:${d.n}`;
+    const key = `${d.status}:${d.last_id || 0}:${d.n}:${d.pend || ""}`;
     if (pulseKey === null || pulseEv !== EV) { pulseKey = key; pulseEv = EV; return; }
     if (key === pulseKey) return;
     const prevN = +pulseKey.split(":")[2] || 0; pulseKey = key;
@@ -693,7 +693,8 @@
       if (S.tab === "pass" || S.tab === "home") render();
       return;
     }
-    if (d.n > prevN && S.pass && S.pass.last) notifyStamp(S.pass.last);
+    if (S.pass && (S.pass.pending_rewards || []).length) askReward(S.pass.pending_rewards[0]);
+    else if (d.n > prevN && S.pass && S.pass.last && S.pass.last.kind !== "reward") notifyStamp(S.pass.last);
     if (S.passFill) S.passFill();
   }
   let tickSig = null;
@@ -717,6 +718,16 @@
       }
     }
     if (S.sub && S.sub.name === "tickets") render();
+  }
+  /* الزائر يؤكد استلام المكافأة: نعم ← تُحسب (وتبدأ بطاقة جديدة إن كانت الأخيرة)، لا ← يخبر مزود الخدمة */
+  let askingReward = 0;
+  function askReward(r) {
+    if (!r || askingReward === r.id || ($("#ovl") && $("#ovl .r-alert"))) return;
+    askingReward = r.id;
+    try { if (navigator.vibrate) navigator.vibrate([80, 50, 80, 50, 120]); } catch (e) { /* ignore */ }
+    overlay({ k: "gold", icon: "gift", title: `هل حصلت على ${r.reward}؟`, body: `من <b>${esc(r.stall)}</b><br><span class="sub">أكّد بعد ما يطبّق مزود الخدمة المكافأة على طلبك.</span>`,
+      extra: `<div class="row" style="gap:8px;width:100%"><button class="btn btn-cta btn-sm" style="flex:1" data-a="reward-yes" data-id="${r.id}">نعم، حصلت عليها</button><button class="btn btn-line btn-sm" style="flex:1" data-a="reward-no" data-id="${r.id}">لا</button></div>`,
+      onClose: () => { askingReward = 0; } });
   }
   function notifyStamp(L) {
     const st = esc(L.stall), pos = L.position || 0, req = L.required || 0, logo = logoTile({ name: L.stall, logo: L.logo }, 64);
@@ -893,7 +904,8 @@
       const back = () => { const r = $("#scanRes"); if (r) r.innerHTML = ""; };
       if (d.kind === "reward") {
         showRes("gold", "gift", "مكافأة الزائر: " + d.reward,
-          `طبّق المكافأة على طلب <b>${esc(d.visitor)}</b> الآن.<br>${d.final ? "اكتملت بطاقته، وتبدأ له بطاقة جديدة في الزيارة القادمة." : d.next_reward ? `زيارته القادمة: <b>${esc(d.next_reward)}</b>` : ""}<br><span class="sub">وصل للزائر إشعار بالمكافأة.</span>`, acts, 10000, back);
+          `طبّق <b>${esc(d.reward)}</b> على طلب <b>${esc(d.visitor)}</b>.<br><span id="rwState" class="row" style="gap:8px;justify-content:center;margin-top:6px"><span class="spin" style="border-color:rgba(122,79,0,.25);border-top-color:var(--gold-ink);width:18px;height:18px;border-width:2.5px"></span> بانتظار تأكيد الزائر من جواله…</span>`, acts);
+        watchReward(d.id, d.reward, d.final);
       } else {
         showRes("ok", "check", "تمت إضافة الختم",
           `الزائر <b>${esc(d.visitor)}</b> · ختم ${d.position} من ${d.required}${d.next_reward ? `<br>اكتملت أختامه! زيارته القادمة: <b>${esc(d.next_reward)}</b>` : ""}<br><span class="sub">وصل للزائر إشعار بالختم.</span>`, acts, 6000, back);
@@ -1089,7 +1101,7 @@
   const appCard = (a) => `<div class="card stack" style="gap:10px">
       <div class="row" style="gap:12px">${logoTile(a, 52)}<div class="grow"><b>${esc(a.name)}</b><div class="sub">${esc(A.KIND[a.kind] || a.kind)} · <span dir="ltr">${esc(a.owner_email || "")}</span></div></div><span class="st ${STATUS_AR[a.status][1]}">${STATUS_AR[a.status][0]}</span></div>
       ${a.description ? `<p style="font-size:14px">${esc(a.description)}</p>` : ""}
-      <div class="card flat" style="padding:10px 12px"><span class="sub">بطاقة الولاء</span><div><b>${esc(A.offerText(a))}</b></div><span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span></div>
+      <div class="card flat" style="padding:10px 12px" id="cardv-${esc(a.stall)}"><div class="between"><span class="sub">بطاقة الولاء</span>${isAdmin() ? `<button class="linkbtn" style="padding:0;min-height:auto" data-a="card-edit" data-id="${esc(a.stall)}" data-req="${a.required}" data-r1="${esc(a.reward1 || "")}" data-r2="${esc(a.reward2 || "")}" data-cd="${a.cooldown}">${ic("edit", 14)} تعديل البطاقة</button>` : ""}</div><div><b>${esc(A.offerText(a))}</b></div><span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span></div>
       ${a.phone || a.instagram ? `<span class="sub">${a.phone ? `<span dir="ltr">${esc(a.phone)}</span>` : ""}${a.instagram ? ` · <span dir="ltr">@${esc(a.instagram)}</span>` : ""}</span>` : ""}
       ${a.note ? `<span class="sub">ملاحظة: ${esc(a.note)}</span>` : ""}
       ${a.status === "pending" ? `<div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="1">${ic("check", 18, 2)} اعتماد</button><button class="btn btn-danger btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="0">رفض</button></div>`
@@ -1456,6 +1468,24 @@
   }
   async function refreshMyGames() { try { S.myGames = await A.urpc("my_games"); } catch (e) { /* ignore */ } }
 
+  /* ---------- الشريك: متابعة تأكيد المكافأة من الزائر ---------- */
+  let rwTimer = null;
+  function watchReward(id, reward, final) {
+    clearInterval(rwTimer); const t0 = Date.now();
+    rwTimer = setInterval(async () => {
+      const el = $("#rwState"); if (!el || Date.now() - t0 > 180000) { clearInterval(rwTimer); return; }
+      let r; try { r = await A.urpc("staff_reward_status", { p_stall: S.work.stall, p_id: id }); } catch (e) { return; }
+      if (r.status === "confirmed") {
+        clearInterval(rwTimer); try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (x) { /* ignore */ }
+        showRes("ok", "check", "أكّد الزائر استلام المكافأة ✓", `<b>${esc(reward)}</b>${final ? "<br>اكتملت بطاقته، وتبدأ له بطاقة جديدة." : ""}`, scanNextBtn(), 6000, () => { const x = $("#scanRes"); if (x) x.innerHTML = ""; });
+        loadStaffStats();
+      } else if (r.status === "declined") {
+        clearInterval(rwTimer);
+        showRes("warn", "gift", "الزائر يقول ما حصل على المكافأة", `طبّق <b>${esc(reward)}</b> على طلبه، ثم <b>امسح رمزه مرة ثانية</b> ليؤكد الاستلام.<br><span class="sub">المكافأة باقية له ولن تُحسب إلا بعد تأكيده.</span>`, scanNextBtn());
+      }
+    }, 2000);
+  }
+
   /* ---------- مشغّل اللعبة: تذاكر الألعاب ---------- */
   const tktCount = (n) => n === 1 ? "تذكرة واحدة" : n === 2 ? "تذكرتان" : n + " تذاكر";
   async function orgTicket(code) {
@@ -1552,7 +1582,7 @@
     try { d = await A.urpc("my_partner"); } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
     const p = d.partner || {}, st = (d.stalls || []).find((x) => x.event === EV) || {};
     ptLogo = p.logo || null;
-    const locked = st.status === "approved";
+    const locked = st.status === "approved";   // بعد الاعتماد: البطاقة يعدّلها مدير النظام فقط
     const ev = evById(EV) || {};
     const statusBox = st.status ? `<div class="result ${st.status === "approved" ? "r-ok" : st.status === "rejected" ? "r-err" : "r-warn"}" style="padding:14px">
         <h3 style="font-size:17px">${st.status === "approved" ? "معتمد في " : st.status === "rejected" ? "لم يُعتمد في " : "قيد المراجعة في "}${esc((ev.name || "").split("—")[0].trim())}</h3>
@@ -1571,7 +1601,7 @@
         </div>
         <div class="card stack" style="gap:12px"><b>بطاقة الولاء</b>
           <span class="sub">هذه البطاقة تظهر في الجواز الرقمي لكل زائر، وتُضاف الأختام عليها عند كل زيارة.</span>
-          ${locked ? `<div class="msg info">البطاقة معتمدة ولا يمكن تغييرها أثناء الفعالية. تواصل مع المنظم لأي تعديل.</div>` : ""}
+          ${locked ? `<div class="msg info">البطاقة معتمدة. لأي تعديل على عدد الزيارات أو المكافآت تواصل مع إدارة شُرفة، حفاظًا على أختام الزوار.</div>` : ""}
           <div class="field"><label for="pt-req">عدد الزيارات قبل المكافأة</label><input class="input" id="pt-req" name="required" type="number" min="1" max="20" value="${esc(st.required || 3)}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
           <div class="field"><label for="pt-r1">المكافأة الأولى</label><input class="input" id="pt-r1" name="reward1" maxlength="40" placeholder="مثال: خصم 30%" value="${esc(st.reward1 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
           <div class="field"><label for="pt-r2">مكافأة ثانية (اختياري)</label><input class="input" id="pt-r2" name="reward2" maxlength="40" placeholder="مثال: الوجبة مجانًا" value="${esc(st.reward2 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
@@ -1643,6 +1673,27 @@
     else if (a === "sub") { S.sub = { name: b.dataset.name, id: b.dataset.id, title: b.dataset.title }; render(); }
     else if (a === "back") { const st = history.state; if (st && st.s && st.depth > 1 && st.sub) history.back(); else { S.sub = null; render(); } }
     else if (a === "ovl-close") closeOverlay();
+    else if (a === "card-edit") {
+      const box = $("#cardv-" + b.dataset.id); if (!box) return;
+      box.innerHTML = `<form class="stack" data-f="card-admin" data-id="${esc(b.dataset.id)}" style="gap:8px"><b style="font-size:14px">تعديل بطاقة الولاء (إدارة شُرفة)</b>
+        <div class="grid2"><div class="field"><label>عدد الزيارات</label><input class="input" name="required" type="number" min="1" max="20" value="${esc(b.dataset.req)}"></div>
+        <div class="field"><label>الفاصل (دقائق)</label><input class="input" name="cooldown" type="number" min="0" max="1440" value="${esc(b.dataset.cd)}"></div></div>
+        <div class="field"><label>المكافأة الأولى</label><input class="input" name="reward1" maxlength="40" value="${esc(b.dataset.r1)}"></div>
+        <div class="field"><label>مكافأة ثانية (اختياري)</label><input class="input" name="reward2" maxlength="40" value="${esc(b.dataset.r2)}"></div>
+        <span class="sub" style="color:var(--warn)">تغيير عدد الزيارات يغيّر مكان الزوار في بطاقاتهم. يُفضّل تعديله قبل بدء الفعالية.</span>
+        <div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" type="submit" style="flex:1">حفظ البطاقة</button><button class="btn btn-line btn-sm" type="button" data-a="card-cancel" style="flex:1">إلغاء</button></div></form>`;
+    }
+    else if (a === "card-cancel") loadAdminPartners();
+    else if (a === "reward-yes" || a === "reward-no") {
+      const ok = a === "reward-yes"; b.disabled = true;
+      try {
+        const r = await A.urpc("confirm_reward", { p_id: +b.dataset.id, p_ok: ok });
+        askingReward = 0; closeOverlay(false); await loadPass(); if (S.passFill) S.passFill();
+        if (ok) overlay({ k: "ok", icon: "check", title: "استمتع بمكافأتك 🎉", body: `<b>${esc(r.reward)}</b> من ${esc(r.stall)}<br>${r.final ? "اكتملت بطاقتك، وتبدأ بطاقة جديدة من زيارتك القادمة." : r.next_reward ? `زيارتك القادمة: <b>${esc(r.next_reward)}</b>` : ""}`, auto: 7000 });
+        else overlay({ k: "warn", icon: "gift", title: "أخبر مزود الخدمة", body: `عندك مكافأة <b>${esc(r.reward)}</b> في ${esc(r.stall)}.<br>أخبر الموظف ليطبّقها على طلبك، ثم يمسح رمزك مرة ثانية لتأكيدها.<br><span class="sub">مكافأتك باقية ولن تضيع.</span>` });
+        if (S.pass && (S.pass.pending_rewards || []).length && ok) setTimeout(() => askReward(S.pass.pending_rewards[0]), 7500);
+      } catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
+    }
     else if (a === "ev-go") { const g = b.dataset.go, id = b.dataset.id; location.href = location.pathname + "?e=" + encodeURIComponent(id) + (g && g !== "home" ? "&go=" + g + (g === "soon" ? "&k=" + (b.dataset.k || "") : "") : ""); }
     else if (a === "band-login") requireLogin("band", "visitor");
     else if (a === "mfa-start") {
@@ -1815,6 +1866,14 @@
     ev.preventDefault();
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
+    if (k === "card-admin") {
+      const f = ev.target, req = parseInt(f.required.value, 10);
+      if (!(req >= 1 && req <= 20) || !f.reward1.value.trim()) return toast(A.errText("bad_card"), "err");
+      try { await A.urpc("admin_update_stall_card", { p_stall: f.dataset.id, p_required: req, p_reward1: f.reward1.value.trim(), p_reward2: f.reward2.value.trim() || null, p_cooldown: parseInt(f.cooldown.value || "30", 10) });
+        toast("حُفظت بطاقة الولاء", "ok"); loadAdminPartners(); S.stalls = null; }
+      catch (e) { toast(errMsg(e), "err"); }
+      return;
+    }
     if (k === "mfa-enroll") {
       const f = ev.target, m = $("#mf-msg"), code = f.code.value.replace(/\D/g, "");
       if (code.length !== 6) { m.innerHTML = `<div class="msg err">${esc(A.errText("mfa_bad_code"))}</div>`; return; }
