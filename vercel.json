@@ -1,4 +1,58 @@
 {
+  "redirects": [
+    {
+      "source": "/oman-national-day.html",
+      "destination": "/oman-national-day",
+      "permanent": true
+    },
+    {
+      "source": "/sohar-festival.html",
+      "destination": "/sohar-festival",
+      "permanent": true
+    },
+    {
+      "source": "/dhahirah-festival.html",
+      "destination": "/dhahirah-festival",
+      "permanent": true
+    },
+    {
+      "source": "/squ-eat.html",
+      "destination": "/squ-eat",
+      "permanent": true
+    },
+    {
+      "source": "/partners.html",
+      "destination": "/partners",
+      "permanent": true
+    },
+    {
+      "source": "/index.html",
+      "destination": "/",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/oman-national-day",
+      "destination": "/oman-national-day.html"
+    },
+    {
+      "source": "/sohar-festival",
+      "destination": "/sohar-festival.html"
+    },
+    {
+      "source": "/dhahirah-festival",
+      "destination": "/dhahirah-festival.html"
+    },
+    {
+      "source": "/squ-eat",
+      "destination": "/squ-eat.html"
+    },
+    {
+      "source": "/partners",
+      "destination": "/partners.html"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",
