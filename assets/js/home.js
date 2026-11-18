@@ -170,6 +170,18 @@
   }
 
   renderEvents();
+  // فعاليات أضافتها إدارة شُرفة من التطبيق (غير موجودة في data.js) تظهر هنا تلقائيًا وتفتح في التطبيق
+  document.addEventListener("shurfa:events", (e) => {
+    const known = new Set((DATA.events || []).map((x) => x.id));
+    const extra = (e.detail || []).filter((x) => x && x.visible !== false && !known.has(x.id)).map((x) => ({
+      id: x.id, name: x.name, summary: x.summary || "", location: x.location || "", date: x.date || "", status: x.status || "available",
+      url: "app/?e=" + encodeURIComponent(x.id), image: x.image || "", logo: x.logo || "",
+      colors: { from: x.color_from || "#1A2E28", to: x.color_to || "#2E5148", accent: "#F5A623" },
+      tags: x.active ? [x.price_baisa ? "الجواز الرقمي" : "الجواز الرقمي مجانًا"] : [], sort: x.sort || 100 }));
+    if (!extra.length) return;
+    DATA.events = [...extra.sort((a, b) => a.sort - b.sort), ...(DATA.events || [])];
+    renderEvents();
+  });
   // الفعاليات التي أخفتها إدارة شُرفة من التطبيق تختفي من الموقع أيضًا (main.js يرسل القائمة)
   document.addEventListener("shurfa:hidden", (e) => {
     DATA.events = (DATA.events || []).filter((x) => !e.detail.has(x.id));

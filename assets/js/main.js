@@ -555,7 +555,9 @@
   fetch(sb.url.replace(/\/$/, "") + "/rest/v1/rpc/list_events", {
     method: "POST", headers: { apikey: sb.anonKey, "Content-Type": "application/json" }, body: "{}"
   }).then((r) => (r.ok ? r.json() : [])).then((list) => {
-    const hidden = new Set((Array.isArray(list) ? list : []).filter((e) => e && e.visible === false).map((e) => e.id));
+    const all = Array.isArray(list) ? list : [];
+    document.dispatchEvent(new CustomEvent("shurfa:events", { detail: all }));
+    const hidden = new Set(all.filter((e) => e && e.visible === false).map((e) => e.id));
     if (!hidden.size) return;
     // صفحة فعالية مخفية ← الصفحة الرئيسية
     const root = document.getElementById("eventRoot");
