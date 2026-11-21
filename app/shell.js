@@ -356,6 +356,10 @@
   const price = () => (S.ev && S.ev.price_baisa) || 0;
   const fmtPrice = (b) => !b ? "مجانًا" : b % 1000 === 0 ? (b === 1000 ? "1 ريال" : `${b / 1000} ريالات`) : b < 1000 ? `${b} بيسة` : `${(b / 1000).toFixed(3)} ر.ع`;
   const canSell = () => !!(S.ev && S.ev.active);
+  const fmtMoney = (b) => (b ? fmtPrice(b) : "0");   // مبالغ الصندوق: الصفر يظهر 0 لا «مجانًا»
+  /* جواز الفعالية: عرض واحد من كل كشك + صندوق الشركاء (events.pass_mode = offers) */
+  const isOffers = (id = EV) => ((EVDB[id] || {}).pass_mode) === "offers";
+  const stallEv = (id) => ((((S.me && S.me.stalls) || []).find((x) => x.id === id)) || {}).event || EV;
 
   /* =========================================================
      التبويبات
@@ -546,12 +550,20 @@
 
   function offersHTML(list) {
     return list.map((s) => `<button class="card row" data-a="sub" data-name="stall" data-id="${esc(s.id)}" style="gap:12px">${logoTile(s, 44)}
-      <span class="grow"><b>${esc(s.name)}</b><span class="sub" style="display:block">${esc(A.offerText(s))}</span></span>${ic("fwd", 16, 2)}</button>`).join("");
+      <span class="grow"><b>${esc(s.name)}</b><span class="sub" style="display:block">${esc(isOffers() ? s.reward1 : A.offerText(s))}</span></span>${ic("fwd", 16, 2)}</button>`).join("");
+  }
+  /* عروض جواز الفعالية مع حالة كل عرض للزائر */
+  const OFFER_ST = { used: ["استخدمته", "st-mute"], pending: ["بانتظار تأكيدك", "st-warn"] };
+  function passOffersHTML(list) {
+    return list.map((o) => { const st = OFFER_ST[o.state]; return `<div class="card row" style="gap:12px;${o.state === "used" ? "opacity:.6" : ""}">${logoTile(o, 44)}
+      <span class="grow"><b>${esc(o.name)}</b><span class="sub" style="display:flex;align-items:center;gap:5px;color:var(--ink);font-weight:600">${ic("gift", 14)}<span>${esc(o.offer)}</span></span>${o.used_at ? `<span class="sub" style="display:block">${esc(dayTime(o.used_at))}</span>` : ""}</span>
+      ${st ? `<span class="st ${st[1]}">${st[0]}</span>` : '<span class="st st-ok">متاح</span>'}</div>`; }).join("");
   }
 
   async function loadPass() {
     try { S.pass = await A.urpc("my_pass", { p_event: EV }); }
     catch (e) { if (e.code === "not_signed_in") return signedOut(); S.pass = null; }
+    if (isOffers() && S.pass && S.pass.ok) { try { S.passOffers = await A.urpc("pass_offers", { p_event: EV }); } catch (e) { S.passOffers = S.passOffers || []; } }
     // تحديث حالة الجواز في الذاكرة (بعد تفعيله من المنظم)
     const ref = myPassRef(); if (ref && S.pass && S.pass.status) ref.status = S.pass.status;
   }
@@ -577,7 +589,7 @@
         badge: cur && (S.games || []).length ? (Math.min(...S.games.map((g) => g.price_baisa)) ? "من " + fmtPrice(Math.min(...S.games.map((g) => g.price_baisa))) : "مجانًا") : "" },
       packages: { t: "الباقات", d: e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
         soon: !(e.page && e.page.packages), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
-      passport: { t: "الجواز الرقمي", d: "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
+      passport: { t: "الجواز الرقمي", d: isOffers(e.id) ? "عرض خاص من كل كشك مشارك، تستخدم كل عرض مرة واحدة." : "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
         badge: cur && canSell() ? (price() ? fmtPrice(price()) : "مجانًا") : "", go: "pass", cta: cur && myPassRef() ? "افتح جوازي" : "احصل على الجواز" },
       safety: { t: "سوار الأمان", d: "سوار برمز QR مرتبط بحسابك، يصلك إشعار فوري إذا مسحه فريق التنظيم.", main: "band", deco: ["shield", "bell", "lock"], c1: "#2CA6A4", c2: "#14524F",
         badge: "للأطفال", go: "bands", cta: (S.bands || []).length ? "أساوري" : "فعّل سوار طفلك" }
@@ -597,16 +609,18 @@
   function renderPass() {
     const ev = evById(EV) || {};
     const evName = esc((ev.name || "").split("—")[0].trim());
-    const ref = myPassRef();
+    const ref = myPassRef(), OF = isOffers();
+    if (OF && S.passTab === "cards") S.passTab = "offers";
     const benefits = `<div class="card stack" style="gap:10px">
-        ${[["award", "بطاقة ولاء لكل شريك", "كل زيارة لكشك = ختم في بطاقته"], ["gift", "مكافآت حقيقية", "خصومات ووجبات مجانية يحددها كل شريك"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند كل زيارة"]]
+        ${(OF ? [["gift", "عرض من كل كشك", "خصومات وإضافات يحددها الشركاء لحاملي الجواز"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند الطلب ليمسحه الكشك"], ["award", "كل عرض مرة واحدة", "تابع العروض المتبقية من جوازك"]]
+          : [["award", "بطاقة ولاء لكل شريك", "كل زيارة لكشك = ختم في بطاقته"], ["gift", "مكافآت حقيقية", "خصومات ووجبات مجانية يحددها كل شريك"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند كل زيارة"]])
           .map(([i, t, d]) => `<div class="row" style="gap:12px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple);width:38px;height:38px">${ic(i, 18)}</span><div><b style="font-size:14px">${t}</b><div class="sub">${d}</div></div></div>`).join("")}</div>`;
 
     if (!S.me || !ref) {
       scr.innerHTML = `${head("جوازي الرقمي", false)}
         <section class="pp-cover"><span style="font-size:12.5px;opacity:.9">جواز شُرفة · ${evName}</span>
           <b style="font-size:24px;font-family:var(--head)">جوازك الرقمي للفعالية</b>
-          <p style="opacity:.92;font-size:14px">اجمع أختام الأكشاك المشاركة، وكل بطاقة تكتمل تفتح لك مكافأة.</p>
+          <p style="opacity:.92;font-size:14px">${OF ? "جواز واحد فيه عروض كل الأكشاك المشاركة، واستخدم عرض كل كشك مرة واحدة." : "اجمع أختام الأكشاك المشاركة، وكل بطاقة تكتمل تفتح لك مكافأة."}</p>
           <div class="between" style="background:rgba(255,255,255,.14);border-radius:14px;padding:12px 14px"><span>سعر الجواز</span><b style="font-size:22px">${fmtPrice(price())}</b></div></section>
         <div class="sp"></div><div class="pad stack">${benefits}
           ${canSell() ? `<button class="btn btn-cta" data-a="buy">${S.me ? (price() ? `اشترِ الجواز · ${fmtPrice(price())}` : "احصل على جوازك مجانًا") : (price() ? "سجّل دخولك لشراء الجواز" : "سجّل دخولك واحصل على جوازك مجانًا")}</button>`
@@ -625,8 +639,8 @@
         <b style="font-size:20px;font-family:var(--head)">${esc(myName())}</b>
         <div class="qr" id="ppQr"></div>
         <div class="pp-code">${esc(ref.code)}</div>
-        <p style="text-align:center;font-size:13px;opacity:.9">${pending ? "اعرض هذا الرمز في منصة المنظمين عند الدفع" : "اعرض هذا الرمز لموظف الكشك عند كل زيارة"}</p>
-        ${pending ? "" : `<div class="pp-stats"><div><b class="num" id="ppVisits">–</b><span>زيارات</span></div><div><b class="num" id="ppCards">–</b><span>بطاقات</span></div><div><b class="num" id="ppRewards">–</b><span>مكافآت</span></div></div>`}
+        <p style="text-align:center;font-size:13px;opacity:.9">${pending ? "اعرض هذا الرمز في منصة المنظمين عند الدفع" : OF ? "اعرض هذا الرمز عند الطلب ليُطبّق لك عرض الكشك" : "اعرض هذا الرمز لموظف الكشك عند كل زيارة"}</p>
+        ${pending ? "" : `<div class="pp-stats"><div><b class="num" id="ppVisits">–</b><span>${OF ? "عروض استخدمتها" : "زيارات"}</span></div><div><b class="num" id="ppCards">–</b><span>${OF ? "عروض متاحة" : "بطاقات"}</span></div><div><b class="num" id="ppRewards">–</b><span>${OF ? "أكشاك مشاركة" : "مكافآت"}</span></div></div>`}
       </section>
       ${pending ? `<div class="sp"></div><div class="pad stack">
           <div class="card stack" style="gap:10px;border:1.5px solid var(--gold)">
@@ -639,16 +653,21 @@
           <div class="card flat row" style="gap:10px">${ic("lock", 20)}<span class="grow sub">الدفع الإلكتروني (Apple Pay والبطاقة البنكية) يُتاح قريبًا عبر بوابة دفع آمنة.</span></div>
         </div><div class="sp"></div>`
       : `<div class="pad" style="padding-top:14px;padding-bottom:14px"><div class="seg" role="group" aria-label="أقسام الجواز">
-        ${[["cards", "بطاقاتي"], ["offers", "العروض"], ["log", "السجل"]].map(([k, l]) => `<button data-a="pass-tab" data-k="${k}" aria-pressed="${tab === k}">${l}</button>`).join("")}</div></div>
+        ${(OF ? [["offers", "عروض الجواز"], ["log", "السجل"]] : [["cards", "بطاقاتي"], ["offers", "العروض"], ["log", "السجل"]]).map(([k, l]) => `<button data-a="pass-tab" data-k="${k}" aria-pressed="${tab === k}">${l}</button>`).join("")}</div></div>
       <div class="pad stack" id="ppBody"><div class="skel"></div></div><div class="sp"></div>`}`;
     A.qr($("#ppQr"), "SHURFA:" + ref.code, 190);
 
     if (pending) return;   // التفعيل يصل عبر النبضة (startPulse) ويظهر إشعار فوري
     const fill = () => {
       const p = S.pass; if (!p || !p.ok || !$("#ppBody")) return;
-      $("#ppVisits").textContent = p.visits; $("#ppCards").textContent = p.cards.length; $("#ppRewards").textContent = p.rewards;
       let h = "";
-      if (S.passTab === "cards") {
+      if (OF) {
+        const L = S.passOffers || [], used = L.filter((o) => o.state === "used").length;
+        $("#ppVisits").textContent = used; $("#ppCards").textContent = L.length - used; $("#ppRewards").textContent = L.length;
+      } else { $("#ppVisits").textContent = p.visits; $("#ppCards").textContent = p.cards.length; $("#ppRewards").textContent = p.rewards; }
+      if (OF && S.passTab === "offers") {
+        h = (S.passOffers || []).length ? passOffersHTML(S.passOffers) : `<div class="empty card">${ic("gift", 36)}<b>لم تُعلن العروض بعد</b><span>تظهر هنا عروض الأكشاك المشاركة أول ما يعتمدها فريق شُرفة.</span></div>`;
+      } else if (S.passTab === "cards") {
         h = p.cards.length ? p.cards.map((c) => { const st = A.cardState(c); return `<div class="loyalty">
             <div class="loyalty-head"><span class="row" style="gap:10px">${logoTile({ name: c.stall, logo: c.logo }, 36)}<b>${esc(c.stall)}</b>${c.rounds ? `<span class="sub">البطاقة ${c.rounds + 1}</span>` : ""}</span>${st.done >= c.required ? '<span class="st st-warn">مكافأة بانتظارك</span>' : `<span class="st st-purple">${st.done}/${c.required}</span>`}</div>
             <div class="slots">${A.slotsHTML(c)}</div><p class="loyalty-next">${esc(st.next)}</p></div>`; }).join("")
@@ -658,7 +677,7 @@
         h = offersHTML(S.stalls || []) || `<div class="empty card">${ic("gift", 36)}<b>لم تُعلن العروض بعد</b></div>`;
       } else {
         h = p.history && p.history.length ? `<div class="card" style="padding:4px 16px">${p.history.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;${x.kind === "reward" ? "background:var(--gold-soft);color:var(--gold-ink)" : "background:var(--purple-soft);color:var(--purple)"}">${ic(x.kind === "reward" ? "gift" : "check", 18, 2)}</span>
-            <div class="grow"><b style="font-size:14px">${esc(x.stall)}</b><div class="sub">${x.kind === "reward" ? "مكافأة: " + esc(x.reward) + (x.status === "pending" ? " · بانتظار تأكيدك" : x.status === "declined" ? " · لم تُستلم بعد" : "") : "ختم زيارة"} · ${esc(dayTime(x.at))}</div></div></div>`).join("")}</div>`
+            <div class="grow"><b style="font-size:14px">${esc(x.stall)}</b><div class="sub">${x.kind === "reward" ? (OF ? "عرض: " : "مكافأة: ") + esc(x.reward) + (x.status === "pending" ? " · بانتظار تأكيدك" : x.status === "declined" ? " · لم تُستلم بعد" : "") : "ختم زيارة"} · ${esc(dayTime(x.at))}</div></div></div>`).join("")}</div>`
           : `<div class="empty card">${ic("list", 36)}<b>لا يوجد نشاط بعد</b></div>`;
       }
       $("#ppBody").innerHTML = h;
@@ -689,7 +708,7 @@
     await loadPass();
     if (wasPending && d.status === "active") {
       try { if (navigator.vibrate) navigator.vibrate([80, 50, 80]); } catch (e) { /* ignore */ }
-      overlay({ k: "ok", icon: "check", title: "تم تفعيل جوازك 🎉", body: "استلم المنظم الدفع وتفعّل جوازك الرقمي.<br>اعرض رمزك عند الأكشاك المشاركة لجمع الأختام.", auto: 7000, onClose: () => { if (S.tab === "pass" || S.tab === "home") render(); } });
+      overlay({ k: "ok", icon: "check", title: "تم تفعيل جوازك 🎉", body: isOffers() ? "استلم المنظم الدفع وتفعّل جوازك الرقمي.<br>اعرض رمزك عند الأكشاك المشاركة لتحصل على عروضها." : "استلم المنظم الدفع وتفعّل جوازك الرقمي.<br>اعرض رمزك عند الأكشاك المشاركة لجمع الأختام.", auto: 7000, onClose: () => { if (S.tab === "pass" || S.tab === "home") render(); } });
       if (S.tab === "pass" || S.tab === "home") render();
       return;
     }
@@ -725,7 +744,7 @@
     if (!r || askingReward === r.id || ($("#ovl") && $("#ovl .r-alert"))) return;
     askingReward = r.id;
     try { if (navigator.vibrate) navigator.vibrate([80, 50, 80, 50, 120]); } catch (e) { /* ignore */ }
-    overlay({ k: "gold", icon: "gift", title: `هل حصلت على ${r.reward}؟`, body: `من <b>${esc(r.stall)}</b><br><span class="sub">أكّد بعد ما يطبّق مزود الخدمة المكافأة على طلبك.</span>`,
+    overlay({ k: "gold", icon: "gift", title: `هل حصلت على ${r.reward}؟`, body: `من <b>${esc(r.stall)}</b><br><span class="sub">أكّد بعد ما يطبّق مزود الخدمة ${isOffers() ? "العرض" : "المكافأة"} على طلبك.</span>`,
       extra: `<div class="row" style="gap:8px;width:100%"><button class="btn btn-cta btn-sm" style="flex:1" data-a="reward-yes" data-id="${r.id}">نعم، حصلت عليها</button><button class="btn btn-line btn-sm" style="flex:1" data-a="reward-no" data-id="${r.id}">لا</button></div>`,
       onClose: () => { askingReward = 0; } });
   }
@@ -859,26 +878,27 @@
       scr.innerHTML = `<div class="ohead">${sw}<div><div style="font-size:12.5px;opacity:.85">واجهة الشريك</div><h2>${esc(st.name || "كشكي")}</h2></div></div>
         <div class="pad stack" style="padding-top:16px">
           <div class="result ${rejected ? "r-err" : "r-warn"}"><span class="big">${ic(rejected ? "x" : "clock", 30, 2.4)}</span><h3>${rejected ? "لم يُعتمد الطلب" : "طلبك قيد المراجعة"}</h3>
-            <span class="sub" style="color:var(--ink)">${rejected ? "راجع ملاحظة المنظم وعدّل بياناتك ثم أعد الإرسال." : "سيراجع منظمو الفعالية بياناتك وبطاقة الولاء. بعد الاعتماد تظهر هنا أداة مسح جوازات الزوار."}</span></div>
-          <button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} بياناتي وبطاقة الولاء</button>
+            <span class="sub" style="color:var(--ink)">${rejected ? "راجع ملاحظة المنظم وعدّل بياناتك ثم أعد الإرسال." : `سيراجع فريق شُرفة بياناتك ${isOffers(st.event) ? "وعرضك" : "وبطاقة الولاء"}. بعد الاعتماد تظهر هنا أداة مسح جوازات الزوار.`}</span></div>
+          <button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} ${isOffers(st.event) ? "بياناتي وعرضي" : "بياناتي وبطاقة الولاء"}</button>
         </div>`;
       return;
     }
     if (!W.stall || !ok.find((s) => s.id === W.stall)) W.stall = ((A.local.get("work-stall") && ok.find((s) => s.id === A.local.get("work-stall"))) || ok[0]).id;
-    const s = ok.find((x) => x.id === W.stall);
+    const s = ok.find((x) => x.id === W.stall), OF = isOffers(s.event);
     onScan = addVisit;
     scr.innerHTML = `<div class="ohead">${sw}
         <div class="between"><div><div style="font-size:12.5px;opacity:.85">${s.role === "manager" ? "مدير الكشك" : "موظف الكشك"} · ${esc(firstName(myName()))}</div><h2>${esc(s.name)}</h2></div><span class="row" style="gap:6px;font-size:12px"><span style="width:9px;height:9px;border-radius:5px;background:#5BD6A8;display:inline-block"></span>متصل</span></div>
         ${ok.length > 1 ? `<select data-c="work-stall" aria-label="الكشك">${ok.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>` : ""}
-        <span style="font-size:13px;opacity:.9">بطاقة الولاء: ${esc(A.offerText(s))}</span>
+        <span style="font-size:13px;opacity:.9">${OF ? "عرضك لحاملي الجواز: " + esc(s.reward1) : "بطاقة الولاء: " + esc(A.offerText(s))}</span>
       </div>
       <div class="pad stack" style="padding-top:16px">
         ${scanUI("امسح جواز الزائر", "بالكاميرا الخلفية")}
         <h3 class="sec-t">اليوم في ${esc(s.name)}</h3>
-        <div class="kpis3" id="stKpis"><div><b>–</b><span>زيارات اليوم</span></div><div><b>–</b><span>مكافآت اليوم</span></div><div><b>–</b><span>زوار الكشك</span></div></div>
+        <div class="kpis3" id="stKpis"><div><b>–</b><span>${OF ? "عروض اليوم" : "زيارات اليوم"}</span></div><div><b>–</b><span>${OF ? "مؤكدة من الزوار" : "مكافآت اليوم"}</span></div><div><b>–</b><span>زوار الكشك</span></div></div>
+        ${OF ? `<div class="card stack" id="stPool" style="gap:10px;border:1.5px solid var(--gold)"><div class="skel" style="height:80px"></div></div>` : ""}
         <div class="between"><h3 class="sec-t">آخر العمليات</h3><button class="linkbtn" data-a="work-refresh">تحديث</button></div>
         <div class="card" style="padding:4px 16px" id="stRecent"><div class="li sub">…</div></div>
-        ${s.role === "manager" ? `<button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} بيانات الشريك وبطاقة الولاء</button>` : ""}
+        ${s.role === "manager" ? `<button class="btn btn-line" data-a="sub" data-name="partner">${ic("edit", 18)} ${OF ? "بيانات الشريك والعرض" : "بيانات الشريك وبطاقة الولاء"}</button>` : ""}
       </div>`;
     loadStaffStats();
     refreshT = setInterval(() => { if (document.visibilityState === "visible") loadStaffStats(); }, 20000);
@@ -886,10 +906,15 @@
 
   async function loadStaffStats() {
     try {
-      const d = await A.urpc("staff_stats", { p_stall: S.work.stall });
+      const OF = isOffers(stallEv(S.work.stall));
+      const [d, pl] = await Promise.all([A.urpc("staff_stats", { p_stall: S.work.stall }), OF ? A.urpc("staff_pool", { p_stall: S.work.stall }).catch(() => null) : null]);
       const k = $("#stKpis"); if (!k) return;
-      k.innerHTML = `<div><b class="num">${d.today_visits}</b><span>زيارات اليوم</span></div><div><b class="num">${d.today_rewards}</b><span>مكافآت اليوم</span></div><div><b class="num">${d.visitors}</b><span>زوار الكشك</span></div>`;
-      $("#stRecent").innerHTML = d.recent.length ? d.recent.map((r) => `<div class="li"><span class="ico-tile" style="width:36px;height:36px;${r.kind === "reward" ? "background:var(--gold-soft);color:var(--gold-ink)" : "background:var(--ok-soft);color:var(--ok)"}">${ic(r.kind === "reward" ? "gift" : "check", 18, 2)}</span><div class="grow"><b style="font-size:14px">${esc(r.visitor)}</b><div class="sub">${r.kind === "reward" ? "مكافأة: " + esc(r.reward) : "ختم زيارة"}</div></div><span class="sub">${esc(time(r.at))}</span></div>`).join("")
+      k.innerHTML = `<div><b class="num">${d.today_visits}</b><span>${OF ? "عروض اليوم" : "زيارات اليوم"}</span></div><div><b class="num">${OF ? (pl && pl.ok ? pl.confirmed : "–") : d.today_rewards}</b><span>${OF ? "مؤكدة من الزوار" : "مكافآت اليوم"}</span></div><div><b class="num">${d.visitors}</b><span>زوار الكشك</span></div>`;
+      const pb = $("#stPool");
+      if (pb && pl && pl.ok) pb.innerHTML = `<div class="between"><b>${ic("gift", 18)} نصيبك من صندوق الجواز</b><span class="st st-warn">تقديري</span></div>
+        <div class="kpis3" style="margin:0"><div><b class="num">${pl.visits}</b><span>زياراتك</span></div><div><b class="num">${pl.rank ? "#" + pl.rank : "–"}</b><span>ترتيبك من ${pl.stalls}</span></div><div><b class="num" style="font-size:17px">${fmtMoney(pl.amount_baisa)}</b><span>نصيبك حتى الآن</span></div></div>
+        <span class="sub">الصندوق ${pl.pool_pct}% من مبيعات الجواز (${pl.passes} جواز = ${fmtMoney(pl.pool_baisa)}). نصيبك = زياراتك ${pl.visits} ÷ مجموع الزيارات ${pl.total_visits}${pl.total_visits ? ` (${pl.share_pct}%)` : ""}. يتغير الرقم حتى نهاية الفعالية.</span>`;
+      $("#stRecent").innerHTML = d.recent.length ? d.recent.map((r) => `<div class="li"><span class="ico-tile" style="width:36px;height:36px;${r.kind === "reward" ? "background:var(--gold-soft);color:var(--gold-ink)" : "background:var(--ok-soft);color:var(--ok)"}">${ic(r.kind === "reward" ? "gift" : "check", 18, 2)}</span><div class="grow"><b style="font-size:14px">${esc(r.visitor)}</b><div class="sub">${r.kind === "reward" ? (OF ? "عرض: " : "مكافأة: ") + esc(r.reward) : "ختم زيارة"}</div></div><span class="sub">${esc(time(r.at))}</span></div>`).join("")
         : `<div class="li sub">لا توجد عمليات بعد.</div>`;
     } catch (e) { if (e.code === "not_signed_in") signedOut(); }
   }
@@ -902,7 +927,11 @@
       try { if (navigator.vibrate) navigator.vibrate(d.kind === "reward" ? [80, 60, 80] : 60); } catch (e) { /* ignore */ }
       const acts = scanNextBtn() + `<button class="linkbtn" data-a="undo" style="color:var(--err)">${ic("undo", 16)} تراجع عن هذه العملية</button>`;
       const back = () => { const r = $("#scanRes"); if (r) r.innerHTML = ""; };
-      if (d.kind === "reward") {
+      if (d.offer) {
+        showRes("gold", "gift", "طبّق عرض الجواز: " + d.reward,
+          `طبّق <b>${esc(d.reward)}</b> على طلب <b>${esc(d.visitor)}</b>.<br><span id="rwState" class="row" style="gap:8px;justify-content:center;margin-top:6px"><span class="spin" style="border-color:rgba(122,79,0,.25);border-top-color:var(--gold-ink);width:18px;height:18px;border-width:2.5px"></span> بانتظار تأكيد الزائر من جواله…</span>`, acts);
+        watchReward(d.id, d.reward, false, true);
+      } else if (d.kind === "reward") {
         showRes("gold", "gift", "مكافأة الزائر: " + d.reward,
           `طبّق <b>${esc(d.reward)}</b> على طلب <b>${esc(d.visitor)}</b>.<br><span id="rwState" class="row" style="gap:8px;justify-content:center;margin-top:6px"><span class="spin" style="border-color:rgba(122,79,0,.25);border-top-color:var(--gold-ink);width:18px;height:18px;border-width:2.5px"></span> بانتظار تأكيد الزائر من جواله…</span>`, acts);
         watchReward(d.id, d.reward, d.final);
@@ -913,7 +942,8 @@
       loadStaffStats();
     } catch (e) {
       const d = e.data || {};
-      if (e.code === "cooldown") showRes("warn", "clock", "أُضيف ختم قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`, scanNextBtn(), 7000);
+      if (e.code === "offer_used") showRes("warn", "gift", "الزائر استخدم عرضك مسبقًا", `${esc(d.visitor || "الزائر")} حصل على <b>${esc(d.reward || "العرض")}</b>${d.used_at ? " " + esc(dayTime(d.used_at)) : ""}.<br>عرض الجواز يُستخدم مرة واحدة لكل زائر، فما تنحسب زيارة جديدة.`, scanNextBtn(), 8000);
+      else if (e.code === "cooldown") showRes("warn", "clock", "أُضيف ختم قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`, scanNextBtn(), 7000);
       else if (e.code === "pass_not_paid") showRes("warn", "lock", "الجواز غير مفعّل", `${esc(d.visitor || "الزائر")} لم يُكمل الدفع بعد. وجّهه إلى منصة المنظمين.`, scanNextBtn(), 8000);
       else showRes("err", "x", "لم تتم الإضافة", esc(errMsg(e)), scanNextBtn(), 7000);
     } finally { S.work.busy = false; }
@@ -999,6 +1029,11 @@
           <div class="field"><label for="ev-pay">تعليمات الدفع للزائر</label><input class="input" id="ev-pay" name="pay_note" maxlength="300" value="${esc(x.pay_note || "")}"></div>
         </div>
         <label class="check"><input type="checkbox" name="partner_signup" ${x.partner_signup !== false ? "checked" : ""}> <span>تسجيل الشركاء مفتوح لهذه الفعالية</span></label>
+      </div>
+      <div class="card stack" style="gap:12px"><b>نوع الجواز</b>
+        <label class="opt"><input type="radio" name="pass_mode" value="loyalty" ${x.pass_mode !== "offers" ? "checked" : ""}><span class="grow">بطاقات الولاء<span class="sub" style="display:block;font-weight:500">كل كشك له بطاقة أختام ومكافأة بعد عدد زيارات</span></span></label>
+        <label class="opt"><input type="radio" name="pass_mode" value="offers" ${x.pass_mode === "offers" ? "checked" : ""}><span class="grow">جواز الفعالية (عروض + صندوق الشركاء)<span class="sub" style="display:block;font-weight:500">كل كشك عرض واحد يُستخدم مرة لكل زائر، وجزء من مبيعات الجواز يتوزع على الشركاء حسب زياراتهم</span></span></label>
+        <div class="field"><label for="ev-pool">نسبة صندوق الشركاء من مبيعات الجواز (%)</label><input class="input" id="ev-pool" name="pool_pct" type="number" min="0" max="90" value="${esc(x.pool_pct != null ? x.pool_pct : 50)}"><span class="sub">تُستخدم في «جواز الفعالية» فقط. الباقي لشُرفة.</span></div>
       </div>
       <div id="evMsg"></div>
       <button class="btn btn-cta" type="submit">${id ? "حفظ المحتوى" : "إضافة الفعالية"}</button>
@@ -1089,19 +1124,31 @@
   async function loadAdminStats() {
     const el = $("#pfBody"); if (!el) return;
     try {
-      const s = await A.urpc("admin_stats", { p_event: adminEv() });
-      el.innerHTML = `<div class="kpis3"><div><b class="num">${s.paid}</b><span>جوازات مفعّلة</span></div><div><b class="num">${s.pending_payment}</b><span>بانتظار الدفع</span></div><div><b class="num" style="font-size:18px">${s.revenue_baisa ? fmtPrice(s.revenue_baisa) : "0"}</b><span>المبيعات</span></div></div>
+      const OF = isOffers(adminEv());
+      const [s, pl] = await Promise.all([A.urpc("admin_stats", { p_event: adminEv() }), OF && isAdmin() ? A.urpc("admin_pool", { p_event: adminEv() }).catch(() => null) : null]);
+      S.poolData = pl;
+      el.innerHTML = `${pl ? poolHTML(pl) : ""}<div class="kpis3"><div><b class="num">${s.paid}</b><span>جوازات مفعّلة</span></div><div><b class="num">${s.pending_payment}</b><span>بانتظار الدفع</span></div><div><b class="num" style="font-size:18px">${s.revenue_baisa ? fmtPrice(s.revenue_baisa) : "0"}</b><span>المبيعات</span></div></div>
         <div class="kpis3"><div><b class="num">${s.visitors_today}</b><span>طلبات اليوم</span></div><div><b class="num">${s.stamps}</b><span>أختام</span></div><div><b class="num">${s.rewards}</b><span>مكافآت</span></div></div>
         <h3 class="sec-t">أداء الأكشاك المعتمدة</h3>
         <div class="card" style="padding:4px 16px">${(s.stalls || []).length ? s.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:38px;height:38px;background:var(--gold-soft);color:var(--gold-ink)">${ic(KIND_ICON[x.kind] || "star", 18)}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visitors} زائر · ${x.visits} زيارة · ${x.rewards} مكافأة</div></div>${x.active ? "" : '<span class="st st-mute">متوقف</span>'}</div>`).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
         <a class="btn btn-dark" href="admin.html?e=${encodeURIComponent(adminEv())}">${ic("grid", 20)} لوحة التحكم الكاملة</a>`;
     } catch (e) { el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
   }
+  /* صندوق الشركاء: نصيب كل شريك = زياراته ÷ مجموع الزيارات × الصندوق */
+  function poolHTML(p) {
+    return `<div class="card stack" style="gap:12px;border:1.5px solid var(--gold)">
+        <div class="between"><b>${ic("gift", 18)} صندوق الشركاء</b><span class="st st-warn">${p.pool_pct}% من مبيعات الجواز</span></div>
+        <div class="kpis3" style="margin:0"><div><b class="num" style="font-size:17px">${fmtMoney(p.revenue_baisa)}</b><span>مبيعات الجواز (${p.passes})</span></div><div><b class="num" style="font-size:17px">${fmtMoney(p.pool_baisa)}</b><span>الصندوق</span></div><div><b class="num" style="font-size:17px">${fmtMoney(p.revenue_baisa - p.pool_baisa)}</b><span>نصيب شُرفة</span></div></div>
+        <span class="sub">مجموع الزيارات ${p.total_visits} · قيمة الزيارة تقريبًا ${fmtMoney(p.per_visit_baisa)}. الزيارة تنحسب إذا أكّدها الزائر أو ما رد بعد، والمرفوضة ما تنحسب.</span>
+        <div class="card flat" style="padding:4px 14px">${(p.stalls || []).length ? p.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:34px;height:34px;background:var(--gold-soft);color:var(--gold-ink);font-weight:800">${x.rank}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visits} زيارة (${x.confirmed} مؤكدة) · ${x.share_pct}%</div></div><b class="num">${fmtMoney(x.amount_baisa)}</b></div>`).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
+        <button class="btn btn-line btn-sm" data-a="pool-csv">${ic("list", 16)} تصدير التوزيع (Excel)</button>
+      </div>`;
+  }
   const STATUS_AR = { pending: ["قيد المراجعة", "st-warn"], approved: ["معتمد", "st-ok"], rejected: ["مرفوض", "st-err"] };
   const appCard = (a) => `<div class="card stack" style="gap:10px">
       <div class="row" style="gap:12px">${logoTile(a, 52)}<div class="grow"><b>${esc(a.name)}</b><div class="sub">${esc(A.KIND[a.kind] || a.kind)} · <span dir="ltr">${esc(a.owner_email || "")}</span></div></div><span class="st ${STATUS_AR[a.status][1]}">${STATUS_AR[a.status][0]}</span></div>
       ${a.description ? `<p style="font-size:14px">${esc(a.description)}</p>` : ""}
-      <div class="card flat" style="padding:10px 12px" id="cardv-${esc(a.stall)}"><div class="between"><span class="sub">بطاقة الولاء</span>${isAdmin() ? `<button class="linkbtn" style="padding:0;min-height:auto" data-a="card-edit" data-id="${esc(a.stall)}" data-req="${a.required}" data-r1="${esc(a.reward1 || "")}" data-r2="${esc(a.reward2 || "")}" data-cd="${a.cooldown}">${ic("edit", 14)} تعديل البطاقة</button>` : ""}</div><div><b>${esc(A.offerText(a))}</b></div><span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span></div>
+      <div class="card flat" style="padding:10px 12px" id="cardv-${esc(a.stall)}"><div class="between"><span class="sub">${isOffers(adminEv()) ? "عرض الجواز" : "بطاقة الولاء"}</span>${isAdmin() ? `<button class="linkbtn" style="padding:0;min-height:auto" data-a="card-edit" data-id="${esc(a.stall)}" data-req="${a.required}" data-r1="${esc(a.reward1 || "")}" data-r2="${esc(a.reward2 || "")}" data-cd="${a.cooldown}">${ic("edit", 14)} تعديل البطاقة</button>` : ""}</div><div><b>${esc(isOffers(adminEv()) ? a.reward1 : A.offerText(a))}</b></div>${isOffers(adminEv()) ? "" : `<span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span>`}</div>
       ${a.phone || a.instagram ? `<span class="sub">${a.phone ? `<span dir="ltr">${esc(a.phone)}</span>` : ""}${a.instagram ? ` · <span dir="ltr">@${esc(a.instagram)}</span>` : ""}</span>` : ""}
       ${a.note ? `<span class="sub">ملاحظة: ${esc(a.note)}</span>` : ""}
       ${a.status === "pending" ? `<div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="1">${ic("check", 18, 2)} اعتماد</button><button class="btn btn-danger btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="0">رفض</button></div>`
@@ -1172,7 +1219,7 @@
         <button class="menu-btn" data-a="go-tab" data-tab="pass">${ic("award", 20)}<span class="grow">جوازي الرقمي</span>${ic("fwd", 16, 2)}</button>
         <button class="menu-btn" data-a="sub" data-name="tickets">${bi("ticket")}<span class="grow">تذاكري (الألعاب)</span>${(S.tickets || []).length ? `<span class="st st-ok">${S.tickets.length}</span>` : ""}${ic("fwd", 16, 2)}</button>
         <button class="menu-btn" data-a="sub" data-name="bands">${bi("band")}<span class="grow">سوار الأمان (أساوري)</span>${(S.bands || []).length ? `<span class="st st-ok">${S.bands.length}</span>` : ""}${ic("fwd", 16, 2)}</button>
-        <button class="menu-btn" data-a="sub" data-name="partner">${ic("users", 20)}<span class="grow">${S.me.partner ? "بيانات الشريك وبطاقة الولاء" : "انضم كشريك"}</span>${ic("fwd", 16, 2)}</button>
+        <button class="menu-btn" data-a="sub" data-name="partner">${ic("users", 20)}<span class="grow">${S.me.partner ? (isOffers() ? "بيانات الشريك والعرض" : "بيانات الشريك وبطاقة الولاء") : "انضم كشريك"}</span>${ic("fwd", 16, 2)}</button>
         ${isWorker() ? `<button class="menu-btn" data-a="go-tab" data-tab="work">${ic("scan", 20)}<span class="grow">${isStaff() ? "واجهة الكشك" : isOrg() ? "اعتماد الجوازات" : "مشغّل اللعبة"}</span>${ic("fwd", 16, 2)}</button>` : ""}
         ${isOrg() ? "" : `<button class="menu-btn" data-a="sub" data-name="orgapply">${ic("chart", 20)}<span class="grow">سجّل كمنظم فعالية</span>${S.me.org_request === "pending" ? '<span class="st st-warn">قيد المراجعة</span>' : ""}${ic("fwd", 16, 2)}</button>`}
         ${isAdmin() ? `<button class="menu-btn" data-a="go-tab" data-tab="admin">${ic("shield", 20)}<span class="grow">إدارة شُرفة</span>${ic("fwd", 16, 2)}</button>
@@ -1222,8 +1269,11 @@
         <div class="card stack" style="align-items:center;text-align:center;gap:10px">${logoTile(s, 96)}<b style="font-size:20px">${esc(s.name)}</b><span class="st st-mute">${esc(A.KIND[s.kind] || "")}</span>
           ${s.description ? `<p style="font-size:14.5px">${esc(s.description)}</p>` : ""}
           ${s.instagram ? `<a class="linkbtn" dir="ltr" href="https://instagram.com/${esc(s.instagram)}" target="_blank" rel="noopener">@${esc(s.instagram)}</a>` : ""}</div>
-        <div class="loyalty"><div class="loyalty-head"><b>بطاقة الولاء</b><span class="st st-purple">${esc(A.offerText(s))}</span></div><div class="slots">${slots}</div>
-          <p class="loyalty-next">اعرض رمز جوازك عند كل زيارة لتُضاف الأختام.</p></div>
+        ${isOffers() ? `<div class="loyalty"><div class="loyalty-head"><b>عرض الجواز</b><span class="st st-warn">مرة واحدة</span></div>
+          <p style="font-size:17px;font-weight:700;margin:6px 0">${ic("gift", 18)} ${esc(s.reward1)}</p>
+          <p class="loyalty-next">اعرض رمز جوازك عند الطلب ليُطبّق لك العرض.</p></div>`
+        : `<div class="loyalty"><div class="loyalty-head"><b>بطاقة الولاء</b><span class="st st-purple">${esc(A.offerText(s))}</span></div><div class="slots">${slots}</div>
+          <p class="loyalty-next">اعرض رمز جوازك عند كل زيارة لتُضاف الأختام.</p></div>`}
         ${myPassRef() ? "" : `<button class="btn btn-cta" data-a="buy">احصل على الجواز الرقمي${price() ? " · " + fmtPrice(price()) : ""}</button>`}
       </div><div class="sp"></div>`;
     },
@@ -1268,7 +1318,7 @@
         </div><div class="sp"></div>`;
     },
     partner() {
-      return `${head("الشريك وبطاقة الولاء")}<div class="pad stack" id="ptBody"><div class="skel"></div><div class="skel"></div></div>`;
+      return `${head(isOffers() ? "الشريك والعرض" : "الشريك وبطاقة الولاء")}<div class="pad stack" id="ptBody"><div class="skel"></div><div class="skel"></div></div>`;
     },
     orgapply() {
       return `${head("طلب منظم فعالية")}<div class="pad stack" id="oaBody"><div class="skel"></div><div class="skel"></div></div>`;
@@ -1470,18 +1520,18 @@
 
   /* ---------- الشريك: متابعة تأكيد المكافأة من الزائر ---------- */
   let rwTimer = null;
-  function watchReward(id, reward, final) {
+  function watchReward(id, reward, final, offer) {
     clearInterval(rwTimer); const t0 = Date.now();
     rwTimer = setInterval(async () => {
       const el = $("#rwState"); if (!el || Date.now() - t0 > 180000) { clearInterval(rwTimer); return; }
       let r; try { r = await A.urpc("staff_reward_status", { p_stall: S.work.stall, p_id: id }); } catch (e) { return; }
       if (r.status === "confirmed") {
         clearInterval(rwTimer); try { if (navigator.vibrate) navigator.vibrate([60, 40, 60]); } catch (x) { /* ignore */ }
-        showRes("ok", "check", "أكّد الزائر استلام المكافأة ✓", `<b>${esc(reward)}</b>${final ? "<br>اكتملت بطاقته، وتبدأ له بطاقة جديدة." : ""}`, scanNextBtn(), 6000, () => { const x = $("#scanRes"); if (x) x.innerHTML = ""; });
+        showRes("ok", "check", offer ? "أكّد الزائر استلام العرض ✓" : "أكّد الزائر استلام المكافأة ✓", `<b>${esc(reward)}</b>${offer ? "<br>انحسبت لك زيارة في صندوق الجواز." : final ? "<br>اكتملت بطاقته، وتبدأ له بطاقة جديدة." : ""}`, scanNextBtn(), 6000, () => { const x = $("#scanRes"); if (x) x.innerHTML = ""; });
         loadStaffStats();
       } else if (r.status === "declined") {
         clearInterval(rwTimer);
-        showRes("warn", "gift", "الزائر يقول ما حصل على المكافأة", `طبّق <b>${esc(reward)}</b> على طلبه، ثم <b>امسح رمزه مرة ثانية</b> ليؤكد الاستلام.<br><span class="sub">المكافأة باقية له ولن تُحسب إلا بعد تأكيده.</span>`, scanNextBtn());
+        showRes("warn", "gift", offer ? "الزائر يقول ما حصل على العرض" : "الزائر يقول ما حصل على المكافأة", `طبّق <b>${esc(reward)}</b> على طلبه، ثم <b>امسح رمزه مرة ثانية</b> ليؤكد الاستلام.<br><span class="sub">${offer ? "الزيارة ما تنحسب لك إلا بعد تأكيده." : "المكافأة باقية له ولن تُحسب إلا بعد تأكيده."}</span>`, scanNextBtn());
       }
     }, 2000);
   }
@@ -1583,7 +1633,15 @@
     const p = d.partner || {}, st = (d.stalls || []).find((x) => x.event === EV) || {};
     ptLogo = p.logo || null;
     const locked = st.status === "approved";   // بعد الاعتماد: البطاقة يعدّلها مدير النظام فقط
-    const ev = evById(EV) || {};
+    const ev = evById(EV) || {}, OF = isOffers();
+    const offerCard = `<div class="card stack" style="gap:12px"><b>عرضك لحاملي جواز الفعالية</b>
+          <span class="sub">عرض واحد تختاره أنت، يحصل عليه كل زائر معه الجواز <b>مرة واحدة</b>. كل جواز تمسحه يُحسب لك زيارة، وفي نهاية الفعالية تاخذ نصيبك من صندوق الجواز على قد زياراتك.</span>
+          ${locked ? `<div class="msg info">العرض معتمد. لتعديله تواصل مع إدارة شُرفة.</div>` : ""}
+          <div class="field"><label for="pt-r1">العرض</label><input class="input" id="pt-r1" name="reward1" maxlength="40" placeholder="مثال: خصم 20% على الكرك" value="${esc(st.reward1 || "")}" ${locked ? "disabled" : ""}></div>
+          <input type="hidden" name="required" value="1"><input type="hidden" name="reward2" value=""><input type="hidden" name="cooldown" value="0">
+          <div class="card flat stack" style="gap:6px;padding:12px"><b style="font-size:14px">${ic("gift", 16)} كيف ينحسب نصيبك؟</b>
+            <span class="sub">الصندوق = ${(EVDB[EV] || {}).pool_pct ?? 50}% من مبيعات الجواز.<br>نصيبك = (زياراتك ÷ مجموع زيارات كل الأكشاك) × الصندوق.</span></div>
+        </div>`;
     const statusBox = st.status ? `<div class="result ${st.status === "approved" ? "r-ok" : st.status === "rejected" ? "r-err" : "r-warn"}" style="padding:14px">
         <h3 style="font-size:17px">${st.status === "approved" ? "معتمد في " : st.status === "rejected" ? "لم يُعتمد في " : "قيد المراجعة في "}${esc((ev.name || "").split("—")[0].trim())}</h3>
         ${st.note ? `<span class="sub" style="color:var(--ink)">ملاحظة المنظم: ${esc(st.note)}</span>` : ""}
@@ -1599,7 +1657,7 @@
           <div class="field"><label for="pt-phone">رقم التواصل</label><input class="input" id="pt-phone" name="phone" inputmode="tel" dir="ltr" style="text-align:right" value="${esc(p.phone || (S.me.profile || {}).phone || "")}"></div>
           <div class="field"><label for="pt-ig">انستقرام (اختياري)</label><input class="input" id="pt-ig" name="instagram" dir="ltr" placeholder="@shop" value="${esc(p.instagram ? "@" + p.instagram : "")}"></div>
         </div>
-        <div class="card stack" style="gap:12px"><b>بطاقة الولاء</b>
+        ${OF ? offerCard : `<div class="card stack" style="gap:12px"><b>بطاقة الولاء</b>
           <span class="sub">هذه البطاقة تظهر في الجواز الرقمي لكل زائر، وتُضاف الأختام عليها عند كل زيارة.</span>
           ${locked ? `<div class="msg info">البطاقة معتمدة. لأي تعديل على عدد الزيارات أو المكافآت تواصل مع إدارة شُرفة، حفاظًا على أختام الزوار.</div>` : ""}
           <div class="field"><label for="pt-req">عدد الزيارات قبل المكافأة</label><input class="input" id="pt-req" name="required" type="number" min="1" max="20" value="${esc(st.required || 3)}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
@@ -1607,19 +1665,19 @@
           <div class="field"><label for="pt-r2">مكافأة ثانية (اختياري)</label><input class="input" id="pt-r2" name="reward2" maxlength="40" placeholder="مثال: الوجبة مجانًا" value="${esc(st.reward2 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
           <div class="field"><label for="pt-cd">الفاصل بين ختمين (دقائق)</label><input class="input" id="pt-cd" name="cooldown" type="number" min="0" max="1440" value="${esc(st.cooldown ?? 30)}" ${locked ? "disabled" : ""}><span class="sub">يمنع إضافة أكثر من ختم للزائر نفسه خلال هذه المدة.</span></div>
           <div class="loyalty" style="background:var(--cream)"><div class="loyalty-head"><b>معاينة البطاقة</b><span class="st st-purple" id="ptOffer"></span></div><div class="slots" id="ptSlots"></div></div>
-        </div>
+        </div>`}
         <div class="card stack" style="gap:10px"><b>المشاركة</b>
           <label class="opt"><input type="radio" name="event" value="${esc(EV)}" checked><span class="grow">${esc((ev.name || EV).split("—")[0].trim())}<span class="sub" style="display:block;font-weight:500">يراجع المنظم طلبك قبل ظهوره للزوار</span></span></label>
           <label class="opt"><input type="radio" name="event" value=""><span class="grow">شريك في شُرفة بشكل عام<span class="sub" style="display:block;font-weight:500">نحفظ بياناتك ونتواصل معك للفعاليات القادمة</span></span></label>
         </div>
-        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>أؤكد صحة البيانات، وألتزم بتقديم مكافآت بطاقة الولاء للزوار كما حددتها.</span></label>
+        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>${OF ? "أؤكد صحة البيانات، وألتزم بتقديم عرضي لحاملي الجواز كما حددته." : "أؤكد صحة البيانات، وألتزم بتقديم مكافآت بطاقة الولاء للزوار كما حددتها."}</span></label>
         <div id="ptMsg"></div>
         <button class="btn btn-cta" type="submit">${st.status ? "حفظ التعديلات" : "إرسال طلب الشراكة"}</button>
       </form>`;
     previewCard();
   }
   function previewCard() {
-    const f = $("form[data-f=partner]"); if (!f) return;
+    const f = $("form[data-f=partner]"); if (!f || !$("#ptSlots")) return;
     const req = Math.min(20, Math.max(1, parseInt(f.required.value || "3", 10) || 3));
     const c = { required: req, reward1: f.reward1.value.trim() || "المكافأة", reward2: f.reward2.value.trim() || null, visits: 0 };
     $("#ptSlots").innerHTML = A.slotsHTML(c);
@@ -1684,13 +1742,20 @@
         <div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" type="submit" style="flex:1">حفظ البطاقة</button><button class="btn btn-line btn-sm" type="button" data-a="card-cancel" style="flex:1">إلغاء</button></div></form>`;
     }
     else if (a === "card-cancel") loadAdminPartners();
+    else if (a === "pool-csv" && S.poolData) {
+      const p = S.poolData, R = (b) => (b / 1000).toFixed(3);
+      A.csvDownload(`shurfa-pool-${adminEv()}.csv`, [["الترتيب", "الشريك", "العرض", "الزيارات", "المؤكدة", "النسبة %", "النصيب (ر.ع)"],
+        ...p.stalls.map((x) => [x.rank, x.name, x.offer, x.visits, x.confirmed, x.share_pct, R(x.amount_baisa)]),
+        [], ["مبيعات الجواز", R(p.revenue_baisa)], ["الصندوق", R(p.pool_baisa)], ["نصيب شُرفة", R(p.revenue_baisa - p.pool_baisa)]]);
+    }
     else if (a === "reward-yes" || a === "reward-no") {
       const ok = a === "reward-yes"; b.disabled = true;
       try {
         const r = await A.urpc("confirm_reward", { p_id: +b.dataset.id, p_ok: ok });
         askingReward = 0; closeOverlay(false); await loadPass(); if (S.passFill) S.passFill();
-        if (ok) overlay({ k: "ok", icon: "check", title: "استمتع بمكافأتك 🎉", body: `<b>${esc(r.reward)}</b> من ${esc(r.stall)}<br>${r.final ? "اكتملت بطاقتك، وتبدأ بطاقة جديدة من زيارتك القادمة." : r.next_reward ? `زيارتك القادمة: <b>${esc(r.next_reward)}</b>` : ""}`, auto: 7000 });
-        else overlay({ k: "warn", icon: "gift", title: "أخبر مزود الخدمة", body: `عندك مكافأة <b>${esc(r.reward)}</b> في ${esc(r.stall)}.<br>أخبر الموظف ليطبّقها على طلبك، ثم يمسح رمزك مرة ثانية لتأكيدها.<br><span class="sub">مكافأتك باقية ولن تضيع.</span>` });
+        if (ok && isOffers()) overlay({ k: "ok", icon: "check", title: "استمتع بالعرض 🎉", body: `<b>${esc(r.reward)}</b> من ${esc(r.stall)}<br>شوف باقي العروض في جوازك.`, auto: 7000 });
+        else if (ok) overlay({ k: "ok", icon: "check", title: "استمتع بمكافأتك 🎉", body: `<b>${esc(r.reward)}</b> من ${esc(r.stall)}<br>${r.final ? "اكتملت بطاقتك، وتبدأ بطاقة جديدة من زيارتك القادمة." : r.next_reward ? `زيارتك القادمة: <b>${esc(r.next_reward)}</b>` : ""}`, auto: 7000 });
+        else overlay({ k: "warn", icon: "gift", title: "أخبر مزود الخدمة", body: `عندك ${isOffers() ? "عرض" : "مكافأة"} <b>${esc(r.reward)}</b> في ${esc(r.stall)}.<br>أخبر الموظف ليطبّقه على طلبك، ثم يمسح رمزك مرة ثانية لتأكيده.<br><span class="sub">${isOffers() ? "العرض باقٍ لك ولن يضيع." : "مكافأتك باقية ولن تضيع."}</span>` });
         if (S.pass && (S.pass.pending_rewards || []).length && ok) setTimeout(() => askReward(S.pass.pending_rewards[0]), 7500);
       } catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
     }
@@ -1926,6 +1991,8 @@
           p_image: media.image, p_logo: media.logo, p_color_from: f.color_from.value, p_color_to: f.color_to.value, p_sort: parseInt(f.sort.value || "100", 10) });
         const vis = f.visible.checked, was = (evById(id) || {}).visible !== false;
         if (vis !== was || !vis) await A.urpc("admin_set_event_visible", { p_id: id, p_visible: vis });
+        const pm = (f.querySelector("input[name=pass_mode]:checked") || {}).value || "loyalty", pp = parseInt(f.pool_pct.value || "50", 10);
+        if (pm !== ((EVDB[id] || {}).pass_mode || "loyalty") || pp !== ((EVDB[id] || {}).pool_pct ?? 50)) await A.urpc("admin_set_event_pass_mode", { p_id: id, p_mode: pm, p_pool_pct: pp });
         await loadEvInfo();
         S.adminEv = id; S.newEvent = false;
         toast(f.visible.checked ? "حُفظ محتوى الفعالية" : "حُفظت الفعالية وهي مخفية عن الزوار", "ok"); render();
