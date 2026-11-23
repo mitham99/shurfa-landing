@@ -929,14 +929,15 @@
       k.innerHTML = `<div><b class="num">${d.today_visits}</b><span>${OF ? "عروض اليوم" : "زيارات اليوم"}</span></div><div><b class="num">${OF ? (pl && pl.ok ? pl.confirmed : "–") : d.today_rewards}</b><span>${OF ? "مؤكدة من الزوار" : "مكافآت اليوم"}</span></div><div><b class="num">${d.visitors}</b><span>زوار الكشك</span></div>`;
       const pb = $("#stPool");
       if (pb && pl && pl.ok) pb.innerHTML = `<div class="between"><b>${ic("gift", 18)} نصيبك من صندوق الجواز</b><span class="st st-warn">تقديري</span></div>
-        <div class="kpis3" style="margin:0"><div><b class="num">${pl.visits}</b><span>زياراتك</span></div><div><b class="num">${pl.rank ? "#" + pl.rank : "–"}</b><span>ترتيبك من ${pl.stalls}</span></div><div><b class="num" style="font-size:17px">${fmtMoney(pl.amount_baisa)}</b><span>نصيبك حتى الآن</span></div></div>
-        <span class="sub">الصندوق ${pl.pool_pct}% من مبيعات الجواز (${pl.passes} جواز = ${fmtMoney(pl.pool_baisa)}). نصيبك = زياراتك ${pl.visits} ÷ مجموع الزيارات ${pl.total_visits}${pl.total_visits ? ` (${pl.share_pct}%)` : ""}. يتغير الرقم حتى نهاية الفعالية.</span>`;
+        <div class="kpis3" style="margin:0"><div><b class="num">${pl.visits}</b><span>زياراتك المؤكدة</span></div><div><b class="num">${pl.rank ? "#" + pl.rank : "–"}</b><span>ترتيبك من ${pl.stalls}</span></div><div><b class="num" style="font-size:17px">${fmtMoney(pl.amount_baisa)}</b><span>نصيبك حتى الآن</span></div></div>
+        ${pl.pending ? `<div class="msg info" style="margin:0">${pl.pending} ${pl.pending > 2 ? "زوار" : "زائر"} بانتظار التأكيد. الزيارة تنحسب لك لما يضغط الزائر «نعم» في جواله، فاطلب منه يأكد قدامك.</div>` : ""}
+        <span class="sub">الصندوق ${pl.pool_pct}% من مبيعات الجواز (${pl.passes} جواز = ${fmtMoney(pl.pool_baisa)}). نصيبك = زياراتك المؤكدة ${pl.visits} ÷ مجموع الزيارات ${pl.total_visits}${pl.total_visits ? ` (${pl.share_pct}%)` : ""}. يتغير الرقم حتى نهاية الفعالية.</span>`;
       $("#stRecent").innerHTML = d.recent.length ? d.recent.map((r) => `<div class="li"><span class="ico-tile" style="width:36px;height:36px;${r.kind === "reward" ? "background:var(--gold-soft);color:var(--gold-ink)" : "background:var(--ok-soft);color:var(--ok)"}">${ic(r.kind === "reward" ? "gift" : "check", 18, 2)}</span><div class="grow"><b style="font-size:14px">${esc(r.visitor)}</b><div class="sub">${r.kind === "reward" ? (OF ? "عرض: " : "مكافأة: ") + esc(r.reward) : "ختم زيارة"}</div></div><span class="sub">${esc(time(r.at))}</span></div>`).join("")
         : `<div class="li sub">لا توجد عمليات بعد.</div>`;
     } catch (e) { if (e.code === "not_signed_in") signedOut(); }
   }
 
-  const waitConfirm = `<span id="rwState" class="row" style="gap:8px;justify-content:center;margin-top:6px"><span class="spin" style="border-color:rgba(122,79,0,.25);border-top-color:var(--gold-ink);width:18px;height:18px;border-width:2.5px"></span> بانتظار تأكيد الزائر من جواله…</span>`;
+  const waitConfirm = `<span id="rwState" class="row" style="gap:8px;justify-content:center;margin-top:6px"><span class="spin" style="border-color:rgba(122,79,0,.25);border-top-color:var(--gold-ink);width:18px;height:18px;border-width:2.5px"></span> بانتظار تأكيد الزائر من جواله…</span><span class="sub" style="display:block;margin-top:4px">اطلب منه يضغط «نعم»: الزيارة تنحسب لك بعد تأكيده.</span>`;
   function scanErr(e) {
     const d = e.data || {};
     if (e.code === "offer_used") showRes("warn", "gift", "الزائر استخدم خصمك مسبقًا", `${esc(d.visitor || "الزائر")} حصل على <b>${esc(d.reward || "الخصم")}</b>${d.used_at ? " " + esc(dayTime(d.used_at)) : ""}.<br>خصم الكشك يُستخدم مرة واحدة لكل زائر.`, scanNextBtn(), 8000);
@@ -1216,12 +1217,28 @@
     } catch (e) { el.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
   }
   /* صندوق الشركاء: نصيب كل شريك = زياراته ÷ مجموع الزيارات × الصندوق */
+  // مؤشر الشك لكل كشك (للإدارة فقط): رفض الزوار، عدم التأكيد، المسح السريع، تكرار الجواز بين كشكين بثوانٍ
+  const RISK = [["سليم", "st-ok"], ["راجِعه", "st-warn"], ["مشبوه", "st-err"]];
+  function riskOf(x) {
+    const n = Math.max(1, (x.visits || 0) + (x.pending || 0) + (x.declined || 0)), f = []; let sc = 0;
+    if (x.declined >= 2 && x.declined / n >= 0.15) { sc += 2; f.push(`${x.declined} زائر ضغطوا «لا»`); } else if (x.declined) f.push(`${x.declined} رفض`);
+    if (x.pending >= 3 && x.pending / n >= 0.3) { sc += 1; f.push(`${x.pending} ما أكدوا`); }
+    if (x.bursts) { sc += Math.min(2, x.bursts); f.push(`مسح سريع جدًا في ${plural(x.bursts, "دقيقة وحدة", "دقيقتين", "دقائق", "دقيقة")}`); }
+    if (x.fast_dup) { sc += x.fast_dup >= 2 ? 2 : 1; f.push(`${x.fast_dup} جواز انمسح عند كشك ثاني بفرق ثوانٍ`); }
+    if (x.free) f.push(`${x.free} من جوازات مجانية (ما تنحسب)`);
+    return { level: sc >= 3 ? 2 : sc >= 1 ? 1 : 0, flags: f };
+  }
   function poolHTML(p) {
     return `<div class="card stack" style="gap:12px;border:1.5px solid var(--gold)">
         <div class="between"><b>${ic("gift", 18)} صندوق الشركاء</b><span class="st st-warn">${p.pool_pct}% من مبيعات الجواز</span></div>
         <div class="kpis3" style="margin:0"><div><b class="num" style="font-size:17px">${fmtMoney(p.revenue_baisa)}</b><span>مبيعات الجواز (${p.passes})</span></div><div><b class="num" style="font-size:17px">${fmtMoney(p.pool_baisa)}</b><span>الصندوق</span></div><div><b class="num" style="font-size:17px">${fmtMoney(p.revenue_baisa - p.pool_baisa)}</b><span>نصيب شُرفة</span></div></div>
-        <span class="sub">مجموع الزيارات ${p.total_visits} · قيمة الزيارة تقريبًا ${fmtMoney(p.per_visit_baisa)}. الزيارة تنحسب إذا أكّدها الزائر أو ما رد بعد، والمرفوضة ما تنحسب.</span>
-        <div class="card flat" style="padding:4px 14px">${(p.stalls || []).length ? p.stalls.map((x) => `<div class="li"><span class="ico-tile" style="width:34px;height:34px;background:var(--gold-soft);color:var(--gold-ink);font-weight:800">${x.rank}</span><div class="grow"><b style="font-size:14px">${esc(x.name)}</b><div class="sub">${x.visits} زيارة (${x.confirmed} مؤكدة) · ${x.share_pct}%</div></div><b class="num">${fmtMoney(x.amount_baisa)}</b></div>`).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
+        <span class="sub">مجموع الزيارات ${p.total_visits} · قيمة الزيارة تقريبًا ${fmtMoney(p.per_visit_baisa)}. تنحسب الزيارة <b>إذا أكّدها الزائر من جواله وكان جوازه مدفوع</b>. اللي بانتظار التأكيد والمرفوضة والمجانية ما تنحسب.</span>
+        <div class="card flat" style="padding:4px 14px">${(p.stalls || []).length ? p.stalls.map((x) => { const r = riskOf(x); return `<div class="li" style="align-items:flex-start"><span class="ico-tile" style="width:34px;height:34px;background:var(--gold-soft);color:var(--gold-ink);font-weight:800">${x.rank}</span>
+            <div class="grow"><div class="row" style="gap:6px;flex-wrap:wrap"><b style="font-size:14px">${esc(x.name)}</b><span class="st ${RISK[r.level][1]}">${RISK[r.level][0]}</span></div>
+              <div class="sub">${x.visits ? plural(x.visits, "زيارة مؤكدة", "زيارتين مؤكدتين", "زيارات مؤكدة", "زيارة مؤكدة") : "لا زيارات مؤكدة"}${x.pending ? ` · ${x.pending} بانتظار التأكيد` : ""} · ${x.share_pct}%</div>
+              ${r.flags.length ? `<div class="sub" style="color:${r.level === 2 ? "var(--err)" : "var(--ink)"}">${r.flags.map(esc).join(" · ")}</div>` : ""}</div>
+            <b class="num">${fmtMoney(x.amount_baisa)}</b></div>`; }).join("") : '<div class="li sub">لا توجد أكشاك معتمدة بعد.</div>'}</div>
+        <span class="sub">«مشبوه» أو «راجِعه» مؤشر للمراجعة، مو حكم. قبل التحويل: تواصل مع الكشك واسأل الزوار اللي ضغطوا «لا» إذا لزم.</span>
         <button class="btn btn-line btn-sm" data-a="pool-csv">${ic("list", 16)} تصدير التوزيع (Excel)</button>
       </div>`;
   }
@@ -1864,7 +1881,7 @@
     return `<div class="card flat stack" style="gap:8px;padding:14px;background:var(--gold-soft)">
         <b class="ihead" style="font-size:15px">${ic("chart", 16)} كم تجمع؟ وكم زيارة؟</b>
         <span class="sub" style="color:var(--ink);line-height:1.8">• من كل جواز ينباع (${omr(price)}) يروح <b>${pct}%</b> لصندوق الشركاء، يعني <b>${omr(price * pct / 100)}</b> عن كل جواز.<br>
-        • كل زائر تخدمه بخصمك أو بمنتج من باقة = <b>زيارة وحدة</b> لكشكك (مرة لكل زائر).<br>
+        • كل زائر تخدمه بخصمك أو بمنتج من باقة = <b>زيارة وحدة</b> لكشكك (مرة لكل زائر)، وتنحسب <b>لما يأكدها الزائر من جواله</b>.<br>
         • نصيبك = (زياراتك ÷ زيارات كل الأكشاك) × الصندوق، ويتحوّل لك بعد الفعالية.</span>
         <div class="pool-ex"><div><span>${passes} جواز</span><b>${omr(pool)}</b><small>الصندوق</small></div><div><span>${mine} من ${total} زيارة</span><b>${Math.round(mine * 100 / total)}%</b><small>حصتك</small></div><div><span>نصيبك</span><b>${omr(share)}</b><small>غير مبيعاتك</small></div></div>
         <span class="sub">مثال توضيحي. تتابع زياراتك ونصيبك أول بأول من «كشكي».</span></div>`;
@@ -2029,8 +2046,8 @@
     else if (a === "card-cancel") loadAdminPartners();
     else if (a === "pool-csv" && S.poolData) {
       const p = S.poolData, R = (b) => (b / 1000).toFixed(3);
-      A.csvDownload(`shurfa-pool-${adminEv()}.csv`, [["الترتيب", "الشريك", "العرض", "الزيارات", "المؤكدة", "النسبة %", "النصيب (ر.ع)"],
-        ...p.stalls.map((x) => [x.rank, x.name, x.offer, x.visits, x.confirmed, x.share_pct, R(x.amount_baisa)]),
+      A.csvDownload(`shurfa-pool-${adminEv()}.csv`, [["الترتيب", "الشريك", "العرض", "الزيارات المؤكدة", "بانتظار التأكيد", "رفض الزوار", "جوازات مجانية", "مسح سريع (دقائق)", "تكرار بين كشكين", "المؤشر", "النسبة %", "النصيب (ر.ع)"],
+        ...p.stalls.map((x) => [x.rank, x.name, x.offer, x.visits, x.pending || 0, x.declined || 0, x.free || 0, x.bursts || 0, x.fast_dup || 0, RISK[riskOf(x).level][0], x.share_pct, R(x.amount_baisa)]),
         [], ["مبيعات الجواز", R(p.revenue_baisa)], ["الصندوق", R(p.pool_baisa)], ["نصيب شُرفة", R(p.revenue_baisa - p.pool_baisa)]]);
     }
     else if (a === "reward-yes" || a === "reward-no") {
