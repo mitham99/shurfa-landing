@@ -372,7 +372,7 @@
   /* =========================================================
      التبويبات
      ========================================================= */
-  const staffStalls = () => ((S.me && S.me.stalls) || []).filter((s) => s.event === EV || true);
+  const staffStalls = () => ((S.me && S.me.stalls) || []).filter((s) => !(s.kind === "games" && s.status === "approved" && (S.myGames || []).length));
   const approvedStalls = () => staffStalls().filter((s) => s.status === "approved" && s.active !== false);
   const isStaff = () => staffStalls().length > 0;
   const orgEvents = () => (S.me && S.me.org_events) || [];
@@ -602,7 +602,7 @@
     const F = {
       tickets: { t: "تذاكر الألعاب", d: "احجز تذاكر دخول الألعاب والأنشطة واحتفظ بها في جوالك، وتُمسح عند الدخول.", main: "ticket", deco: ["star", "calendar", "spark"], c1: "#F5A623", c2: "#9A5B00",
         soon: cur ? !(S.games || []).length : false, go: "games", cta: cur && (S.tickets || []).length ? "تذاكري" : "احجز تذكرتك",
-        badge: cur && (S.games || []).length ? (Math.min(...S.games.map((g) => g.price_baisa)) ? "من " + fmtPrice(Math.min(...S.games.map((g) => g.price_baisa))) : "مجانًا") : "" },
+        badge: cur && (S.games || []).length ? (Math.max(0, ...S.games.map((g) => g.door_baisa > g.price_baisa ? Math.round((1 - g.price_baisa / g.door_baisa) * 100) : 0)) ? "خصم حتى " + Math.max(...S.games.map((g) => g.door_baisa > g.price_baisa ? Math.round((1 - g.price_baisa / g.door_baisa) * 100) : 0)) + "%" : Math.min(...S.games.map((g) => g.price_baisa)) ? "من " + fmtPrice(Math.min(...S.games.map((g) => g.price_baisa))) : "مجانًا") : "" },
       packages: { t: "الباقات", d: isOffers(e.id) ? "باقة الفرد والعائلة والربع من أكثر من كشك، أو كوّن باقتك بنفسك." : e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
         soon: !(e.page && e.page.packages) && !isOffers(e.id), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
       passport: { t: "الجواز الرقمي", d: isOffers(e.id) ? "خصومات وباقات من كل كشك مشارك، وتدفع للكشك مباشرة بالسعر بعد الخصم." : "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
@@ -751,7 +751,8 @@
       const o = before[t.code]; if (!o) continue;
       if (o.status === "pending_payment" && t.status === "active") {
         try { if (navigator.vibrate) navigator.vibrate([80, 50, 80]); } catch (e) { /* ignore */ }
-        overlay({ k: "ok", icon: "b:ticket", title: "تم تفعيل تذكرتك 🎟️", body: `<b>${esc(t.game)}</b> · ${tktCount(t.qty)}<br>اعرض الرمز لمشغّل اللعبة عند الدخول.`, auto: 7000 }); break;
+        if (!S.authOpen) { S.sub = { name: "tickets" }; render(); }
+        overlay({ k: "ok", icon: "b:ticket", title: "تم الدفع، تذكرتك جاهزة 🎟️", body: `<b>${esc(t.game)}</b> · ${tktCount(t.qty)}<br>اعرض QR التذكرة لمشغّل اللعبة عند الدخول.`, auto: 7000 }); break;
       }
       if (t.used > o.used) {
         try { if (navigator.vibrate) navigator.vibrate(70); } catch (e) { /* ignore */ }
@@ -1452,10 +1453,11 @@
       }
       return `${head("تذاكر الألعاب", true, my.length ? `<button class="btn btn-dark btn-sm" data-a="sub" data-name="tickets" style="width:auto;padding:0 14px">${bi("ticket")} تذاكري (${my.length})</button>` : "")}
         <div class="pad stack">${hero}
-        <div class="games-grid">${list.map((g) => { const out = g.remaining === 0; return `<div class="game">
-          <div class="game-img"${g.image ? ` style="background-image:url('${esc(img(g.image))}')"` : ""}>${g.image ? "" : bi("game")}${g.min_age ? `<span class="st st-glass">+${g.min_age} سنوات</span>` : ""}</div>
+        <div class="games-grid">${list.map((g) => { const out = g.remaining === 0, off = g.door_baisa > g.price_baisa ? Math.round((1 - g.price_baisa / g.door_baisa) * 100) : 0; return `<div class="game">
+          <div class="game-img"${g.image ? ` style="background-image:url('${esc(img(g.image))}')"` : ""}>${g.image ? "" : bi("game")}${off ? `<span class="game-off">خصم ${off}%</span>` : ""}${g.min_age ? `<span class="st st-glass">+${g.min_age} سنوات</span>` : ""}</div>
           <div class="stack" style="gap:6px;padding:14px">
-            <div class="between"><b style="font-size:17px">${esc(g.name)}</b><b class="num" style="color:var(--gold-ink)">${fmtPrice(g.price_baisa)}</b></div>
+            <div class="between" style="align-items:flex-start;gap:10px"><b style="font-size:17px">${esc(g.name)}</b>${off ? `<span class="deal-price"><s>${fmtPrice(g.door_baisa)} عند الشباك</s><b class="num" style="color:var(--gold-ink)">${fmtPrice(g.price_baisa)}</b><small class="sub">سعر شُرفة</small></span>` : `<b class="num" style="color:var(--gold-ink)">${fmtPrice(g.price_baisa)}</b>`}</div>
+            ${off ? `<span class="sub" style="color:var(--ok);font-weight:700">توفّر ${fmtPrice(g.door_baisa - g.price_baisa)} على كل تذكرة لما تحجز من شُرفة</span>` : ""}
             ${g.description ? `<span class="sub" style="line-height:1.6">${esc(g.description)}</span>` : ""}
             ${g.remaining != null ? `<span class="sub">${out ? '<span class="st st-err">نفدت التذاكر</span>' : `المتبقي: <b>${g.remaining}</b> تذكرة`}</span>` : ""}
             ${out ? "" : `<div class="row" style="gap:10px;margin-top:6px">
@@ -1471,10 +1473,10 @@
         ${my.length ? my.map((t) => `<div class="card stack ticket ${t.status}" style="gap:10px">
           <div class="between"><b style="font-size:17px">${esc(t.game)}</b><span class="st ${ST[t.status][1]}">${ST[t.status][0]}</span></div>
           <div class="row" style="gap:14px;align-items:center">
-            <div class="tqr" data-code="${esc(t.code)}"></div>
-            <div class="stack grow" style="gap:6px"><span class="pp-code" style="font-size:18px;letter-spacing:3px;color:var(--ink)">${esc(t.code)}</span>
+            ${t.status === "pending_payment" ? `<div class="tqr-lock">${ic("lock", 26)}<span>QR التذكرة يظهر بعد الدفع</span></div>` : `<div class="tqr" data-code="${esc(t.code)}"></div>`}
+            <div class="stack grow" style="gap:6px">${t.status === "pending_payment" ? `<span class="sub">رقم الحجز</span>` : ""}<span class="pp-code" style="font-size:18px;letter-spacing:3px;color:var(--ink)">${esc(t.code)}</span>
               <span class="sub">${t.qty === 1 ? "تذكرة واحدة" : t.qty === 2 ? "تذكرتان" : t.qty + " تذاكر"}${t.used ? ` · دخل ${t.used}` : ""}</span>
-              ${t.status === "pending_payment" ? `<span class="sub" style="color:var(--ink)">ادفع <b>${fmtPrice(t.amount_baisa)}</b> لمشغّل اللعبة واعرض الرمز</span>
+              ${t.status === "pending_payment" ? `<span class="sub" style="color:var(--ink)">ادفع <b>${fmtPrice(t.amount_baisa)}</b> لمشغّل اللعبة واعطه رقم الحجز</span>
                 <button class="linkbtn" data-a="ticket-cancel" data-code="${esc(t.code)}" style="color:var(--err);padding:0;min-height:auto;align-self:flex-start">إلغاء الحجز</button>`
                 : t.status === "active" ? `<span class="sub" style="color:var(--ink)">اعرض الرمز لمشغّل اللعبة عند الدخول</span>` : `<span class="sub">استُخدمت التذكرة بالكامل</span>`}</div></div></div>`).join("")
           : `<div class="empty card">${bi("ticket")}<b>ما عندك تذاكر بعد</b><span>احجز من صفحة تذاكر الألعاب.</span></div>`}
@@ -1579,6 +1581,17 @@
     if (o.name === "mfa") loadMfaScreen();
     if (o.name === "packages" && isOffers()) loadPackages();
     if (o.name === "tickets") { document.querySelectorAll(".tqr").forEach((el) => A.qr(el, "SHURFA-T:" + el.dataset.code, 120)); }
+    if (o.name === "games" && S.me && A.session.get("book")) {
+      let bk = null; try { bk = JSON.parse(A.session.get("book")); } catch (e) { bk = null; }
+      const g = bk && (S.games || []).find((x) => x.id === bk.id);
+      if (!g) A.session.del("book");
+      else {
+        const q = Math.max(1, Math.min(10, bk.qty || 1)), qe = $("#q-" + g.id); if (qe) qe.textContent = q;
+        overlay({ k: "gold", icon: "b:ticket", title: "أكمل حجزك", body: `<b>${esc(g.name)}</b> · ${tktCount(q)}<br>المبلغ: <b>${fmtPrice(g.price_baisa * q)}</b>${g.door_baisa > g.price_baisa ? `<br><span class="sub">بدل ${fmtPrice(g.door_baisa * q)} عند الشباك</span>` : ""}`,
+          extra: `<button class="btn btn-cta" data-a="game-book" data-id="${esc(g.id)}" data-qty="${q}">احجز الحين</button>`,
+          onClose: () => A.session.del("book") });
+      }
+    }
     const sd = $("#stDeal");
     if (sd && !(S.evOffers || []).some((x) => x.id === sd.dataset.id && x.deal)) A.rpc("event_offers", { p_event: EV }).then((L) => {
       S.evOffers = L || []; const box = $("#stDeal"), it = S.evOffers.find((x) => x.id === (box && box.dataset.id));
@@ -2094,14 +2107,16 @@
       const bk = document.querySelector(`[data-a="game-book"][data-id="${id}"]`); if (bk) $("#t-" + id).textContent = fmtPrice(+bk.dataset.price * n);
     }
     else if (a === "game-book") {
-      if (!S.me) return requireLogin("games", "visitor");
-      const n = +($("#q-" + b.dataset.id) || {}).textContent || 1; b.disabled = true;
+      const n = +($("#q-" + b.dataset.id) || {}).textContent || +b.dataset.qty || 1;
+      if (!S.me) { A.session.set("book", JSON.stringify({ id: b.dataset.id, qty: n })); return requireLogin("games", "visitor"); }
+      A.session.del("book"); const ov = $("#ovl"); if (ov && b.closest("#ovl")) ov.remove();
+      b.disabled = true;
       try {
         const d = await A.urpc("book_game", { p_game: b.dataset.id, p_qty: n });
         await Promise.all([loadTickets(), loadGames()]); tickSig = null;
         S.sub = { name: "tickets" }; render();
         overlay(d.status === "active" ? { k: "ok", icon: "b:ticket", title: "تذكرتك جاهزة 🎟️", body: "اعرض الرمز لمشغّل اللعبة عند الدخول.", auto: 6000 }
-          : { k: "gold", icon: "b:ticket", title: "تم الحجز ✓", body: `ادفع <b>${fmtPrice(d.amount_baisa)}</b> عند اللعبة لمشغّلها واعرض رمز التذكرة،<br>وتتفعّل مباشرة ويوصلك إشعار.`, auto: 9000 });
+          : { k: "gold", icon: "b:ticket", title: "تم الحجز ✓", body: `ادفع <b>${fmtPrice(d.amount_baisa)}</b> لمشغّل اللعبة، واعطه <b>رقم الحجز</b>.<br>بعد الدفع يظهر لك <b>QR التذكرة</b> هنا تلقائيًا.`, auto: 9000 });
       } catch (e) { b.disabled = false; toast(errMsg(e), "err"); }
     }
     else if (a === "ticket-cancel") {

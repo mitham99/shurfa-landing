@@ -406,3 +406,7 @@ body { background: var(--cream); }
 .lk-row{display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1.5px solid var(--line,#E7E0D3);border-radius:14px;padding:10px 12px;font:inherit;color:var(--ink);text-align:start;cursor:pointer}
 .lk-row:disabled{opacity:.5}
 .lk-row.is-done{background:transparent;border-style:dashed;color:var(--mute,#7A8580);cursor:default}
+/* ---------- تذاكر ألعاب الشركاء: خصم سعر شُرفة (022) ---------- */
+.game-img{position:relative}
+.game-off{position:absolute;top:10px;left:10px;background:var(--err,#C7432B);color:#fff;font-weight:800;font-size:13px;padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
+.tqr-lock{flex:none;width:120px;height:120px;border-radius:14px;border:2px dashed var(--line,#E7E0D3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:10px;color:var(--mute,#7A8580);font-size:12.5px;font-weight:600;background:var(--cream,#FAF6F0)}
