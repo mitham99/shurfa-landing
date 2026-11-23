@@ -98,7 +98,7 @@
     const R = st === "profile" ? profRole() : (S.role || "visitor");
     const evName = ev ? esc(ev.name.split("—")[0].trim()) : "";
     const TL = {
-      visitor: ["أهلًا بك في شُرفة", "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام" + (evName ? " في " + evName : "") + "."],
+      visitor: ["أهلًا بك في شُرفة", (isOffers() ? "سجّل دخولك لشراء جوازك الرقمي وخصومات الأكشاك" : "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام") + (evName ? " في " + evName : "") + "."],
       partner: ["بوابة الشركاء", "شريك" + (evName ? " في " + evName : "") + ": أدر كشكك وبطاقة الولاء وامسح جوازات الزوار."],
       organizer: ["دخول المنظمين", "منظم" + (evName ? " في " + evName : "") + ": اعتمد جوازات الزوار بعد الدفع."],
       admin: ["إدارة شُرفة", "دخول فريق إدارة المنصة: اعتماد المنظمين والشركاء ومتابعة المؤشرات."]
@@ -127,7 +127,7 @@
       const pick = !!A.session.get("pick");
       const evs = allEvents();
       const roles = [
-        ["visitor", "زائر", "award", "#1A2E28", "#2E5148", evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
+        ["visitor", "زائر", "award", "#1A2E28", "#2E5148", isOffers() ? (evName ? `اشترِ جواز ${evName} واستمتع بخصومات الأكشاك` : "اشترِ الجواز الرقمي واستمتع بالخصومات") : evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
         ["partner", "شريك", "users", "#7A4F00", "#B07400", evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
         ["organizer", "منظم", "scan", "#14524F", "#1E7C7A", evName ? `اعتمد جوازات الزوار في ${evName}` : "اعتمد جوازات زوار فعاليتك"]
       ];
@@ -448,7 +448,7 @@
 
     let passCard;
     if (!ref) passCard = `<button class="card row" data-a="buy" style="gap:14px;border:1.5px solid var(--purple)"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic("award", 22)}</span>
-        <span class="grow"><b>احصل على جوازك الرقمي</b><span class="sub" style="display:block">اجمع أختام الأكشاك واحصل على مكافآتها${price() ? " · " + fmtPrice(price()) : ""}</span></span>${ic("fwd", 18, 2)}</button>`;
+        <span class="grow"><b>احصل على جوازك الرقمي</b><span class="sub" style="display:block">${isOffers() ? "خصم وباقات من كل كشك مشارك" : "اجمع أختام الأكشاك واحصل على مكافآتها"}${price() ? " · " + fmtPrice(price()) : ""}</span></span>${ic("fwd", 18, 2)}</button>`;
     else if (ref.status === "pending_payment") passCard = `<button class="card row" data-a="go-tab" data-tab="pass" style="gap:14px;background:var(--warn-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--warn)">${ic("clock", 22)}</span>
         <span class="grow"><b>جوازك بانتظار الدفع</b><span class="sub" style="display:block;color:var(--ink)">ادفع ${fmtPrice(price())} لدى منصة المنظمين واعرض رمزك</span></span>${ic("fwd", 18, 2)}</button>`;
     else passCard = `<button class="card row" data-a="go-tab" data-tab="pass" id="homePass" style="gap:14px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic("award", 22)}</span><span class="grow"><span class="skel" style="display:block;min-height:40px"></span></span></button>`;
@@ -497,6 +497,12 @@
     if (ref && ref.status === "active") {
       loadPass().then(() => {
         const p = S.pass, el = $("#homePass .grow"); if (!el || !p || !p.ok) return;
+        if (isOffers()) {
+          const L = S.passOffers || [], used = L.filter((o) => o.state === "used").length;
+          el.innerHTML = `<span class="between"><b>جوازي الرقمي</b><b class="num" style="color:var(--purple)">${L.length - used} ${L.length - used === 1 ? "عرض متاح" : "عروض متاحة"}</b></span>
+            <span class="sub" style="display:block;margin-top:4px">${used ? `استخدمت ${used} من ${L.length} · ` : ""}اعرض رمزك عند الطلب لخصم الكشك</span>`;
+          return;
+        }
         const ready = (p.cards || []).filter((c) => A.cardState(c).done >= c.required).length;
         el.innerHTML = `<span class="between"><b>جوازي الرقمي</b><b class="num" style="color:var(--purple)">${p.visits} ${p.visits === 1 ? "زيارة" : "زيارات"}</b></span>
           <span class="sub" style="display:block;margin-top:4px">${p.cards.length ? `${plural(p.cards.length, "بطاقة واحدة", "بطاقتان", "بطاقات", "بطاقة")}${ready ? ` · ${ready} مكافأة بانتظارك` : ""}` : "اعرض رمزك عند أول كشك لتبدأ"}</span>`;
@@ -554,10 +560,12 @@
   }
   /* عروض جواز الفعالية مع حالة كل عرض للزائر */
   const OFFER_ST = { used: ["استخدمته", "st-mute"], pending: ["بانتظار تأكيدك", "st-warn"] };
-  function passOffersHTML(list) {
-    return list.map((o) => { const st = OFFER_ST[o.state]; return `<div class="card row" style="gap:12px;${o.state === "used" ? "opacity:.6" : ""}">${logoTile(o, 44)}
-      <span class="grow"><b>${esc(o.name)}</b><span class="sub" style="display:flex;align-items:center;gap:5px;color:var(--ink);font-weight:600">${ic("gift", 14)}<span>${esc(o.offer)}</span></span>${o.used_at ? `<span class="sub" style="display:block">${esc(dayTime(o.used_at))}</span>` : ""}</span>
-      ${st ? `<span class="st ${st[1]}">${st[0]}</span>` : '<span class="st st-ok">متاح</span>'}</div>`; }).join("");
+  const OFFER_HOW = `<div class="card flat row" style="gap:10px;align-items:flex-start">${ic("qr", 20)}<span class="grow sub" style="color:var(--ink);line-height:1.7">عند الطلب: اعرض رمزك للكشك ← يطبّق لك الخصم أو الباقة اللي تختارها ← تدفع للكشك مباشرة بالسعر بعد الخصم. <b>لكل كشك مرة وحدة.</b></span></div>`;
+  function passOffersHTML(list, own = true) {
+    return OFFER_HOW + `<div class="offer-list">` + list.map((o) => { const st = OFFER_ST[o.state]; return `<div class="card offer-item${o.state === "used" ? " is-used" : ""}">
+      <div class="row" style="gap:12px">${logoTile(o, 44)}<span class="grow"><b>${esc(o.name)}</b>${o.description ? `<span class="sub" style="display:block">${esc(o.description).slice(0, 90)}</span>` : ""}</span>
+      ${!own ? "" : st ? `<span class="st ${st[1]}">${st[0]}</span>` : '<span class="st st-ok">متاح</span>'}</div>
+      ${o.state === "used" ? `<span class="sub">استخدمت: <b>${esc(o.used_label || o.offer)}</b>${o.used_at ? " · " + esc(dayTime(o.used_at)) : ""}</span>` : dealHTML(o.deal, { fallback: o.offer })}</div>`; }).join("") + `</div>`;
   }
 
   async function loadPass() {
@@ -587,9 +595,9 @@
       tickets: { t: "تذاكر الألعاب", d: "احجز تذاكر دخول الألعاب والأنشطة واحتفظ بها في جوالك، وتُمسح عند الدخول.", main: "ticket", deco: ["star", "calendar", "spark"], c1: "#F5A623", c2: "#9A5B00",
         soon: cur ? !(S.games || []).length : false, go: "games", cta: cur && (S.tickets || []).length ? "تذاكري" : "احجز تذكرتك",
         badge: cur && (S.games || []).length ? (Math.min(...S.games.map((g) => g.price_baisa)) ? "من " + fmtPrice(Math.min(...S.games.map((g) => g.price_baisa))) : "مجانًا") : "" },
-      packages: { t: "الباقات", d: e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
-        soon: !(e.page && e.page.packages), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
-      passport: { t: "الجواز الرقمي", d: isOffers(e.id) ? "عرض خاص من كل كشك مشارك، تستخدم كل عرض مرة واحدة." : "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
+      packages: { t: "الباقات", d: isOffers(e.id) ? "باقة الفرد والعائلة والربع من أكثر من كشك، أو كوّن باقتك بنفسك." : e.page && e.page.packages ? "باقات من الأكشاك المشاركة تناسب ميزانيتك." : "باقات تجمع الدخول والوجبات والأنشطة بسعر أوفر.", main: "box", deco: ["food", "coffee", "sweet"], c1: "#E4573D", c2: "#8E2A17",
+        soon: !(e.page && e.page.packages) && !isOffers(e.id), badge: "وفّر أكثر", go: "packages", cta: "تصفّح الباقات" },
+      passport: { t: "الجواز الرقمي", d: isOffers(e.id) ? "خصومات وباقات من كل كشك مشارك، وتدفع للكشك مباشرة بالسعر بعد الخصم." : "بطاقة ولاء لكل كشك: اجمع الأختام واحصل على المكافآت.", main: "passport", deco: ["stamp", "gift", "star"], c1: "#7B5BA7", c2: "#3E2A63",
         badge: cur && canSell() ? (price() ? fmtPrice(price()) : "مجانًا") : "", go: "pass", cta: cur && myPassRef() ? "افتح جوازي" : "احصل على الجواز" },
       safety: { t: "سوار الأمان", d: "سوار برمز QR مرتبط بحسابك، يصلك إشعار فوري إذا مسحه فريق التنظيم.", main: "band", deco: ["shield", "bell", "lock"], c1: "#2CA6A4", c2: "#14524F",
         badge: "للأطفال", go: "bands", cta: (S.bands || []).length ? "أساوري" : "فعّل سوار طفلك" }
@@ -612,7 +620,7 @@
     const ref = myPassRef(), OF = isOffers();
     if (OF && S.passTab === "cards") S.passTab = "offers";
     const benefits = `<div class="card stack" style="gap:10px">
-        ${(OF ? [["gift", "عرض من كل كشك", "خصومات وإضافات يحددها الشركاء لحاملي الجواز"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند الطلب ليمسحه الكشك"], ["award", "كل عرض مرة واحدة", "تابع العروض المتبقية من جوازك"]]
+        ${(OF ? [["gift", "خصم عند كل كشك مشارك", "كل مطعم ومقهى يحدد خصمه لحاملي الجواز"], ["food", "باقات بسعر أقل", "تشوف وش في الباقة وسعرها قبل وبعد الخصم"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند الطلب، وادفع للكشك مباشرة"], ["award", "لكل كشك مرة وحدة", "تابع العروض المتبقية من جوازك"]]
           : [["award", "بطاقة ولاء لكل شريك", "كل زيارة لكشك = ختم في بطاقته"], ["gift", "مكافآت حقيقية", "خصومات ووجبات مجانية يحددها كل شريك"], ["qr", "رمز واحد لكل الأكشاك", "اعرضه عند كل زيارة"]])
           .map(([i, t, d]) => `<div class="row" style="gap:12px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple);width:38px;height:38px">${ic(i, 18)}</span><div><b style="font-size:14px">${t}</b><div class="sub">${d}</div></div></div>`).join("")}</div>`;
 
@@ -620,13 +628,18 @@
       scr.innerHTML = `${head("جوازي الرقمي", false)}
         <section class="pp-cover"><span style="font-size:12.5px;opacity:.9">جواز شُرفة · ${evName}</span>
           <b style="font-size:24px;font-family:var(--head)">جوازك الرقمي للفعالية</b>
-          <p style="opacity:.92;font-size:14px">${OF ? "جواز واحد فيه عروض كل الأكشاك المشاركة، واستخدم عرض كل كشك مرة واحدة." : "اجمع أختام الأكشاك المشاركة، وكل بطاقة تكتمل تفتح لك مكافأة."}</p>
+          <p style="opacity:.92;font-size:14px">${OF ? "جواز واحد يعطيك خصومات وباقات من كل الأكشاك المشاركة في الفعالية." : "اجمع أختام الأكشاك المشاركة، وكل بطاقة تكتمل تفتح لك مكافأة."}</p>
           <div class="between" style="background:rgba(255,255,255,.14);border-radius:14px;padding:12px 14px"><span>سعر الجواز</span><b style="font-size:22px">${fmtPrice(price())}</b></div></section>
         <div class="sp"></div><div class="pad stack">${benefits}
+          ${OF ? `<b style="font-size:17px">وش تحصل في الجواز؟</b><div id="ppPreview" class="stack"><div class="skel"></div></div>
+            <div class="card flat row" style="gap:10px">${bi("ticket")}<span class="grow sub">تذاكر الألعاب منفصلة عن الجواز، وتحجزها بسعر أقل من «تذاكر الألعاب».</span></div>` : ""}
           ${canSell() ? `<button class="btn btn-cta" data-a="buy">${S.me ? (price() ? `اشترِ الجواز · ${fmtPrice(price())}` : "احصل على جوازك مجانًا") : (price() ? "سجّل دخولك لشراء الجواز" : "سجّل دخولك واحصل على جوازك مجانًا")}</button>`
             : `<div class="card flat sub" style="text-align:center">بيع الجواز لهذه الفعالية غير متاح حاليًا.</div>`}
           ${S.me ? "" : `<p class="sub" style="text-align:center">ليس لديك حساب؟ <button class="linkbtn" data-a="signup" style="padding:0;min-height:auto">أنشئ حسابًا</button></p>`}
         </div><div class="sp"></div>`;
+      if (OF) A.rpc("event_offers", { p_event: EV }).then((L) => { S.evOffers = L || []; const box = $("#ppPreview"); if (!box) return;
+        box.innerHTML = (L || []).length ? passOffersHTML(L, false) : `<div class="empty card">${ic("gift", 36)}<b>العروض تُعلن قريبًا</b><span>تظهر هنا خصومات الأكشاك وباقاتها أول ما يعتمدها فريق شُرفة.</span></div>`; })
+        .catch(() => { const box = $("#ppPreview"); if (box) box.innerHTML = ""; });
       return;
     }
 
@@ -639,7 +652,7 @@
         <b style="font-size:20px;font-family:var(--head)">${esc(myName())}</b>
         <div class="qr" id="ppQr"></div>
         <div class="pp-code">${esc(ref.code)}</div>
-        <p style="text-align:center;font-size:13px;opacity:.9">${pending ? "اعرض هذا الرمز في منصة المنظمين عند الدفع" : OF ? "اعرض هذا الرمز عند الطلب ليُطبّق لك عرض الكشك" : "اعرض هذا الرمز لموظف الكشك عند كل زيارة"}</p>
+        <p style="text-align:center;font-size:13px;opacity:.9">${pending ? "اعرض هذا الرمز في منصة المنظمين عند الدفع" : OF ? "اعرض هذا الرمز عند الطلب ليطبّق لك الكشك خصمه أو باقتك" : "اعرض هذا الرمز لموظف الكشك عند كل زيارة"}</p>
         ${pending ? "" : `<div class="pp-stats"><div><b class="num" id="ppVisits">–</b><span>${OF ? "عروض استخدمتها" : "زيارات"}</span></div><div><b class="num" id="ppCards">–</b><span>${OF ? "عروض متاحة" : "بطاقات"}</span></div><div><b class="num" id="ppRewards">–</b><span>${OF ? "أكشاك مشاركة" : "مكافآت"}</span></div></div>`}
       </section>
       ${pending ? `<div class="sp"></div><div class="pad stack">
@@ -666,7 +679,8 @@
         $("#ppVisits").textContent = used; $("#ppCards").textContent = L.length - used; $("#ppRewards").textContent = L.length;
       } else { $("#ppVisits").textContent = p.visits; $("#ppCards").textContent = p.cards.length; $("#ppRewards").textContent = p.rewards; }
       if (OF && S.passTab === "offers") {
-        h = (S.passOffers || []).length ? passOffersHTML(S.passOffers) : `<div class="empty card">${ic("gift", 36)}<b>لم تُعلن العروض بعد</b><span>تظهر هنا عروض الأكشاك المشاركة أول ما يعتمدها فريق شُرفة.</span></div>`;
+        h = `<button class="card row" data-a="sub" data-name="packages" style="gap:12px;border:1.5px solid var(--gold)"><span class="ico-tile" style="background:var(--gold-soft);color:var(--gold-ink)">${ic("grid", 20)}</span><span class="grow"><b>باقات شُرفة</b><span class="sub" style="display:block">باقة الفرد والعائلة والربع من أكثر من كشك، أو كوّن باقتك</span></span>${ic("fwd", 16, 2)}</button>`
+          + ((S.passOffers || []).length ? passOffersHTML(S.passOffers) : `<div class="empty card">${ic("gift", 36)}<b>لم تُعلن العروض بعد</b><span>تظهر هنا عروض الأكشاك المشاركة أول ما يعتمدها فريق شُرفة.</span></div>`);
       } else if (S.passTab === "cards") {
         h = p.cards.length ? p.cards.map((c) => { const st = A.cardState(c); return `<div class="loyalty">
             <div class="loyalty-head"><span class="row" style="gap:10px">${logoTile({ name: c.stall, logo: c.logo }, 36)}<b>${esc(c.stall)}</b>${c.rounds ? `<span class="sub">البطاقة ${c.rounds + 1}</span>` : ""}</span>${st.done >= c.required ? '<span class="st st-warn">مكافأة بانتظارك</span>' : `<span class="st st-purple">${st.done}/${c.required}</span>`}</div>
@@ -892,6 +906,8 @@
         <span style="font-size:13px;opacity:.9">${OF ? "عرضك لحاملي الجواز: " + esc(s.reward1) : "بطاقة الولاء: " + esc(A.offerText(s))}</span>
       </div>
       <div class="pad stack" style="padding-top:16px">
+        ${OF && s.kind === "games" ? `<div class="msg info">الألعاب خارج خصومات الجواز. زوار شُرفة يحجزون تذكرتك من «تذاكر الألعاب»، وتنمسح التذكرة من واجهة «لعبتي».</div>` : ""}
+        ${OF && s.kind !== "games" ? `<div class="card flat row" style="gap:10px">${ic("scan", 20)}<span class="grow sub" style="color:var(--ink)">امسح جواز الزائر، وبعدها اختر: <b>خصم الكشك</b> أو <b>منتج من باقته</b>.</span></div>` : ""}
         ${scanUI("امسح جواز الزائر", "بالكاميرا الخلفية")}
         <h3 class="sec-t">اليوم في ${esc(s.name)}</h3>
         <div class="kpis3" id="stKpis"><div><b>–</b><span>${OF ? "عروض اليوم" : "زيارات اليوم"}</span></div><div><b>–</b><span>${OF ? "مؤكدة من الزوار" : "مكافآت اليوم"}</span></div><div><b>–</b><span>زوار الكشك</span></div></div>
@@ -903,6 +919,7 @@
     loadStaffStats();
     refreshT = setInterval(() => { if (document.visibilityState === "visible") loadStaffStats(); }, 20000);
   }
+
 
   async function loadStaffStats() {
     try {
@@ -919,8 +936,45 @@
     } catch (e) { if (e.code === "not_signed_in") signedOut(); }
   }
 
+  const waitConfirm = `<span id="rwState" class="row" style="gap:8px;justify-content:center;margin-top:6px"><span class="spin" style="border-color:rgba(122,79,0,.25);border-top-color:var(--gold-ink);width:18px;height:18px;border-width:2.5px"></span> بانتظار تأكيد الزائر من جواله…</span>`;
+  function scanErr(e) {
+    const d = e.data || {};
+    if (e.code === "offer_used") showRes("warn", "gift", "الزائر استخدم خصمك مسبقًا", `${esc(d.visitor || "الزائر")} حصل على <b>${esc(d.reward || "الخصم")}</b>${d.used_at ? " " + esc(dayTime(d.used_at)) : ""}.<br>خصم الكشك يُستخدم مرة واحدة لكل زائر.`, scanNextBtn(), 8000);
+    else if (e.code === "item_redeemed") showRes("warn", "check", "المنتج مُسلَّم مسبقًا", "هذا المنتج من الباقة استلمه الزائر من قبل.", scanNextBtn(), 7000);
+    else if (e.code === "cooldown") showRes("warn", "clock", "أُضيف ختم قبل قليل", `${esc(d.visitor || "")} — يمكن إضافة ختم جديد ${d.retry_at ? "بعد " + esc(time(d.retry_at)) : "لاحقًا"}`, scanNextBtn(), 7000);
+    else if (e.code === "pass_not_paid") showRes("warn", "lock", "الجواز غير مفعّل", `${esc(d.visitor || "الزائر")} لم يُكمل الدفع بعد. وجّهه إلى منصة المنظمين.`, scanNextBtn(), 8000);
+    else showRes("err", "x", "لم تتم العملية", esc(errMsg(e)), scanNextBtn(), 7000);
+  }
+  // جواز الفعالية: قراءة الجواز أولًا (بدون تسجيل)، ثم يختار الكشك: خصمه أو منتج من باقة الزائر
+  async function stallLookup(code) {
+    S.work.busy = true;
+    try {
+      const d = await A.urpc("staff_lookup", { p_stall: S.work.stall, p_code: code });
+      S.work.last = code;
+      const dc = d.discount || {}, lines = d.lines || [];
+      const discRow = dc.state === "used"
+        ? `<div class="lk-row is-done">${ic("check", 18)}<span class="grow">استخدم خصمك${dc.used_at ? " · " + esc(dayTime(dc.used_at)) : ""}</span></div>`
+        : `<button class="lk-row" data-a="lk-disc">${ic("gift", 18)}<span class="grow"><b>طبّق خصم الكشك</b><span class="sub" style="display:block">${esc(dc.label || "")}${dc.state === "pending" ? " · بانتظار تأكيده" : ""}</span></span>${ic("fwd", 16, 2)}</button>`;
+      const lineRows = lines.map((l) => l.state === "done"
+        ? `<div class="lk-row is-done">${ic("check", 18)}<span class="grow">${esc(l.item)}${l.qty > 1 ? " ×" + l.qty : ""}<span class="sub" style="display:block">${esc(l.package)} · تم التسليم</span></span></div>`
+        : `<button class="lk-row" data-a="lk-line" data-id="${esc(l.id)}">${ic("grid", 18)}<span class="grow"><b>سلّم: ${esc(l.item)}${l.qty > 1 ? " ×" + l.qty : ""}</b><span class="sub" style="display:block">${esc(l.package)} · يدفع لك ${omr(l.after * l.qty)}${l.state === "pending" ? " · بانتظار تأكيده" : ""}</span></span>${ic("fwd", 16, 2)}</button>`).join("");
+      showRes("gold", "user", `جواز ${d.visitor}`, `<div class="lk-list">${lineRows ? `<span class="lk-h">من باقاته عندك</span>${lineRows}` : ""}<span class="lk-h">خصم الكشك</span>${discRow}</div>`, scanNextBtn());
+    } catch (e) { scanErr(e); }
+    finally { S.work.busy = false; }
+  }
+  function offerResult(d) {
+    try { if (navigator.vibrate) navigator.vibrate([80, 60, 80]); } catch (e) { /* ignore */ }
+    const acts = scanNextBtn() + `<button class="linkbtn" data-a="undo" style="color:var(--err)">${ic("undo", 16)} تراجع عن هذه العملية</button>`;
+    if (d.package) showRes("gold", "gift", "سلّم من الباقة", `سلّم <b>${esc(d.reward)}</b> لـ <b>${esc(d.visitor)}</b>.<br>الزائر يدفع لك <b>${omr(d.pay)}</b>.<br>${waitConfirm}`, acts);
+    else showRes("gold", "gift", "طبّق خصم الكشك", `طبّق <b>${esc(d.reward)}</b> على طلب <b>${esc(d.visitor)}</b>.<br>${waitConfirm}`, acts);
+    watchReward(d.id, d.reward, false, true);
+    loadStaffStats();
+  }
   async function addVisit(code) {
-    if (S.work.busy) return; S.work.busy = true;
+    if (S.work.busy) return;
+    const cur = approvedStalls().find((x) => x.id === S.work.stall) || {};
+    if (isOffers(stallEv(S.work.stall)) && cur.kind !== "games") return stallLookup(code);
+    S.work.busy = true;
     try {
       const d = await A.urpc("staff_scan", { p_stall: S.work.stall, p_code: code });
       S.work.last = code;
@@ -982,12 +1036,13 @@
     const t = S.adminTab || "content", evs = allEvents(), cur = adminEv();
     scr.innerHTML = `<div class="ohead" style="background:linear-gradient(150deg,#5F4486,#7B5BA7)"><div class="between"><div><div style="font-size:12.5px;opacity:.85">إدارة شُرفة</div><h2>${esc(((evById(cur) || {}).name || cur).split("—")[0].trim())}</h2></div></div>
         <div class="chips">${evs.map((e) => `<button data-a="admin-ev" data-id="${esc(e.id)}" aria-pressed="${e.id === cur}"${e.visible ? "" : ' style="opacity:.65"'}>${e.visible ? "" : ic("lock", 14) + " "}${esc(e.name.split("—")[0].trim())}${e.visible ? "" : " · مخفية"}</button>`).join("")}<button data-a="admin-new-ev">+ فعالية</button></div>
-        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["games", "الألعاب"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"], ["security", "الأمان"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
+        <div class="seg" role="group" aria-label="الأقسام" style="background:rgba(250,246,240,.14)">${[["content", "المحتوى"], ["games", "الألعاب"], ["packages", "الباقات"], ["orgs", "المنظمون"], ["partners", "الشركاء"], ["stats", "المؤشرات"], ["security", "الأمان"]].map(([k, l]) => `<button data-a="admin-tab" data-k="${k}" aria-pressed="${t === k}">${l}</button>`).join("")}</div></div>
       <div class="pad stack wrap-md" style="padding-top:16px" id="pfBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
     if (t === "content") renderEventForm(S.newEvent ? null : cur);
     else if (t === "orgs") loadPlatform();
     else if (t === "partners") loadAdminPartners();
     else if (t === "games") loadGamesAdmin(cur);
+    else if (t === "packages") loadPackagesAdmin(cur);
     else if (t === "security") loadSecurity();
     else loadAdminStats();
   }
@@ -1063,6 +1118,32 @@
       <p class="sub">كلمات المرور لا تُحفظ ولا تظهر في أي سجل. أرقام الهواتف تظهر مختصرة.</p>`;
   }
   const gameMedia = { image: null };
+  /* ---------- إدارة شُرفة: تكوين باقات الفرد / العائلة / الربع من منتجات الأكشاك ---------- */
+  const PK_KINDS = [["single", "باقة الفرد", "لشخص واحد"], ["family", "باقة العائلة", "لأربعة أشخاص"], ["friends", "باقة الربع", "للشلة"]];
+  async function loadPackagesAdmin(ev) {
+    const box = $("#pfBody"); if (!box) return;
+    let d;
+    try { d = await A.urpc("admin_list_packages", { p_event: ev }); } catch (e) { box.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; return; }
+    const cat = d.catalog || [];
+    if (!cat.length) { box.innerHTML = `<div class="empty card">${ic("grid", 36)}<b>ما فيه منتجات للباقات بعد</b><span>المنتجات تظهر هنا بعد ما يضيفها الشركاء في نموذج التسجيل وتعتمد أكشاكهم.</span></div>`; return; }
+    box.innerHTML = `<p class="sub">كوّن كل باقة من منتجات الأكشاك المعتمدة. حط الكمية لكل منتج (0 = مو داخل الباقة). السعر يُحسب من أسعار الأكشاك داخل الباقات.</p>`
+      + PK_KINDS.map(([k, n, hint]) => {
+        const pk = (d.packages || []).find((x) => x.kind === k) || {}, q = Object.fromEntries((pk.items || []).map((x) => [x.item, x.qty]));
+        return `<form class="card stack" data-f="pkg-admin" data-kind="${k}" style="gap:10px">
+          <div class="between"><b style="font-size:17px">${n}</b><label class="check" style="margin:0"><input type="checkbox" name="active" ${pk.active === false ? "" : "checked"}> <span>ظاهرة للزوار</span></label></div>
+          <div class="field"><label>اسم الباقة</label><input class="input" name="name" maxlength="40" value="${esc(pk.name || n)}"></div>
+          <div class="field"><label>وصف قصير</label><input class="input" name="description" maxlength="160" placeholder="${hint}" value="${esc(pk.description || "")}"></div>
+          <div class="card flat" style="padding:2px 12px">${cat.map((i) => `<div class="li"><div class="grow"><b style="font-size:14px">${esc(i.name)}</b><div class="sub">${esc(i.stall_name)} · ${esc(CAT[i.category] || "")} · <s>${omr(i.before)}</s> ${omr(i.after)}</div></div>
+              <input class="input" name="q" data-item="${esc(i.id)}" data-b="${i.before}" data-a="${i.after}" type="number" min="0" max="10" value="${q[i.id] || 0}" style="width:64px;text-align:center" data-c="pk-adm" aria-label="كمية ${esc(i.name)}"></div>`).join("")}</div>
+          <div class="between"><span class="sub pk-adm-t"></span><button class="btn btn-cta btn-sm" type="submit" style="width:auto;padding:0 18px;flex:none">حفظ</button></div>
+        </form>`; }).join("");
+    box.querySelectorAll("form[data-f=pkg-admin]").forEach(pkAdmTotal);
+  }
+  function pkAdmTotal(f) {
+    let b = 0, a = 0, n = 0, st = new Set();
+    f.querySelectorAll("input[name=q]").forEach((x) => { const q = Math.max(0, Math.min(10, parseInt(x.value || "0", 10) || 0)); if (q) { b += q * +x.dataset.b; a += q * +x.dataset.a; n++; } });
+    const t = f.querySelector(".pk-adm-t"); if (t) t.innerHTML = n ? `${plural(n, "منتج واحد", "منتجين", "منتجات", "منتج")} · <s>${omr(b)}</s> <b style="color:var(--ink)">${omr(a)}</b> · وفّر ${savePct(b, a)}%` : "ما فيه منتجات";
+  }
   async function loadGamesAdmin(ev) {
     const box = $("#pfBody"); if (!box) return;
     S.gameEv = ev;
@@ -1148,7 +1229,7 @@
   const appCard = (a) => `<div class="card stack" style="gap:10px">
       <div class="row" style="gap:12px">${logoTile(a, 52)}<div class="grow"><b>${esc(a.name)}</b><div class="sub">${esc(A.KIND[a.kind] || a.kind)} · <span dir="ltr">${esc(a.owner_email || "")}</span></div></div><span class="st ${STATUS_AR[a.status][1]}">${STATUS_AR[a.status][0]}</span></div>
       ${a.description ? `<p style="font-size:14px">${esc(a.description)}</p>` : ""}
-      <div class="card flat" style="padding:10px 12px" id="cardv-${esc(a.stall)}"><div class="between"><span class="sub">${isOffers(adminEv()) ? "عرض الجواز" : "بطاقة الولاء"}</span>${isAdmin() ? `<button class="linkbtn" style="padding:0;min-height:auto" data-a="card-edit" data-id="${esc(a.stall)}" data-req="${a.required}" data-r1="${esc(a.reward1 || "")}" data-r2="${esc(a.reward2 || "")}" data-cd="${a.cooldown}">${ic("edit", 14)} تعديل البطاقة</button>` : ""}</div><div><b>${esc(isOffers(adminEv()) ? a.reward1 : A.offerText(a))}</b></div>${isOffers(adminEv()) ? "" : `<span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span>`}</div>
+      <div class="card flat" style="padding:10px 12px" id="cardv-${esc(a.stall)}"><div class="between"><span class="sub">${isOffers(adminEv()) ? "عرض الجواز" : "بطاقة الولاء"}</span>${isAdmin() ? `<button class="linkbtn" style="padding:0;min-height:auto" data-a="card-edit" data-id="${esc(a.stall)}" data-req="${a.required}" data-r1="${esc(a.reward1 || "")}" data-r2="${esc(a.reward2 || "")}" data-cd="${a.cooldown}">${ic("edit", 14)} تعديل البطاقة</button>` : ""}</div><div><b>${esc(isOffers(adminEv()) ? a.reward1 : A.offerText(a))}</b></div>${isOffers(adminEv()) ? `<button class="linkbtn" style="padding:0;min-height:auto" data-a="adm-deal" data-id="${esc(a.stall)}">${ic("eye", 14)} تفاصيل العرض والباقات</button><div id="admDeal-${esc(a.stall)}"></div>` : `<span class="sub">فاصل بين ختمين: ${a.cooldown} دقيقة</span>`}</div>
       ${a.phone || a.instagram ? `<span class="sub">${a.phone ? `<span dir="ltr">${esc(a.phone)}</span>` : ""}${a.instagram ? ` · <span dir="ltr">@${esc(a.instagram)}</span>` : ""}</span>` : ""}
       ${a.note ? `<span class="sub">ملاحظة: ${esc(a.note)}</span>` : ""}
       ${a.status === "pending" ? `<div class="row" style="gap:8px"><button class="btn btn-dark btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="1">${ic("check", 18, 2)} اعتماد</button><button class="btn btn-danger btn-sm" style="flex:1" data-a="review" data-id="${esc(a.stall)}" data-ok="0">رفض</button></div>`
@@ -1194,7 +1275,7 @@
       scr.innerHTML = `${head("حسابي", false)}
         <div class="pad stack">
           <div class="card stack" style="align-items:center;text-align:center;gap:10px;padding:26px 18px"><span class="avatar lg">${ic("user", 26)}</span>
-            <b style="font-size:18px">سجّل دخولك إلى شُرفة</b><span class="sub">لشراء الجواز الرقمي وجمع الأختام، أو للتسجيل كشريك.</span>
+            <b style="font-size:18px">سجّل دخولك إلى شُرفة</b><span class="sub">${isOffers() ? "لشراء الجواز الرقمي والاستفادة من خصومات الأكشاك" : "لشراء الجواز الرقمي وجمع الأختام"}، أو للتسجيل كشريك.</span>
             <button class="btn btn-dark" data-a="login">تسجيل الدخول</button><button class="btn btn-line" data-a="signup">إنشاء حساب</button></div>
           <div class="card" style="padding:0;overflow:hidden">
             <button class="menu-btn" data-a="partner-login">${ic("users", 20)}<span class="grow">بوابة الشركاء (دخول أو تسجيل)</span>${ic("fwd", 16, 2)}</button>
@@ -1270,8 +1351,8 @@
           ${s.description ? `<p style="font-size:14.5px">${esc(s.description)}</p>` : ""}
           ${s.instagram ? `<a class="linkbtn" dir="ltr" href="https://instagram.com/${esc(s.instagram)}" target="_blank" rel="noopener">@${esc(s.instagram)}</a>` : ""}</div>
         ${isOffers() ? `<div class="loyalty"><div class="loyalty-head"><b>عرض الجواز</b><span class="st st-warn">مرة واحدة</span></div>
-          <p style="font-size:17px;font-weight:700;margin:6px 0">${ic("gift", 18)} ${esc(s.reward1)}</p>
-          <p class="loyalty-next">اعرض رمز جوازك عند الطلب ليُطبّق لك العرض.</p></div>`
+          <div id="stDeal" data-id="${esc(s.id)}" style="margin:6px 0">${dealHTML(((S.evOffers || []).find((x) => x.id === s.id) || {}).deal, { fallback: s.reward1 })}</div>
+          <p class="loyalty-next">اعرض رمز جوازك عند الطلب ← يطبّق لك الكشك الخصم أو الباقة ← تدفع له مباشرة.</p></div>`
         : `<div class="loyalty"><div class="loyalty-head"><b>بطاقة الولاء</b><span class="st st-purple">${esc(A.offerText(s))}</span></div><div class="slots">${slots}</div>
           <p class="loyalty-next">اعرض رمز جوازك عند كل زيارة لتُضاف الأختام.</p></div>`}
         ${myPassRef() ? "" : `<button class="btn btn-cta" data-a="buy">احصل على الجواز الرقمي${price() ? " · " + fmtPrice(price()) : ""}</button>`}
@@ -1293,7 +1374,7 @@
           <div class="card flat stack" style="gap:6px"><b style="font-size:14px">كيف يتم؟</b>
             <span class="sub">1) اضغط «احصل على جوازك مجانًا».</span>
             <span class="sub">2) يتفعّل جوازك فورًا ويظهر رمزك.</span>
-            <span class="sub">3) اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت.</span></div>
+            <span class="sub">3) ${isOffers() ? "اعرض رمزك عند الأكشاك المشاركة واحصل على خصمها أو باقتها." : "اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت."}</span></div>
           <div id="coMsg"></div>
           <button class="btn btn-cta" data-a="confirm-buy">${ic("award", 20)} احصل على جوازك مجانًا</button>
         </div><div class="sp"></div>`;
@@ -1311,7 +1392,7 @@
           <div class="card flat stack" style="gap:6px"><b style="font-size:14px">كيف يتم؟</b>
             <span class="sub">1) أكّد الطلب الآن فيظهر لك رمز جوازك.</span>
             <span class="sub">2) ادفع ${fmtPrice(price())} لدى منصة المنظمين في الفعالية.</span>
-            <span class="sub">3) يمسح المنظم رمزك فيتفعّل جوازك فورًا، وتبدأ بجمع الأختام.</span></div>
+            <span class="sub">3) يمسح المنظم رمزك فيتفعّل جوازك فورًا${isOffers() ? "، وتقدر تستخدم خصومات الأكشاك." : "، وتبدأ بجمع الأختام."}</span></div>
           <p class="sub row" style="gap:6px">${ic("shield", 14)} لا نطلب ولا نحفظ بيانات بطاقتك في شُرفة. الدفع الإلكتروني سيتم عبر بوابة دفع مرخّصة.</p>
           <div id="coMsg"></div>
           <button class="btn btn-cta" data-a="confirm-buy">تأكيد الطلب · ${fmtPrice(price())}</button>
@@ -1383,6 +1464,7 @@
         <div id="bandsBody" class="stack"><div class="skel"></div></div></div><div class="sp"></div>`;
     },
     packages() {
+      if (isOffers()) return `${head("باقات شُرفة")}<div class="pad stack" id="pkBody"><div class="skel"></div><div class="skel"></div></div><div class="sp"></div>`;
       const ev = evById(EV) || {}, pk = (ev.page && ev.page.packages) || { items: [], presets: {} };
       const item = (id) => pk.items.find((i) => i.id === id) || {};
       return `${head("الباقات")}
@@ -1399,12 +1481,83 @@
         ${it.note ? `<span class="sub">${esc(it.note)}</span>` : ""}</div></div>`;
     }
   };
+  /* ---------- باقات شُرفة: جاهزة (الفرد / العائلة / الربع) + «كوّن باقتك» + باقاتي ---------- */
+  const PK_IC = { single: "user", family: "users", friends: "users" };
+  async function loadPackages(reload = true) {
+    if (!$("#pkBody")) return;
+    S.pk = S.pk || { tab: "ready", sel: {} };
+    if (reload) {
+      const [list, cat, mine] = await Promise.all([
+        A.rpc("event_packages", { p_event: EV }).catch(() => []), A.rpc("event_package_catalog", { p_event: EV }).catch(() => []),
+        S.me ? A.urpc("my_packages", { p_event: EV }).catch(() => []) : []]);
+      Object.assign(S.pk, { list: list || [], cat: cat || [], mine: mine || [] });
+    }
+    renderPackages();
+  }
+  const pkItemLi = (i) => `<div class="li"><span class="ico-tile" style="width:34px;height:34px;background:var(--gold-soft);color:var(--gold-ink)">${ic(CAT_IC[i.category] || "food", 16)}</span>
+      <div class="grow"><b style="font-size:14px">${i.qty > 1 ? i.qty + " × " : ""}${esc(i.name)}</b><div class="sub">${esc(i.stall_name)}</div></div>
+      <span class="deal-price"><s>${omr(i.before * i.qty)}</s><b>${omr(i.after * i.qty)}</b></span></div>`;
+  function renderPackages() {
+    const box = $("#pkBody"); if (!box) return;
+    const P = S.pk, ref = myPassRef(), active = !!(ref && ref.status === "active");
+    const gate = active ? "" : `<div class="card row" style="gap:12px;border:1.5px solid var(--purple)">${ic("lock", 20)}<span class="grow sub" style="color:var(--ink)">${!S.me ? "سجّل دخولك واشترِ جواز الفعالية عشان تاخذ الباقات." : !ref ? "الباقات لحاملي جواز الفعالية." : "جوازك بانتظار الدفع. بعد التفعيل تقدر تاخذ الباقات."}</span>${ref ? "" : `<button class="btn btn-cta btn-sm" data-a="buy" style="width:auto;padding:0 14px">احصل على الجواز</button>`}</div>`;
+    const tabs = `<div class="seg" role="group" aria-label="الباقات">${[["ready", "الباقات الجاهزة"], ["custom", "كوّن باقتك"], ["mine", `باقاتي${P.mine.length ? " (" + P.mine.length + ")" : ""}`]].map(([k, l]) => `<button data-a="pk-tab" data-k="${k}" aria-pressed="${P.tab === k}">${l}</button>`).join("")}</div>`;
+    const how = `<div class="card flat row" style="gap:10px;align-items:flex-start">${ic("qr", 20)}<span class="grow sub" style="color:var(--ink);line-height:1.7">الباقة تجمع منتجات من <b>أكثر من كشك</b> بسعر أقل. عند كل كشك: اعرض رمز جوازك ← استلم منتجك ← ادفع للكشك سعره في الباقة.</span></div>`;
+    let h = "";
+    if (P.tab === "ready") {
+      h = P.list.length ? P.list.map((k) => `<div class="card stack" style="gap:10px">
+          <div class="row" style="gap:12px"><span class="ico-tile" style="background:var(--purple-soft);color:var(--purple)">${ic(PK_IC[k.kind] || "grid", 22)}</span>
+            <span class="grow"><b style="font-size:17px">${esc(k.name)}</b>${k.description ? `<span class="sub" style="display:block">${esc(k.description)}</span>` : ""}</span>
+            <span class="st st-ok">وفّر ${savePct(k.before, k.after)}%</span></div>
+          <div class="card flat" style="padding:2px 12px">${k.items.map(pkItemLi).join("")}</div>
+          <div class="between"><span class="sub">من ${k.stalls} ${k.stalls > 2 ? "أكشاك" : k.stalls === 2 ? "كشكين" : "كشك"}</span><span class="deal-price" style="flex-direction:row;gap:8px;align-items:baseline"><s>${omr(k.before)}</s><b style="font-size:19px">${omr(k.after)}</b></span></div>
+          <button class="btn btn-cta" data-a="pk-take" data-k="${esc(k.kind)}" ${active ? "" : "disabled"}>خذ ${esc(k.name)}</button></div>`).join("")
+        : `<div class="empty card">${ic("grid", 36)}<b>الباقات الجاهزة تُعلن قريبًا</b><span>تقدر الحين تكوّن باقتك بنفسك من منتجات الأكشاك.</span></div>`;
+    } else if (P.tab === "custom") {
+      const sel = P.sel, chosen = P.cat.filter((i) => sel[i.id]);
+      const tb = chosen.reduce((t, i) => t + i.before * sel[i.id], 0), ta = chosen.reduce((t, i) => t + i.after * sel[i.id], 0);
+      const groups = Object.keys(CAT).map((c) => [c, P.cat.filter((i) => i.category === c)]).filter((g) => g[1].length);
+      h = groups.length ? groups.map(([c, L]) => `<h3 class="sec-t" style="margin:4px 0 0">${CAT[c]}</h3><div class="card" style="padding:2px 12px">${L.map((i) => `<div class="li">
+            <div class="grow"><b style="font-size:14px">${esc(i.name)}</b><div class="sub">${esc(i.stall_name)} · <s>${omr(i.before)}</s> <b style="color:var(--ink)">${omr(i.after)}</b></div></div>
+            <span class="stepper"><button data-a="pk-q" data-id="${esc(i.id)}" data-d="-1" aria-label="أنقص" ${sel[i.id] ? "" : "disabled"}>−</button><b class="num">${sel[i.id] || 0}</b><button data-a="pk-q" data-id="${esc(i.id)}" data-d="1" aria-label="زِد">+</button></span></div>`).join("")}</div>`).join("")
+          + `<div class="pk-total"><div class="grow"><span class="sub">${chosen.length ? `${plural(chosen.length, "منتج واحد", "منتجين", "منتجات", "منتج")} · وفّرت ${omr(tb - ta)}` : "اختر منتجاتك"}</span>
+              <div class="row" style="gap:8px;align-items:baseline">${chosen.length ? `<s class="sub">${omr(tb)}</s>` : ""}<b style="font-size:19px">${omr(ta)}</b></div></div>
+            <button class="btn btn-cta btn-sm" data-a="pk-save" style="width:auto;padding:0 16px" ${chosen.length && active ? "" : "disabled"}>احفظ باقتي</button></div>`
+        : `<div class="empty card">${ic("grid", 36)}<b>ما فيه منتجات بعد</b><span>تظهر هنا منتجات الأكشاك المشاركة أول ما يعتمدها فريق شُرفة.</span></div>`;
+    } else {
+      const ST = { open: ["متاح عند الكشك", "st-ok"], pending: ["بانتظار تأكيدك", "st-warn"], done: ["استلمته", "st-mute"] };
+      h = P.mine.length ? P.mine.map((k) => `<div class="card stack" style="gap:8px">
+          <div class="between"><b style="font-size:16px">${esc(k.name)}</b><span class="deal-price" style="flex-direction:row;gap:8px;align-items:baseline"><s>${omr(k.before)}</s><b>${omr(k.after)}</b></span></div>
+          <div class="card flat" style="padding:2px 12px">${k.lines.map((l) => `<div class="li"><div class="grow"><b style="font-size:14px">${l.qty > 1 ? l.qty + " × " : ""}${esc(l.item)}</b><div class="sub">${esc(l.stall)} · ادفع له ${omr(l.after * l.qty)}</div></div><span class="st ${ST[l.state][1]}">${ST[l.state][0]}</span></div>`).join("")}</div>
+          ${k.lines.every((l) => l.state === "open") ? `<button class="linkbtn" data-a="pk-cancel" data-id="${esc(k.id)}" style="color:var(--err);align-self:flex-start">${ic("trash", 14)} إلغاء الباقة</button>` : ""}</div>`).join("")
+        : `<div class="empty card">${ic("grid", 36)}<b>ما عندك باقات بعد</b><span>خذ باقة جاهزة أو كوّن باقتك.</span></div>`;
+    }
+    box.innerHTML = gate + how + tabs + h;
+  }
+  async function pkAction(a, b) {
+    const P = S.pk || {};
+    if (a === "pk-tab") { P.tab = b.dataset.k; return renderPackages(); }
+    if (a === "pk-q") { const id = b.dataset.id, q = Math.max(0, Math.min(10, (P.sel[id] || 0) + parseInt(b.dataset.d, 10))); if (q) P.sel[id] = q; else delete P.sel[id]; return renderPackages(); }
+    b.disabled = true;
+    try {
+      if (a === "pk-take") await A.urpc("pass_take_package", { p_event: EV, p_kind: b.dataset.k, p_items: null });
+      else if (a === "pk-save") { await A.urpc("pass_take_package", { p_event: EV, p_kind: "custom", p_items: Object.entries(P.sel).map(([item, qty]) => ({ item, qty })) }); P.sel = {}; }
+      else if (a === "pk-cancel") { if (!confirm("تلغي هذه الباقة؟")) { b.disabled = false; return; } await A.urpc("pass_cancel_package", { p_id: b.dataset.id }); }
+      toast(a === "pk-cancel" ? "أُلغيت الباقة" : "أُضيفت الباقة إلى «باقاتي». اعرض رمز جوازك عند كل كشك.", "ok");
+      P.tab = "mine"; await loadPackages(true); window.scrollTo(0, 0);
+    } catch (e) { toast(errMsg(e), "err"); b.disabled = false; }
+  }
   function afterSub(o) {
     if (o.name === "partner") loadPartnerForm();
     if (o.name === "orgapply") loadOrgApply();
     if (o.name === "bands") loadBandsScreen(o);
     if (o.name === "mfa") loadMfaScreen();
+    if (o.name === "packages" && isOffers()) loadPackages();
     if (o.name === "tickets") { document.querySelectorAll(".tqr").forEach((el) => A.qr(el, "SHURFA-T:" + el.dataset.code, 120)); }
+    const sd = $("#stDeal");
+    if (sd && !(S.evOffers || []).some((x) => x.id === sd.dataset.id && x.deal)) A.rpc("event_offers", { p_event: EV }).then((L) => {
+      S.evOffers = L || []; const box = $("#stDeal"), it = S.evOffers.find((x) => x.id === (box && box.dataset.id));
+      if (box && it && it.deal) box.innerHTML = dealHTML(it.deal); }).catch(() => {});
 
 
   }
@@ -1633,15 +1786,9 @@
     const p = d.partner || {}, st = (d.stalls || []).find((x) => x.event === EV) || {};
     ptLogo = p.logo || null;
     const locked = st.status === "approved";   // بعد الاعتماد: البطاقة يعدّلها مدير النظام فقط
-    const ev = evById(EV) || {}, OF = isOffers();
-    const offerCard = `<div class="card stack" style="gap:12px"><b>عرضك لحاملي جواز الفعالية</b>
-          <span class="sub">عرض واحد تختاره أنت، يحصل عليه كل زائر معه الجواز <b>مرة واحدة</b>. كل جواز تمسحه يُحسب لك زيارة، وفي نهاية الفعالية تاخذ نصيبك من صندوق الجواز على قد زياراتك.</span>
-          ${locked ? `<div class="msg info">العرض معتمد. لتعديله تواصل مع إدارة شُرفة.</div>` : ""}
-          <div class="field"><label for="pt-r1">العرض</label><input class="input" id="pt-r1" name="reward1" maxlength="40" placeholder="مثال: خصم 20% على الكرك" value="${esc(st.reward1 || "")}" ${locked ? "disabled" : ""}></div>
-          <input type="hidden" name="required" value="1"><input type="hidden" name="reward2" value=""><input type="hidden" name="cooldown" value="0">
-          <div class="card flat stack" style="gap:6px;padding:12px"><b style="font-size:14px">${ic("gift", 16)} كيف ينحسب نصيبك؟</b>
-            <span class="sub">الصندوق = ${(EVDB[EV] || {}).pool_pct ?? 50}% من مبيعات الجواز.<br>نصيبك = (زياراتك ÷ مجموع زيارات كل الأكشاك) × الصندوق.</span></div>
-        </div>`;
+    const ev = evById(EV) || {};
+    if (st.id) { try { const so = await A.urpc("stall_offer", { p_stall: st.id }); ptOffer = (so && so.offer) || null; ptItems = (so && so.items) || []; } catch (e) { ptOffer = null; ptItems = []; } }
+    else { ptOffer = null; ptItems = []; }
     const statusBox = st.status ? `<div class="result ${st.status === "approved" ? "r-ok" : st.status === "rejected" ? "r-err" : "r-warn"}" style="padding:14px">
         <h3 style="font-size:17px">${st.status === "approved" ? "معتمد في " : st.status === "rejected" ? "لم يُعتمد في " : "قيد المراجعة في "}${esc((ev.name || "").split("—")[0].trim())}</h3>
         ${st.note ? `<span class="sub" style="color:var(--ink)">ملاحظة المنظم: ${esc(st.note)}</span>` : ""}
@@ -1652,36 +1799,145 @@
           <div class="row" style="gap:14px"><span id="ptLogoPrev">${logoTile({ name: p.name || "؟", logo: ptLogo }, 72)}</span>
             <label class="btn btn-soft btn-sm" style="cursor:pointer">${ic("edit", 16)} ${ptLogo ? "تغيير الشعار" : "رفع الشعار"}<input type="file" accept="image/png,image/jpeg,image/webp" data-c="pt-logo" hidden></label></div>
           <div class="field"><label for="pt-name">اسم المشروع / الكشك</label><input class="input" id="pt-name" name="name" maxlength="60" value="${esc(p.name || "")}" required></div>
-          <div class="field"><label for="pt-kind">النوع</label><select class="input" id="pt-kind" name="kind">${Object.entries(A.KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+          <div class="field"><label for="pt-kind">النوع</label><select class="input" id="pt-kind" name="kind" data-c="pt-kind">${Object.entries(A.KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
           <div class="field"><label for="pt-desc">نبذة قصيرة</label><textarea class="input" id="pt-desc" name="description" maxlength="300" rows="3" style="height:auto;padding:10px 14px">${esc(p.description || "")}</textarea></div>
           <div class="field"><label for="pt-phone">رقم التواصل</label><input class="input" id="pt-phone" name="phone" inputmode="tel" dir="ltr" style="text-align:right" value="${esc(p.phone || (S.me.profile || {}).phone || "")}"></div>
           <div class="field"><label for="pt-ig">انستقرام (اختياري)</label><input class="input" id="pt-ig" name="instagram" dir="ltr" placeholder="@shop" value="${esc(p.instagram ? "@" + p.instagram : "")}"></div>
         </div>
-        ${OF ? offerCard : `<div class="card stack" style="gap:12px"><b>بطاقة الولاء</b>
-          <span class="sub">هذه البطاقة تظهر في الجواز الرقمي لكل زائر، وتُضاف الأختام عليها عند كل زيارة.</span>
-          ${locked ? `<div class="msg info">البطاقة معتمدة. لأي تعديل على عدد الزيارات أو المكافآت تواصل مع إدارة شُرفة، حفاظًا على أختام الزوار.</div>` : ""}
-          <div class="field"><label for="pt-req">عدد الزيارات قبل المكافأة</label><input class="input" id="pt-req" name="required" type="number" min="1" max="20" value="${esc(st.required || 3)}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
-          <div class="field"><label for="pt-r1">المكافأة الأولى</label><input class="input" id="pt-r1" name="reward1" maxlength="40" placeholder="مثال: خصم 30%" value="${esc(st.reward1 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
-          <div class="field"><label for="pt-r2">مكافأة ثانية (اختياري)</label><input class="input" id="pt-r2" name="reward2" maxlength="40" placeholder="مثال: الوجبة مجانًا" value="${esc(st.reward2 || "")}" ${locked ? "disabled" : ""} data-c="pt-card"></div>
-          <div class="field"><label for="pt-cd">الفاصل بين ختمين (دقائق)</label><input class="input" id="pt-cd" name="cooldown" type="number" min="0" max="1440" value="${esc(st.cooldown ?? 30)}" ${locked ? "disabled" : ""}><span class="sub">يمنع إضافة أكثر من ختم للزائر نفسه خلال هذه المدة.</span></div>
-          <div class="loyalty" style="background:var(--cream)"><div class="loyalty-head"><b>معاينة البطاقة</b><span class="st st-purple" id="ptOffer"></span></div><div class="slots" id="ptSlots"></div></div>
-        </div>`}
+        <div id="ptOfferBox">${offerBoxHTML(p.kind || "food", ptOffer, ptItems, locked)}</div>
         <div class="card stack" style="gap:10px"><b>المشاركة</b>
           <label class="opt"><input type="radio" name="event" value="${esc(EV)}" checked><span class="grow">${esc((ev.name || EV).split("—")[0].trim())}<span class="sub" style="display:block;font-weight:500">يراجع المنظم طلبك قبل ظهوره للزوار</span></span></label>
           <label class="opt"><input type="radio" name="event" value=""><span class="grow">شريك في شُرفة بشكل عام<span class="sub" style="display:block;font-weight:500">نحفظ بياناتك ونتواصل معك للفعاليات القادمة</span></span></label>
         </div>
-        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>${OF ? "أؤكد صحة البيانات، وألتزم بتقديم عرضي لحاملي الجواز كما حددته." : "أؤكد صحة البيانات، وألتزم بتقديم مكافآت بطاقة الولاء للزوار كما حددتها."}</span></label>
+        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span id="ptConsentTxt">${consentTxt(p.kind || "food")}</span></label>
         <div id="ptMsg"></div>
         <button class="btn btn-cta" type="submit">${st.status ? "حفظ التعديلات" : "إرسال طلب الشراكة"}</button>
       </form>`;
-    previewCard();
+    previewOffer();
   }
-  function previewCard() {
-    const f = $("form[data-f=partner]"); if (!f || !$("#ptSlots")) return;
-    const req = Math.min(20, Math.max(1, parseInt(f.required.value || "3", 10) || 3));
-    const c = { required: req, reward1: f.reward1.value.trim() || "المكافأة", reward2: f.reward2.value.trim() || null, visits: 0 };
-    $("#ptSlots").innerHTML = A.slotsHTML(c);
-    $("#ptOffer").textContent = A.offerText(c);
+
+  /* ---------- عرض الشريك: خصم الكشك + منتجاته في باقات شُرفة، أو تذكرة لعبة ---------- */
+  let ptOffer = null, ptItems = [];
+  const omr = (b) => `${(Math.round(b || 0) / 1000).toLocaleString("en", { maximumFractionDigits: 3 })} ريال`;
+  const toBaisa = (v) => { const n = parseFloat(String(v || "").replace(/[٠-٩]/g, (d) => "٠١٢٣٤٥٦٧٨٩".indexOf(d)).replace(",", ".")); return isFinite(n) ? Math.round(n * 1000) : NaN; };
+  const savePct = (b, a) => (b > 0 && a < b ? Math.round((1 - a / b) * 100) : 0);
+  const CAT = { meal: "وجبة", drink: "مشروب", dessert: "حلى", snack: "سناك", other: "أخرى" };
+  const CAT_IC = { meal: "food", drink: "cafe", dessert: "sweets", snack: "star", other: "gift" };
+  const consentTxt = (kind) => kind === "games"
+    ? "أؤكد صحة البيانات، وألتزم بسعر شُرفة للتذاكر المحجوزة من التطبيق."
+    : "أؤكد صحة البيانات، وألتزم بخصمي لحاملي الجواز، وبأسعار منتجاتي داخل باقات شُرفة.";
+  function offerLabel(o) {
+    if (!o) return "";
+    if (o.type === "ticket") return `تذكرة بـ ${omr(o.online)} بدل ${omr(o.door)}`.slice(0, 40);
+    return `خصم ${o.pct}%${o.on ? " " + o.on : ""}`.slice(0, 40);
+  }
+  const discountOn = (o) => (o.scope === "items" && (o.items || []).length ? "على " + o.items.join(" و") : "على كل المنيو");
+  // بطاقة العرض كما يشوفها الزائر (الجواز وصفحة الكشك ومعاينة الشريك)
+  function dealHTML(o, opt = {}) {
+    if (!o) return opt.fallback ? `<p style="font-size:16px;font-weight:700;margin:4px 0">${ic("gift", 18)} ${esc(opt.fallback)}</p>` : "";
+    if (o.type === "ticket") return `<div class="deal"><div class="deal-head"><span class="deal-pct deal-tk">${bi("ticket")}</span>
+        <span class="grow"><b>تذكرة بسعر شُرفة</b><span class="sub" style="display:block">احجزها من «تذاكر الألعاب»</span></span></div>
+        <div class="deal-row"><span>عند الشباك</span><s>${omr(o.door)}</s></div>
+        <div class="deal-row"><span>من شُرفة</span><b>${omr(o.online)}</b><span class="st st-ok">وفّر ${savePct(o.door, o.online)}%</span></div>
+        ${o.note ? `<span class="sub">${esc(o.note)}</span>` : ""}</div>`;
+    const its = o.scope === "items" ? (o.items || []) : [];
+    return `<div class="deal"><div class="deal-head"><span class="deal-pct">${esc(o.pct)}%</span>
+        <span class="grow"><b>خصم ${esc(o.pct)}%</b><span class="sub" style="display:block">${its.length ? "على منتجات محددة" : "على كل المنيو"}</span></span></div>
+        ${its.length ? `<div class="chip-list">${its.map((x) => `<span>${esc(x)}</span>`).join("")}</div>` : ""}</div>`;
+  }
+  // منتج في باقات شُرفة (سطر في النموذج)
+  function itemRow(k, i, locked) {
+    const dis = locked ? "disabled" : "";
+    return `<div class="card flat stack pt-item" data-id="${esc(k.id || "")}" style="gap:8px;padding:12px">
+        <div class="between"><b style="font-size:14px">منتج ${i + 1}</b>${locked ? "" : `<button type="button" class="linkbtn" data-a="pt-item-del" style="padding:0;min-height:auto;color:var(--err)">${ic("trash", 14)} حذف</button>`}</div>
+        <div class="row" style="gap:8px">
+          <input class="input grow" name="it_name" maxlength="40" placeholder="اسم المنتج، مثال: برجر لحم" value="${esc(k.name || "")}" ${dis} data-c="pt-offer" aria-label="اسم المنتج">
+          <select class="input" name="it_cat" style="width:104px" ${dis} data-c="pt-offer" aria-label="النوع">${Object.entries(CAT).map(([c, l]) => `<option value="${c}" ${(k.category || "meal") === c ? "selected" : ""}>${l}</option>`).join("")}</select></div>
+        <div class="row" style="gap:8px;align-items:flex-end">
+          <div class="field grow"><label>سعره العادي (ريال)</label><input class="input" name="it_before" inputmode="decimal" dir="ltr" placeholder="2" value="${k.before ? k.before / 1000 : ""}" ${dis} data-c="pt-offer"></div>
+          <div class="field grow"><label>سعره في الباقة (ريال)</label><input class="input" name="it_after" inputmode="decimal" dir="ltr" placeholder="1.5" value="${k.before && k.after != null ? k.after / 1000 : ""}" ${dis} data-c="pt-offer"></div></div>
+      </div>`;
+  }
+  function poolExplainHTML() {
+    const e = EVDB[EV] || {}, pct = e.pool_pct ?? 40, price = (evById(EV) || {}).price_baisa || e.price_baisa || 1000;
+    const passes = 300, total = 600, mine = 60, pool = Math.round(passes * price * pct / 100), share = Math.round(pool * mine / total);
+    return `<div class="card flat stack" style="gap:8px;padding:14px;background:var(--gold-soft)">
+        <b class="ihead" style="font-size:15px">${ic("chart", 16)} كم تجمع؟ وكم زيارة؟</b>
+        <span class="sub" style="color:var(--ink);line-height:1.8">• من كل جواز ينباع (${omr(price)}) يروح <b>${pct}%</b> لصندوق الشركاء، يعني <b>${omr(price * pct / 100)}</b> عن كل جواز.<br>
+        • كل زائر تخدمه بخصمك أو بمنتج من باقة = <b>زيارة وحدة</b> لكشكك (مرة لكل زائر).<br>
+        • نصيبك = (زياراتك ÷ زيارات كل الأكشاك) × الصندوق، ويتحوّل لك بعد الفعالية.</span>
+        <div class="pool-ex"><div><span>${passes} جواز</span><b>${omr(pool)}</b><small>الصندوق</small></div><div><span>${mine} من ${total} زيارة</span><b>${Math.round(mine * 100 / total)}%</b><small>حصتك</small></div><div><span>نصيبك</span><b>${omr(share)}</b><small>غير مبيعاتك</small></div></div>
+        <span class="sub">مثال توضيحي. تتابع زياراتك ونصيبك أول بأول من «كشكي».</span></div>`;
+  }
+  function offerBoxHTML(kind, o, items, locked) {
+    const dis = locked ? "disabled" : "";
+    const lockMsg = locked ? `<div class="msg info">العرض معتمد. لأي تعديل تواصل مع إدارة شُرفة.</div>` : "";
+    if (kind === "games") {
+      const t = o && o.type === "ticket" ? o : {};
+      return `<div class="card stack" style="gap:12px"><b class="ihead">${bi("ticket")} تذكرة لعبتك على شُرفة</b>
+          <span class="sub">الألعاب لها <b>نظام تذاكر منفصل</b> عن خصومات الجواز. زوار شُرفة يحجزون تذكرتك من التطبيق بسعر أقل من الشباك، وأنت أو موظفك تمسح التذكرة عند الدخول.</span>
+          ${lockMsg}
+          <div class="row" style="gap:8px;align-items:flex-end">
+            <div class="field grow"><label for="pt-door">سعر التذكرة عند الشباك (ريال)</label><input class="input" id="pt-door" name="t_door" inputmode="decimal" dir="ltr" placeholder="2" value="${t.door ? t.door / 1000 : ""}" ${dis} data-c="pt-offer"></div>
+            <div class="field grow"><label for="pt-online">سعرها من شُرفة (ريال)</label><input class="input" id="pt-online" name="t_online" inputmode="decimal" dir="ltr" placeholder="1.5" value="${t.door && t.online != null ? t.online / 1000 : ""}" ${dis} data-c="pt-offer"></div></div>
+          <div class="field"><label for="pt-tnote">ملاحظة للزائر (اختياري)</label><input class="input" id="pt-tnote" name="t_note" maxlength="120" placeholder="مثال: التذكرة لمدة 10 دقائق، للأعمار 6+" value="${esc(t.note || "")}" ${dis} data-c="pt-offer"></div>
+          <div class="card flat stack" style="gap:6px;padding:12px"><b class="ihead" style="font-size:14px">${ic("chart", 16)} وش تستفيد؟</b>
+            <span class="sub" style="line-height:1.8">• حجوزات مسبقة من زوار المهرجان قبل ما يوصلون لعبتك.<br>• دخلك من التذاكر نفسها، والألعاب ما تدخل صندوق الجواز.<br>• تشوف عدد التذاكر المحجوزة والمستخدمة من حسابك.</span></div>
+          <div><span class="sub" style="font-weight:700">كذا يشوفها الزائر:</span><div id="ptOfferPrev" style="margin-top:6px"></div></div>
+        </div>`;
+    }
+    const d = o && o.type === "discount" ? o : {}, sc = d.scope === "items" ? "items" : "all", dItems = d.items || [];
+    return `<div class="card stack" style="gap:12px"><b class="ihead">${ic("gift", 18)} 1) خصمك لحاملي جواز الفعالية</b>
+        <span class="sub">كل زائر معه الجواز ياخذ خصمك عند كشكك <b>مرة وحدة</b>: يعرض رمزه، تمسحه، ويدفع لك مباشرة بالسعر بعد الخصم.</span>
+        ${lockMsg}
+        <div class="field" style="width:130px"><label for="pt-pct">نسبة الخصم %</label><input class="input" id="pt-pct" name="o_pct" type="number" min="5" max="90" dir="ltr" placeholder="20" value="${esc(d.pct || "")}" ${dis} data-c="pt-offer"></div>
+        <div class="stack" style="gap:6px"><span style="font-weight:700;font-size:14px">الخصم على:</span>
+          <label class="opt"><input type="radio" name="o_scope" value="all" ${sc === "all" ? "checked" : ""} ${dis} data-c="pt-scope"><span class="grow">كل المنيو</span></label>
+          <label class="opt"><input type="radio" name="o_scope" value="items" ${sc === "items" ? "checked" : ""} ${dis} data-c="pt-scope"><span class="grow">منتجات محددة</span></label></div>
+        <div class="stack" id="ptScopeItems" style="gap:6px" ${sc === "items" ? "" : "hidden"}>
+          ${[0, 1, 2, 3, 4].map((i) => `<input class="input" name="o_item" maxlength="40" placeholder="${i === 0 ? "مثال: برجر لحم" : "منتج آخر (اختياري)"}" value="${esc(dItems[i] || "")}" ${dis} data-c="pt-offer" aria-label="منتج عليه الخصم ${i + 1}">`).join("")}</div>
+        <div><span class="sub" style="font-weight:700">كذا يشوفه الزائر في جوازه:</span><div id="ptOfferPrev" style="margin-top:6px"></div></div>
+      </div>
+      <div class="card stack" style="gap:12px;margin-top:12px"><b class="ihead">${ic("grid", 18)} 2) منتجاتك في باقات شُرفة <span class="sub" style="font-weight:500">(اختياري)</span></b>
+        <span class="sub" style="line-height:1.8">باقات شُرفة تجمع منتجات من <b>أكثر من كشك</b>: برجر من كشك، ومشروب من كشك ثاني، وحلى من ثالث.
+          الباقات: <b>باقة الفرد، باقة العائلة، باقة الربع</b>، وباقة يكوّنها الزائر بنفسه. أضف المنتجات اللي توافق تدخل الباقات، وحدد سعرها داخل الباقة.
+          الزائر يدفع لك سعر منتجك مباشرة لما يستلمه.</span>
+        <div class="stack" id="ptItems" style="gap:8px">${(items || []).map((k, i) => itemRow(k, i, locked)).join("")}</div>
+        ${locked ? "" : `<button type="button" class="btn btn-soft btn-sm" data-a="pt-item-add" ${(items || []).length >= 6 ? "hidden" : ""}>+ أضف منتج للباقات</button>`}
+      </div>
+      <div style="margin-top:12px">${poolExplainHTML()}</div>`;
+  }
+  // يقرأ العرض والمنتجات من النموذج: {offer, items} أو {error}
+  function readOffer(f) {
+    const kind = f.kind.value;
+    if (kind === "games") {
+      const door = toBaisa(f.t_door.value), online = toBaisa(f.t_online.value);
+      if (!(door >= 100 && door <= 100000) || !(online >= 0 && online < door)) return { error: "bad_ticket" };
+      return { offer: { type: "ticket", door, online, note: f.t_note.value.trim() || null }, items: [] };
+    }
+    const pct = parseInt(f.o_pct.value, 10);
+    if (!(pct >= 5 && pct <= 90)) return { error: "bad_discount" };
+    const scope = (f.querySelector("input[name=o_scope]:checked") || {}).value === "items" ? "items" : "all";
+    const dItems = scope === "items" ? [...f.querySelectorAll("input[name=o_item]")].map((x) => x.value.trim()).filter((x) => x.length >= 2) : [];
+    if (scope === "items" && !dItems.length) return { error: "bad_discount_items" };
+    const items = [];
+    for (const r of f.querySelectorAll(".pt-item")) {
+      const name = r.querySelector("[name=it_name]").value.trim(), category = r.querySelector("[name=it_cat]").value;
+      const before = toBaisa(r.querySelector("[name=it_before]").value), after = toBaisa(r.querySelector("[name=it_after]").value);
+      if (!name && !(before > 0)) continue;   // سطر فاضي يُتجاهل
+      if (name.length < 2 || !(before >= 100 && before <= 100000) || !(after >= 0 && after < before)) return { error: "bad_item" };
+      items.push({ id: r.dataset.id || null, name, category, before, after });
+    }
+    const offer = { type: "discount", pct, scope, items: dItems };
+    offer.on = discountOn(offer);
+    return { offer, items };
+  }
+  function previewOffer() {
+    const f = $("form[data-f=partner]"), box = $("#ptOfferPrev"); if (!f || !box) return;
+    const r = readOffer(f);
+    if (r.offer) { box.innerHTML = dealHTML(r.offer); return; }
+    const fill = f.kind.value === "games" ? { type: "ticket", door: 2000, online: 1500 } : { type: "discount", pct: 20, scope: "all" };
+    box.innerHTML = `<div style="opacity:.55">${dealHTML(fill)}</div>`;
   }
   async function uploadLogo(file, maxSide = 400) {
     if (!/^image\/(png|jpeg|webp)$/.test(file.type)) throw { code: "bad_logo" };
@@ -1731,6 +1987,35 @@
     else if (a === "sub") { S.sub = { name: b.dataset.name, id: b.dataset.id, title: b.dataset.title }; render(); }
     else if (a === "back") { const st = history.state; if (st && st.s && st.depth > 1 && st.sub) history.back(); else { S.sub = null; render(); } }
     else if (a === "ovl-close") closeOverlay();
+    else if (a === "adm-deal") {
+      const box = $("#admDeal-" + b.dataset.id); if (!box) return;
+      if (box.innerHTML) { box.innerHTML = ""; return; }
+      try { const d = await A.urpc("stall_offer", { p_stall: b.dataset.id }); box.innerHTML = (d.offer ? `<div style="margin-top:8px">${dealHTML(d.offer)}</div>` : `<span class="sub">ما فيه تفاصيل خصم.</span>`)
+        + ((d.items || []).length ? `<div class="card flat" style="padding:2px 12px;margin-top:8px"><span class="sub" style="font-weight:700;display:block;padding-top:8px">منتجاته في الباقات</span>${d.items.map((i) => `<div class="li"><div class="grow"><b style="font-size:14px">${esc(i.name)}</b><div class="sub">${esc(CAT[i.category] || "")}</div></div><span class="deal-price"><s>${omr(i.before)}</s><b>${omr(i.after)}</b></span></div>`).join("")}</div>` : ""); }
+      catch (e) { toast(errMsg(e), "err"); }
+    }
+    else if (/^pk-(tab|q|take|save|cancel)$/.test(a)) pkAction(a, b);
+    else if (a === "lk-disc" || a === "lk-line") {
+      if (S.work.busy || !S.work.last) return; S.work.busy = true; b.disabled = true;
+      try {
+        const d = a === "lk-disc" ? await A.urpc("staff_scan_offer", { p_stall: S.work.stall, p_code: S.work.last, p_choice: 0 })
+          : await A.urpc("staff_redeem_line", { p_stall: S.work.stall, p_code: S.work.last, p_line: b.dataset.id });
+        offerResult(d);
+      } catch (e) { scanErr(e); }
+      finally { S.work.busy = false; }
+    }
+    else if (a === "pt-item-add") {
+      const list = $("#ptItems"); if (!list) return;
+      const n = list.querySelectorAll(".pt-item").length; if (n >= 6) return;
+      list.insertAdjacentHTML("beforeend", itemRow({}, n, false));
+      if (n + 1 >= 6) b.hidden = true;
+      list.lastElementChild.querySelector("input").focus();
+    }
+    else if (a === "pt-item-del") {
+      b.closest(".pt-item").remove();
+      document.querySelectorAll("#ptItems .pt-item").forEach((r, i) => { r.querySelector("b").textContent = `منتج ${i + 1}`; });
+      const add = $("[data-a=pt-item-add]"); if (add) add.hidden = false;
+    }
     else if (a === "card-edit") {
       const box = $("#cardv-" + b.dataset.id); if (!box) return;
       box.innerHTML = `<form class="stack" data-f="card-admin" data-id="${esc(b.dataset.id)}" style="gap:8px"><b style="font-size:14px">تعديل بطاقة الولاء (إدارة شُرفة)</b>
@@ -1847,7 +2132,7 @@
         const d = await A.urpc("join_event", { p_event: EV });
         S.me = await A.urpc("me");
         S.sub = null; S.tab = "pass"; render();
-        if (d.status === "active") overlay({ k: "ok", icon: "award", title: "جوازك جاهز 🎉", body: "اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت.", auto: 6000 });
+        if (d.status === "active") overlay({ k: "ok", icon: "award", title: "جوازك جاهز 🎉", body: isOffers() ? "اعرض رمزك عند الأكشاك المشاركة واحصل على خصمها أو باقتها." : "اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت.", auto: 6000 });
         else toast("تم إنشاء طلبك. أكمل الدفع لدى منصة المنظمين.", "ok");
       } catch (e) { const m = $("#coMsg"); if (m) m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; b.disabled = false; }
     }
@@ -1924,7 +2209,21 @@
     }
   });
   document.addEventListener("change", (ev) => { if (ev.target.name === "event" && ev.target.closest("form[data-f=orgapply]")) toggleNewEvent(); });
-  document.addEventListener("input", (ev) => { if (ev.target.dataset && ev.target.dataset.c === "pt-card") previewCard(); });
+  document.addEventListener("input", (ev) => { if (ev.target.dataset && ev.target.dataset.c === "pt-offer") previewOffer(); });
+  document.addEventListener("input", (ev) => { if (ev.target.dataset && ev.target.dataset.c === "pk-adm") pkAdmTotal(ev.target.closest("form")); });
+  document.addEventListener("change", (ev) => {
+    if (!(ev.target.dataset && ev.target.dataset.c === "pt-scope")) return;
+    const box = $("#ptScopeItems"); if (box) box.hidden = ev.target.value !== "items";
+    if (ev.target.value === "items") { const i = box && box.querySelector("input"); if (i) i.focus(); }
+    previewOffer();
+  });
+  document.addEventListener("change", (ev) => {
+    if (!(ev.target.dataset && ev.target.dataset.c === "pt-kind")) return;
+    const box = $("#ptOfferBox"); if (!box) return;
+    box.innerHTML = offerBoxHTML(ev.target.value, null, [], !!box.querySelector("[disabled]"));
+    const ct = $("#ptConsentTxt"); if (ct) ct.textContent = consentTxt(ev.target.value);
+    previewOffer();
+  });
 
   document.addEventListener("submit", async (ev) => {
     const f = ev.target.closest("form[data-f]"); if (!f) return;
@@ -2018,21 +2317,34 @@
       finally { if (document.body.contains(btn)) btn.disabled = false; }
       return;
     }
+    if (k === "pkg-admin") {
+      const items = [...f.querySelectorAll("input[name=q]")].map((x) => ({ item: x.dataset.item, qty: Math.max(0, Math.min(10, parseInt(x.value || "0", 10) || 0)) })).filter((x) => x.qty);
+      btn.disabled = true;
+      try { await A.urpc("admin_save_package", { p_event: adminEv(), p_kind: f.dataset.kind, p_name: f.name.value.trim(), p_description: f.description.value.trim(), p_items: items, p_active: f.active.checked }); toast("حُفظت الباقة", "ok"); }
+      catch (e) { toast(errMsg(e), "err"); }
+      finally { btn.disabled = false; }
+      return;
+    }
     if (k === "partner") {
       const m = $("#ptMsg"); m.innerHTML = "";
-      const req = parseInt(f.required.value, 10);
       const err = (c) => { m.innerHTML = `<div class="msg err">${esc(A.errText(c))}</div>`; };
       if (f.name.value.trim().length < 2) return err("bad_name");
-      if (!f.required.disabled && (!(req >= 1 && req <= 20) || !f.reward1.value.trim())) return err("bad_card");
+      const evSel = (f.querySelector("input[name=event]:checked") || {}).value || "";
+      const locked = !!f.querySelector("#ptOfferBox [disabled]");
+      const r = locked || !evSel ? { offer: null } : readOffer(f);
+      if (r.error) return err(r.error);
       if (!f.consent.checked) return err("consent_required");
       btn.disabled = true;
       try {
-        const evSel = (f.querySelector("input[name=event]:checked") || {}).value || "";
         const d = await A.urpc("partner_apply", {
           p_name: f.name.value.trim(), p_kind: f.kind.value, p_description: f.description.value.trim(), p_phone: f.phone.value.replace(/[\s-]/g, ""),
-          p_instagram: f.instagram.value.trim(), p_logo: ptLogo, p_event: evSel || null, p_required: req || 3,
-          p_reward1: f.reward1.value.trim() || "مكافأة", p_reward2: f.reward2.value.trim() || null, p_cooldown: parseInt(f.cooldown.value || "30", 10)
+          p_instagram: f.instagram.value.trim(), p_logo: ptLogo, p_event: evSel || null, p_required: 1,
+          p_reward1: (r.offer ? offerLabel(r.offer) : "") || "عرض الجواز", p_reward2: null, p_cooldown: 0
         });
+        if (r.offer && d.stall && !d.card_locked) {
+          await A.urpc("partner_set_offer", { p_stall: d.stall, p_offer: r.offer });
+          await A.urpc("partner_set_items", { p_stall: d.stall, p_items: r.items || [] });
+        }
         S.me = await A.urpc("me");
         toast(d.status === "pending" ? "تم إرسال طلبك للمنظم" : "حُفظت بياناتك", "ok");
         renderBar(); loadPartnerForm(); window.scrollTo(0, 0);

@@ -367,3 +367,42 @@ body { background: var(--cream); }
 .tqr img, .tqr canvas { width: 100% !important; height: 100% !important; }
 .ticket.used { opacity: .65; }
 .ticket.pending_payment { border: 1.5px solid var(--gold); }
+
+/* ---------- عروض الجواز: خصم + باقات / تذكرة لعبة (019) ---------- */
+.deal{display:flex;flex-direction:column;gap:8px;background:var(--cream,#FAF6F0);border:1.5px solid var(--line,#E7E0D3);border-radius:16px;padding:12px 14px}
+.deal-head{display:flex;align-items:center;gap:12px}
+.deal-pct{flex:none;min-width:58px;height:58px;border-radius:16px;background:var(--gold-soft,#FFF1D6);color:var(--gold-ink,#7A4A00);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:20px;direction:ltr}
+.deal-pct.deal-tk svg{width:28px;height:28px}
+.deal-pkg{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px dashed var(--line,#E7E0D3);border-radius:12px;padding:10px 12px}
+.deal-price{display:flex;flex-direction:column;align-items:flex-end;line-height:1.3;white-space:nowrap}
+.deal-price s,.deal-row s{color:var(--mute,#7A8580);font-size:12.5px}
+.deal-price b{font-size:15px}
+.deal-row{display:flex;align-items:center;gap:8px;justify-content:space-between}
+.pool-ex{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pool-ex>div{background:#fff;border-radius:12px;padding:8px;text-align:center;display:flex;flex-direction:column;gap:2px}
+.pool-ex span{font-size:11.5px;color:var(--mute,#7A8580)}
+.pool-ex b{font-size:14px}
+.pool-ex small{font-size:11px;color:var(--mute,#7A8580)}
+.offer-list{display:flex;flex-direction:column;gap:12px}
+.offer-item{display:flex;flex-direction:column;gap:10px}
+.offer-item.is-used{opacity:.7}
+.choice-chips{display:flex;flex-wrap:wrap;gap:6px}
+.choice-chips button{border:1.5px solid var(--line,#E7E0D3);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer}
+.choice-chips button[aria-pressed=true]{background:var(--ink,#1A2E28);color:#fff;border-color:var(--ink,#1A2E28)}
+.ihead{display:flex;align-items:center;gap:6px}
+.ihead svg{flex:none;width:18px;height:18px}
+
+/* ---------- باقات شُرفة + قراءة الجواز عند الكشك (020) ---------- */
+.chip-list{display:flex;flex-wrap:wrap;gap:6px}
+.chip-list span{background:#fff;border:1px solid var(--line,#E7E0D3);border-radius:999px;padding:4px 10px;font-size:12.5px;font-weight:600}
+.stepper{display:inline-flex;align-items:center;gap:8px;flex:none}
+.stepper button{width:34px;height:34px;border-radius:10px;border:1.5px solid var(--line,#E7E0D3);background:#fff;font:inherit;font-size:18px;font-weight:700;cursor:pointer;color:var(--ink)}
+.stepper button:disabled{opacity:.35;cursor:default}
+.stepper b{min-width:18px;text-align:center}
+.pk-total{position:sticky;bottom:calc(env(safe-area-inset-bottom,0px) + 76px);display:flex;align-items:center;gap:12px;background:var(--ink,#1A2E28);color:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:3}
+.pk-total .sub{color:rgba(255,255,255,.75)}
+.lk-list{display:flex;flex-direction:column;gap:8px;text-align:start;margin-top:6px}
+.lk-h{font-size:12.5px;font-weight:700;color:var(--mute,#7A8580);margin-top:4px}
+.lk-row{display:flex;align-items:center;gap:10px;width:100%;background:#fff;border:1.5px solid var(--line,#E7E0D3);border-radius:14px;padding:10px 12px;font:inherit;color:var(--ink);text-align:start;cursor:pointer}
+.lk-row:disabled{opacity:.5}
+.lk-row.is-done{background:transparent;border-style:dashed;color:var(--mute,#7A8580);cursor:default}
