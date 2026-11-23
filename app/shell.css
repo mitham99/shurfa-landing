@@ -410,3 +410,12 @@ body { background: var(--cream); }
 .game-img{position:relative}
 .game-off{position:absolute;top:10px;left:10px;background:var(--err,#C7432B);color:#fff;font-weight:800;font-size:13px;padding:5px 10px;border-radius:999px;box-shadow:0 4px 12px rgba(0,0,0,.18)}
 .tqr-lock{flex:none;width:120px;height:120px;border-radius:14px;border:2px dashed var(--line,#E7E0D3);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;text-align:center;padding:10px;color:var(--mute,#7A8580);font-size:12.5px;font-weight:600;background:var(--cream,#FAF6F0)}
+
+/* ---------- صورة المشروع في نموذج الشريك (إلزامي) ---------- */
+.logo-drop{display:flex;align-items:center;gap:14px;padding:14px;border:2px dashed var(--gold,#F5A623);border-radius:16px;background:var(--gold-soft,#FFF1D6);cursor:pointer}
+.logo-drop.has-img{border-style:solid;border-color:var(--ok,#2E8B57);background:var(--ok-soft,#E7F5EC)}
+.logo-drop.is-missing{border-color:var(--err,#C7432B);background:#FDECE8;animation:shake .35s}
+.logo-drop-img{flex:none;width:88px;height:88px;border-radius:20px;background:#fff;display:flex;align-items:center;justify-content:center;color:var(--gold-ink,#7A4A00);overflow:hidden}
+.logo-drop-btn{align-self:flex-start;pointer-events:none}
+.req{display:inline-block;font-size:11px;font-weight:800;color:#fff;background:var(--err,#C7432B);border-radius:999px;padding:2px 8px;vertical-align:middle}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}

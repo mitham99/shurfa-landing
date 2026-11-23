@@ -362,7 +362,7 @@
   }
   const myPassRef = () => S.me && (S.me.passes || []).find((p) => p.event === EV);
   const price = () => (S.ev && S.ev.price_baisa) || 0;
-  const fmtPrice = (b) => !b ? "مجانًا" : b % 1000 === 0 ? (b === 1000 ? "1 ريال" : `${b / 1000} ريالات`) : b < 1000 ? `${b} بيسة` : `${(b / 1000).toFixed(3)} ر.ع`;
+  const fmtPrice = (b) => !b ? "مجانًا" : b % 1000 === 0 ? (b === 1000 ? "1 ريال" : b === 2000 ? "ريالان" : b <= 10000 ? `${b / 1000} ريالات` : `${b / 1000} ريال`) : b < 1000 ? `${b} بيسة` : `${(b / 1000).toFixed(3)} ر.ع`;
   const canSell = () => !!(S.ev && S.ev.active);
   const fmtMoney = (b) => (b ? fmtPrice(b) : "0");   // مبالغ الصندوق: الصفر يظهر 0 لا «مجانًا»
   /* جواز الفعالية: عرض واحد من كل كشك + صندوق الشركاء (events.pass_mode = offers) */
@@ -1834,8 +1834,15 @@
     box.innerHTML = `${statusBox}
       <form class="stack" data-f="partner" novalidate>
         <div class="card stack" style="gap:12px"><b>بيانات المشروع</b>
-          <div class="row" style="gap:14px"><span id="ptLogoPrev">${logoTile({ name: p.name || "؟", logo: ptLogo }, 72)}</span>
-            <label class="btn btn-soft btn-sm" style="cursor:pointer">${ic("edit", 16)} ${ptLogo ? "تغيير الشعار" : "رفع الشعار"}<input type="file" accept="image/png,image/jpeg,image/webp" data-c="pt-logo" hidden></label></div>
+          <label class="logo-drop${ptLogo ? " has-img" : ""}" id="ptLogoBox">
+            <span id="ptLogoPrev" class="logo-drop-img">${ptLogo ? logoTile({ name: p.name || "؟", logo: ptLogo }, 88) : ic("user", 34)}</span>
+            <span class="grow stack" style="gap:4px">
+              <b style="font-size:15px">صورة المشروع أو الشعار <span class="req">إلزامي</span></b>
+              <span class="sub" style="line-height:1.6">تظهر للزوار في الجواز وقائمة الأكشاك والباقات. صورة واضحة لكشكك أو شعارك تجيب زوار أكثر.</span>
+              <span class="btn btn-soft btn-sm logo-drop-btn">${ic("edit", 16)} <span id="ptLogoBtn">${ptLogo ? "تغيير الصورة" : "اختر صورة من جوالك"}</span></span>
+              <span class="sub" id="ptLogoMsg">${ptLogo ? `<span style="color:var(--ok);font-weight:700;display:inline-flex;align-items:center;gap:4px">${ic("check", 14, 2.4)} تم رفع الصورة</span>` : "PNG أو JPG. نصغّرها تلقائيًا."}</span>
+            </span>
+            <input type="file" accept="image/png,image/jpeg,image/webp" data-c="pt-logo" hidden></label>
           <div class="field"><label for="pt-name">اسم المشروع / الكشك</label><input class="input" id="pt-name" name="name" maxlength="60" value="${esc(p.name || "")}" required></div>
           <div class="field"><label for="pt-kind">النوع</label><select class="input" id="pt-kind" name="kind" data-c="pt-kind">${Object.entries(A.KIND).map(([k, l]) => `<option value="${k}" ${p.kind === k ? "selected" : ""}>${l}</option>`).join("")}</select></div>
           <div class="field"><label for="pt-desc">نبذة قصيرة</label><textarea class="input" id="pt-desc" name="description" maxlength="300" rows="3" style="height:auto;padding:10px 14px">${esc(p.description || "")}</textarea></div>
@@ -2243,9 +2250,15 @@
     if (t.dataset.c === "org-point") { A.local.set("org-point", t.value.trim().slice(0, 60) || "منصة المنظمين"); toast("حُفظت نقطة التنظيم", "ok"); return; }
     if (t.dataset.c === "work-stall") { S.work.stall = t.value; S.work.res = ""; A.local.set("work-stall", t.value); render(); }
     else if (t.dataset.c === "pt-logo" && t.files && t.files[0]) {
-      const m = $("#ptMsg"); m.innerHTML = `<div class="msg info">جارٍ رفع الشعار…</div>`;
-      try { ptLogo = await uploadLogo(t.files[0]); $("#ptLogoPrev").innerHTML = logoTile({ name: "", logo: ptLogo }, 72); m.innerHTML = `<div class="msg ok">تم رفع الشعار.</div>`; }
-      catch (e) { m.innerHTML = `<div class="msg err">${esc(A.errText(e.code === "bad_logo" ? "bad_logo" : "upload_failed"))}</div>`; }
+      const m = $("#ptLogoMsg"), box = $("#ptLogoBox"); box.classList.remove("is-missing");
+      m.innerHTML = `<span class="row" style="gap:6px"><span class="spin" style="width:14px;height:14px;border-width:2px"></span> جارٍ رفع الصورة…</span>`;
+      try {
+        ptLogo = await uploadLogo(t.files[0]);
+        $("#ptLogoPrev").innerHTML = logoTile({ name: "", logo: ptLogo }, 88); box.classList.add("has-img");
+        $("#ptLogoBtn").textContent = "تغيير الصورة";
+        m.innerHTML = `<span style="color:var(--ok);font-weight:700;display:inline-flex;align-items:center;gap:4px">${ic("check", 14, 2.4)} تم رفع الصورة</span>`;
+      } catch (e) { m.innerHTML = `<span style="color:var(--err);font-weight:700">${esc(A.errText(e.code === "bad_logo" ? "bad_logo" : "upload_failed"))}</span>`; }
+      t.value = "";
     }
   });
   document.addEventListener("change", (ev) => { if (ev.target.name === "event" && ev.target.closest("form[data-f=orgapply]")) toggleNewEvent(); });
@@ -2369,6 +2382,11 @@
       const m = $("#ptMsg"); m.innerHTML = "";
       const err = (c) => { m.innerHTML = `<div class="msg err">${esc(A.errText(c))}</div>`; };
       if (f.name.value.trim().length < 2) return err("bad_name");
+      if (!ptLogo) {
+        const box = $("#ptLogoBox"); if (box) { box.classList.add("is-missing"); box.scrollIntoView({ behavior: "smooth", block: "center" }); }
+        const lm = $("#ptLogoMsg"); if (lm) lm.innerHTML = `<span style="color:var(--err);font-weight:700">${esc(A.errText("logo_required"))}</span>`;
+        return err("logo_required");
+      }
       const evSel = (f.querySelector("input[name=event]:checked") || {}).value || "";
       const locked = !!f.querySelector("#ptOfferBox [disabled]");
       const r = locked || !evSel ? { offer: null } : readOffer(f);
