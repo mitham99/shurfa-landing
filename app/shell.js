@@ -120,7 +120,7 @@
     const badge = st === "who" ? "" : R === "admin" ? "إدارة المنصة" : (R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر") + (evName ? " · " + evName : "");
     const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["who", "login", "signup", "forgot", "code"].includes(st) && R !== "admin" ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
-      <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="8" required style="padding-left:52px">
+      <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="6" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
     let body = "";
     if (st === "who") {
@@ -158,7 +158,7 @@
         <div class="field"><label for="su-name">${R === "partner" ? "اسم المسؤول عن المشروع" : R === "organizer" ? "اسم المسؤول" : "الاسم"}</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
         <div class="field"><label for="su-phone">رقم الهاتف</label><input class="input" id="su-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(v.phone || "")}" required></div>
         <div class="field"><label for="su-email">البريد الإلكتروني</label><input class="input" id="su-email" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(v.email || "")}" required></div>
-        ${pw("password", "كلمة المرور", "new-password", "8 أحرف على الأقل.")}
+        ${pw("password", "كلمة المرور", "new-password", "6 أحرف أو أرقام على الأقل.")}
         ${pw("password2", "تأكيد كلمة المرور", "new-password")}
         <label class="check"><input type="checkbox" name="consent"> <span>${R !== "visitor" ? "أوافق على استخدام بياناتي لإدارة حسابي والتواصل بخصوص الفعاليات." : "أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
         <div id="au-msg"></div>
@@ -195,7 +195,7 @@
       </form>`;
     } else if (st === "reset") {
       body = `<form class="auth-body" data-f="reset" novalidate>
-        ${pw("password", "كلمة المرور الجديدة", "new-password", "8 أحرف على الأقل.")}
+        ${pw("password", "كلمة المرور الجديدة", "new-password", "6 أحرف أو أرقام على الأقل.")}
         ${pw("password2", "تأكيدها", "new-password")}
         <div id="au-msg"></div>
         <button class="btn btn-dark" type="submit">حفظ كلمة المرور</button>
@@ -2402,7 +2402,7 @@
         if (v.name.length < 2) throw { code: "bad_name" };
         if (!/^\+?[0-9]{8,15}$/.test(v.phone)) throw { code: "bad_phone" };
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) throw { code: "bad_email" };
-        if (f.password.value.length < 8) throw { code: "weak_password" };
+        if (f.password.value.length < 6) throw { code: "weak_password" };
         if (f.password.value !== f.password2.value) throw { code: "password_mismatch" };
         if (!f.consent.checked) throw { code: "consent_required" };
         const chk = await A.rpc("phone_available", { p_phone: v.phone });
@@ -2429,7 +2429,7 @@
         S.email = email;
         authMsg("إذا كان البريد مسجّلًا لدينا فسيصلك رابط الاستعادة خلال دقائق. افتحه من هذا الجهاز.", "ok");
       } else if (k === "reset") {
-        if (f.password.value.length < 8) throw { code: "weak_password" };
+        if (f.password.value.length < 6) throw { code: "weak_password" };
         if (f.password.value !== f.password2.value) throw { code: "password_mismatch" };
         await A.auth.setPassword(f.password.value);
         toast("تم تغيير كلمة المرور", "ok");
