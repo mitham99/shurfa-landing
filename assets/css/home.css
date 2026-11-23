@@ -271,3 +271,4 @@ a.svc-card:hover .svc-go { transform: translateX(-4px); color: var(--green); }
 .ev-card-logo img { height: 34px; width: auto; max-width: 150px; object-fit: contain; }
 @media (max-width: 640px) { .ev-card-logo img { height: 28px; max-width: 130px; } }
 .ev-cover .ev-card-logo img { position: static; inset: auto; width: auto; transform: none !important; }
+
