@@ -37,7 +37,7 @@ window.SHURFA_CONFIG = {
   supabase: {
     url: "https://bemejwbccqnujoyjnsht.supabase.co",
     anonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJlbWVqd2JjY3FudWpveWpuc2h0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ1MTA4NDYsImV4cCI6MjExMDA4Njg0Nn0.t_1WRheDvBTwdo8pVSA05vho0lcrwQdPFyXBx00yGy0",
-    eventId: "squ-eat"
+    eventId: "sohar-festival"
   },
 
   contact: {
