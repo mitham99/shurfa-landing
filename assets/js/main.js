@@ -562,6 +562,8 @@
     // صفحة فعالية مخفية ← الصفحة الرئيسية
     const root = document.getElementById("eventRoot");
     if (root && hidden.has(root.dataset.event)) { location.replace("/#events"); return; }
+    // معرّف الفعالية قد يختلف عن اسم صفحتها بسنة في آخره (oman-national-day-2026 ← oman-national-day)
+    [...hidden].forEach((id) => { const slug = id.replace(/-\d{4}$/, ""); if (slug !== id) hidden.add(slug); });
     hidden.forEach((id) => {
       document.querySelectorAll(`a[href="${id}"], a[href^="${id}#"], a[href="${id}.html"], a[href^="${id}.html#"]`).forEach((a) => (a.closest("li") || a).remove());
       document.querySelectorAll(`[data-ev-id="${id}"]`).forEach((el) => el.remove());

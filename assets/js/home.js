@@ -169,17 +169,23 @@
     });
   }
 
-  renderEvents();
+  // ننتظر قائمة الفعاليات من قاعدة البيانات قبل العرض، عشان ما تظهر الفعاليات المخفية ولو لثانية.
+  // لو ما ردت خلال 4 ثوانٍ (بدون إنترنت مثلًا) نعرض بيانات الموقع كما هي.
+  let evReady = false;
+  const evFallback = setTimeout(() => { if (!evReady) { evReady = true; renderEvents(); } }, 4000);
   // فعاليات أضافتها إدارة شُرفة من التطبيق (غير موجودة في data.js) تظهر هنا تلقائيًا وتفتح في التطبيق
   document.addEventListener("shurfa:events", (e) => {
+    const all = e.detail || [];
+    const hiddenIds = new Set(all.filter((x) => x && x.visible === false).map((x) => x.id));
+    DATA.events = (DATA.events || []).filter((x) => !hiddenIds.has(x.id));
+    clearTimeout(evFallback); evReady = true;
     const known = new Set((DATA.events || []).map((x) => x.id));
     const extra = (e.detail || []).filter((x) => x && x.visible !== false && !known.has(x.id)).map((x) => ({
       id: x.id, name: x.name, summary: x.summary || "", location: x.location || "", date: x.date || "", status: x.status || "available",
       url: "app/?e=" + encodeURIComponent(x.id), image: x.image || "", logo: x.logo || "",
       colors: { from: x.color_from || "#1A2E28", to: x.color_to || "#2E5148", accent: "#F5A623" },
       tags: x.active ? [x.price_baisa ? "الجواز الرقمي" : "الجواز الرقمي مجانًا"] : [], sort: x.sort || 100 }));
-    if (!extra.length) return;
-    DATA.events = [...extra.sort((a, b) => a.sort - b.sort), ...(DATA.events || [])];
+    if (extra.length) DATA.events = [...extra.sort((a, b) => a.sort - b.sort), ...(DATA.events || [])];
     renderEvents();
   });
   // الفعاليات التي أخفتها إدارة شُرفة من التطبيق تختفي من الموقع أيضًا (main.js يرسل القائمة)
