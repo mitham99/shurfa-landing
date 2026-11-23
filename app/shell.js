@@ -14,7 +14,7 @@
   const { esc } = A;
   const $ = (s, el = document) => el.querySelector(s);
   const scr = $("#screen"), bar = $("#tabbar");
-  const EV = A.eventId;                                     // الفعالية الحالية (افتراضيًا squ-eat)
+  const EV = A.eventId;                                     // الفعالية الحالية (من الرابط، أو أول فعالية ظاهرة)
   const TYPE = { student: "طالب", intl: "طالب دولي", staff: "موظف", visitor: "زائر" };
   const KIND_ICON = { food: "food", cafe: "cafe", sweets: "sweets", games: "games", other: "star" };
 
@@ -99,17 +99,17 @@
     const evName = ev ? esc(ev.name.split("—")[0].trim()) : "";
     const TL = {
       visitor: ["أهلًا بك في شُرفة", (isOffers() ? "سجّل دخولك لشراء جوازك الرقمي وخصومات الأكشاك" : "سجّل دخولك لشراء جوازك الرقمي وجمع الأختام") + (evName ? " في " + evName : "") + "."],
-      partner: ["بوابة الشركاء", "شريك" + (evName ? " في " + evName : "") + ": أدر كشكك وبطاقة الولاء وامسح جوازات الزوار."],
+      partner: ["بوابة الشركاء", "شريك" + (evName ? " في " + evName : "") + (isOffers() ? ": أدر كشكك وعرضك وامسح جوازات الزوار." : ": أدر كشكك وبطاقة الولاء وامسح جوازات الزوار.")],
       organizer: ["دخول المنظمين", "منظم" + (evName ? " في " + evName : "") + ": اعتمد جوازات الزوار بعد الدفع."],
       admin: ["إدارة شُرفة", "دخول فريق إدارة المنصة: اعتماد المنظمين والشركاء ومتابعة المؤشرات."]
     };
     const T = {
       who: ["سجّل دخولك إلى شُرفة", evName ? "اختر صفتك في " + evName + "." : "اختر صفتك والفعالية."],
       login: TL[R],
-      signup: R === "partner" ? ["تسجيل شريك جديد", "الخطوة 1 من 2: حساب المسؤول عن المشروع. بعدها تُدخل بيانات المشروع وبطاقة الولاء."]
+      signup: R === "partner" ? ["تسجيل شريك جديد", `الخطوة 1 من 2: حساب المسؤول عن المشروع. بعدها تُدخل بيانات المشروع ${isOffers() ? "وخصمك ومنتجاتك للباقات" : "وبطاقة الولاء"}.`]
         : R === "organizer" ? ["تسجيل منظم فعالية", "الخطوة 1 من 2: حساب المسؤول. بعدها تُدخل بيانات الجهة والفعالية، ويعتمدها فريق شُرفة."]
         : ["إنشاء حساب زائر", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
-      code: ["تأكيد البريد", R === "partner" ? "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء." : R === "organizer" ? "بعد التأكيد تنتقل لبيانات الجهة والفعالية." : "خطوة أخيرة لحماية حسابك."],
+      code: ["تأكيد البريد", R === "partner" ? (isOffers() ? "بعد التأكيد تنتقل لبيانات مشروعك وعرضك." : "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء.") : R === "organizer" ? "بعد التأكيد تنتقل لبيانات الجهة والفعالية." : "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
       mfa: ["التحقق بخطوتين", "أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة في جوالك."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
@@ -128,7 +128,7 @@
       const evs = allEvents();
       const roles = [
         ["visitor", "زائر", "award", "#1A2E28", "#2E5148", isOffers() ? (evName ? `اشترِ جواز ${evName} واستمتع بخصومات الأكشاك` : "اشترِ الجواز الرقمي واستمتع بالخصومات") : evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
-        ["partner", "شريك", "users", "#7A4F00", "#B07400", evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
+        ["partner", "شريك", "users", "#7A4F00", "#B07400", isOffers() ? (evName ? `سجّل كشكك في ${evName} وحدد خصمك` : "سجّل مشروعك وحدد خصمك") : evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
         ["organizer", "منظم", "scan", "#14524F", "#1E7C7A", evName ? `اعتمد جوازات الزوار في ${evName}` : "اعتمد جوازات زوار فعاليتك"]
       ];
       body = `<div class="auth-body">
@@ -153,7 +153,7 @@
     } else if (st === "signup") {
       const v = S.signup || {};
       body = `<form class="auth-body" data-f="signup" novalidate>
-        ${R === "partner" ? `<div class="row" style="gap:8px"><span class="st st-warn">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 المشروع وبطاقة الولاء</span></div>` : ""}
+        ${R === "partner" ? `<div class="row" style="gap:8px"><span class="st st-warn">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 ${isOffers() ? "المشروع والعرض" : "المشروع وبطاقة الولاء"}</span></div>` : ""}
         ${R === "organizer" ? `<div class="row" style="gap:8px"><span class="st st-teal">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 الجهة والفعالية</span></div>` : ""}
         <div class="field"><label for="su-name">${R === "partner" ? "اسم المسؤول عن المشروع" : R === "organizer" ? "اسم المسؤول" : "الاسم"}</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
         <div class="field"><label for="su-phone">رقم الهاتف</label><input class="input" id="su-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(v.phone || "")}" required></div>
@@ -250,6 +250,14 @@
     if (!A.ready) {
       scr.innerHTML = `<div class="empty" style="padding-top:80px">${ic("lock", 36)}<b>النظام قيد التجهيز</b><span>سيُفعَّل قريبًا.</span></div>`;
       return;
+    }
+    // بدون فعالية في الرابط: إذا الفعالية الافتراضية مخفية أو منتهية، ننتقل بصمت لأول فعالية ظاهرة (مع بقية الرابط)
+    await loadEvInfo();
+    { const q1 = new URLSearchParams(location.search), cur = EVDB[EV];
+      if (!q1.has("e") && (!cur || cur.visible === false)) {
+        const alt = Object.values(EVDB).filter((e) => e.visible !== false).sort((a, b) => (a.sort ?? 100) - (b.sort ?? 100))[0];
+        if (alt && alt.id !== EV) { q1.set("e", alt.id); location.replace(location.pathname + "?" + q1.toString() + location.hash); return; }
+      }
     }
     // روابط البريد (تأكيد الحساب أو استعادة كلمة المرور)
     const hp = new URLSearchParams(location.hash.replace(/^#/, ""));
@@ -485,7 +493,7 @@
       ${others.length ? `<div class="pad between"><h3 class="sec-t">استكشف فعاليات شُرفة</h3><button class="linkbtn" data-a="go-tab" data-tab="events">الكل</button></div>
       <div class="hscroll" style="padding-top:8px">${others.map((e) => eventCard(e)).join("")}</div><div class="sp"></div>` : ""}
       <div class="pad"><button class="card row" data-a="partner-join" style="gap:14px;background:var(--gold-soft);box-shadow:none"><span class="ico-tile" style="background:#fff;color:var(--gold-ink)">${ic("users", 22)}</span>
-        <span class="grow"><b>عندك مطعم أو كشك أو مشروع؟</b><span class="sub" style="display:block;color:var(--ink)">سجّل كشريك وصمّم بطاقة الولاء الخاصة بك</span></span>${ic("fwd", 18, 2)}</button></div>
+        <span class="grow"><b>عندك مطعم أو كشك أو مشروع؟</b><span class="sub" style="display:block;color:var(--ink)">${isOffers() ? "سجّل كشريك وحدد خصمك ومنتجاتك للباقات" : "سجّل كشريك وصمّم بطاقة الولاء الخاصة بك"}</span></span>${ic("fwd", 18, 2)}</button></div>
       <div class="sp"></div>`;
 
     loadStalls().then(() => {
@@ -1383,7 +1391,7 @@
         <div class="pad stack">
           <div class="card stack" style="gap:8px"><b>ملخص الطلب</b>
             <div class="between"><span>الجواز الرقمي · ${esc((ev.name || "").split("—")[0].trim())}</span><b class="num" style="color:var(--ok)">مجانًا</b></div>
-            <span class="sub">بطاقة ولاء لكل كشك مشارك · بدون دفع</span></div>
+            <span class="sub">${isOffers() ? "خصم من كل كشك مشارك · بدون دفع" : "بطاقة ولاء لكل كشك مشارك · بدون دفع"}</span></div>
           <div class="card stack" style="gap:6px;border:1.5px solid var(--gold);background:var(--gold-soft)">
             <b class="row" style="gap:8px">${ic("cal", 18)} متاح ${when ? "خلال الفعالية فقط" : "لفترة محدودة"}</b>
             ${when ? `<span style="font-size:14px">${esc(when)}</span>` : ""}
@@ -1400,7 +1408,7 @@
         <div class="pad stack">
           <div class="card stack" style="gap:8px"><b>ملخص الطلب</b>
             <div class="between"><span>الجواز الرقمي · ${esc((ev.name || "").split("—")[0].trim())}</span><b class="num">${fmtPrice(price())}</b></div>
-            <span class="sub">صالح طوال أيام الفعالية · بطاقة ولاء لكل كشك مشارك</span>
+            <span class="sub">صالح طوال أيام الفعالية · ${isOffers() ? "خصم من كل كشك مشارك، وباقات شُرفة" : "بطاقة ولاء لكل كشك مشارك"}</span>
             <div style="height:1px;background:var(--sand)"></div><div class="between"><b>الإجمالي</b><b class="num" style="font-size:20px">${fmtPrice(price())}</b></div></div>
           <h3 class="sec-t">طريقة الدفع</h3>
           <label class="opt" style="opacity:.55;cursor:not-allowed"><input type="radio" name="pm" disabled>${ic("phone", 20)}<span class="grow">Apple Pay</span><span class="st st-mute">قريبًا</span></label>

@@ -11,7 +11,7 @@
   const SB = CFG.supabase || {};
   const ready = /^https?:\/\//.test(SB.url || "") && !!SB.anonKey;
   const params = new URLSearchParams(location.search);
-  const eventId = (params.get("e") || SB.eventId || "squ-eat").replace(/[^a-z0-9-]/gi, "");
+  const eventId = (params.get("e") || SB.eventId || "sohar-festival").replace(/[^a-z0-9-]/gi, "");
 
   /* ---------- رسائل الأخطاء بالعربي ---------- */
   const ERR = {
