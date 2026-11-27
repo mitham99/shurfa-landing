@@ -211,7 +211,21 @@ select.input { appearance: auto; }
    ========================================================= */
 html { font-size: 100%; }
 img, video, svg { max-width: 100%; height: auto; }
-.tabbar { display: none !important; }                 /* التنقل في الشريط العلوي */
+/* الشريط السفلي للزائر (الجوال والتابلت) — في اللابتوب التنقل في الشريط العلوي */
+.tabbar { left: 0; right: 0; transform: none; max-width: none; background: rgba(255,255,255,.97); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 -6px 20px rgba(42,30,64,.06); }
+.tabbar[hidden] { display: none !important; }
+.tabbar button { position: relative; border-radius: 14px; }
+.tabbar button .bic { width: 24px; height: 24px; }
+.tabbar button[aria-current="page"] { color: var(--ink); }
+.tabbar button[aria-current="page"]::before { content: ""; position: absolute; top: 2px; width: 44px; height: 30px; border-radius: 12px; background: var(--purple-soft); z-index: -1; }
+.tabbar button span { line-height: 1.2; }
+body.has-tabbar .screen { padding-bottom: calc(var(--tabbar-h) + 28px + env(safe-area-inset-bottom, 0px)); }
+body.has-tabbar .toast { bottom: calc(var(--tabbar-h) + 18px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 1024px) {
+  .tabbar { display: none !important; }
+  body.has-tabbar .screen { padding-bottom: 2.5rem; }
+  body.has-tabbar .toast { bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+}
 .shell { max-width: none; box-shadow: none; background: var(--cream); min-height: calc(100dvh - 3.75rem); }
 body { background: var(--cream); }
 .screen { width: 100%; max-width: 75rem; margin-inline: auto; padding-bottom: 2.5rem; }
@@ -421,3 +435,32 @@ body { background: var(--cream); }
 .logo-drop-btn{align-self:flex-start;pointer-events:none}
 .req{display:inline-block;font-size:11px;font-weight:800;color:#fff;background:var(--err,#C7432B);border-radius:999px;padding:2px 8px;vertical-align:middle}
 @keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+
+/* ---------- خريطة الفعالية ---------- */
+.map-frame { position: relative; }
+.map-wrap { overflow: auto; max-height: min(70vh, 560px); border-radius: 20px; border: 1px solid var(--sand); background: #fff; -webkit-overflow-scrolling: touch; }
+.map-box { position: relative; min-width: 100%; background-size: cover; background-position: center; background-color: #F1ECE4; transition: width .25s ease; }
+.map-box.plan { background-color: #F6F1E8; background-image: linear-gradient(rgba(42,30,64,.06) 1px, transparent 1px), linear-gradient(90deg, rgba(42,30,64,.06) 1px, transparent 1px); background-size: 8% 8%; }
+.plan-note { position: absolute; left: 10px; bottom: 8px; font-size: 11px; color: var(--muted); background: rgba(255,255,255,.8); padding: 2px 8px; border-radius: 99px; }
+.mpin { position: absolute; transform: translate(-50%, -50%); width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid #fff; background: var(--pc); color: #fff;
+  display: grid; place-items: center; padding: 0; box-shadow: 0 4px 12px rgba(42,30,64,.3); cursor: pointer; --ia: #fff; transition: transform .15s ease; }
+.mpin .bico { width: 20px; height: 20px; }
+.mpin b { font-size: 11px; font-weight: 800; }
+.mpin img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; background: #fff; }
+.mpin.is-partner { width: 44px; height: 44px; background: var(--gold); }
+.mpin.on { transform: translate(-50%, -50%) scale(1.3); z-index: 3; box-shadow: 0 0 0 4px rgba(245,166,35,.45), 0 6px 16px rgba(42,30,64,.35); }
+.map-zoom { position: absolute; top: 10px; left: 10px; display: flex; flex-direction: column; gap: 6px; z-index: 4; }
+.map-zoom button { width: 38px; height: 38px; border-radius: 12px; border: 1px solid var(--sand); background: #fff; font-size: 20px; font-weight: 700; color: var(--ink); box-shadow: 0 2px 8px rgba(42,30,64,.1); }
+.map-chips button i, #meBody .chips button i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-inline-end: 6px; vertical-align: middle; }
+.mdot { width: 34px; height: 34px; border-radius: 11px; background: var(--pc); color: #fff; display: grid; place-items: center; flex: none; --ia: #fff; overflow: hidden; }
+.mdot.lg { width: 46px; height: 46px; border-radius: 14px; }
+.mdot .bico { width: 18px; height: 18px; } .mdot.lg .bico { width: 24px; height: 24px; }
+.mdot b { font-size: 11px; font-weight: 800; } .mdot img { width: 100%; height: 100%; object-fit: cover; background: #fff; }
+.map-li { cursor: pointer; }
+#meBody .map-box { cursor: crosshair; }
+.ride-card { border: 1.5px solid var(--teal); }
+.map-chips button, #meBody .chips button { border-color: var(--sand); background: #fff; color: var(--ink); white-space: nowrap; }
+.map-chips button[aria-pressed="true"], #meBody .chips button[aria-pressed="true"] { background: var(--green); border-color: var(--green); color: #fff; }
+#meBody .chips { flex-wrap: wrap; overflow: visible; }
+.map-wrap { padding: 22px; background: #F6F1E8; }
+.map-box { border-radius: 12px; }
