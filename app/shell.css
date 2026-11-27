@@ -293,6 +293,7 @@ body { background: var(--cream); }
 
 /* بطاقات خدمات الفعالية — أيقونات الهوية + خلفية تمثل كل خدمة */
 .bico { width: 1em; height: 1em; display: block; color: currentColor; }
+.bic { flex: none; display: inline-block; vertical-align: middle; }
 .svc { width: 15rem; transition: transform .2s ease, box-shadow .2s ease; }
 .svc:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(42,30,64,.14); }
 .svc .svc-art { display: block; position: relative; height: 9.5rem; overflow: hidden; isolation: isolate;

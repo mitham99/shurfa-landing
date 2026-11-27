@@ -36,8 +36,15 @@
     compass: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z", box: "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6z", ext: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"
   };
   // أيقونات هوية شُرفة (Shurfah Icon Pack) — اللون الأساسي currentColor ولون التمييز --ia
-  const bi = (n, cls = "bico") => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="brand-icons.svg?v=3#b-${n}"></use></svg>`;
-  const ic = (n, s = 20, w = 1.8) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n] || P.star}"></path></svg>`;
+  const bi = (n, cls = "bico") => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="brand-icons.svg?v=4#b-${n}"></use></svg>`;
+  // الأيقونات العامة تُعرض من حزمة أيقونات الهوية متى وُجد لها مقابل، والباقي يبقى خطيًّا
+  const IC_BRAND = { home: "home", award: "tier-1", user: "user", cal: "calendar", clock: "clock", pin: "pin", back: "chevron-right", fwd: "chevron-left",
+    check: "check", x: "close", alert: "warning", food: "food", cafe: "coffee-cup", sweets: "halwa", games: "activities", gift: "tier-1", users: "users",
+    chart: "chart-bar", list: "log", lock: "lock", star: "star", logout: "logout", mail: "mail", grid: "dashboard", phone: "phone", shield: "shield-check",
+    edit: "edit", trash: "trash", compass: "map", box: "layers", eye: "eye", ext: "external-link" };
+  const ic = (n, s = 20, w = 1.8) => IC_BRAND[n]
+    ? `<svg class="bic" aria-hidden="true" focusable="false" width="${s}" height="${s}"><use href="brand-icons.svg?v=4#b-${IC_BRAND[n]}"></use></svg>`
+    : `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n] || P.star}"></path></svg>`;
 
   /* ---------- أدوات ---------- */
   let toastT;
