@@ -14,7 +14,7 @@
      art: لون خلفية البطاقة. image: مسار صورة اختيارية (مثل assets/img/pkg-food.jpg) */
   // يمكن لصفحة الفعالية تعريف باقاتها عبر window.SHURFA_PACKAGES = { items, presets }
   const PACKAGE_ITEMS = (window.SHURFA_PACKAGES && window.SHURFA_PACKAGES.items) || [
-    { id: "entry",   name: "دخول المهرجان",   note: "أساس كل باقة",          icon: "i-ticket", art: "linear-gradient(135deg,#1A2E28,#2E5148)", locked: true },
+    { id: "entry",   name: "دخول المهرجان",   note: "أساس كل باقة",          icon: "i-ticket", art: "linear-gradient(135deg,#2A1E40,#4A3870)", locked: true },
     { id: "concert", name: "حفلة غنائية",     note: "عند توفرها",            icon: "i-music",  art: "linear-gradient(135deg,#7B5BA7,#5F4486)" },
     { id: "meal",    name: "وجبة أو عشاء",    note: "من المطاعم المشاركة",   icon: "i-food",   art: "linear-gradient(135deg,#E4573D,#C7432B)" },
     { id: "coffee",  name: "قهوة ومشروبات",   note: "من المقاهي المشاركة",   icon: "i-coffee", art: "linear-gradient(135deg,#8B5E3C,#6B4529)" },
@@ -48,7 +48,7 @@
     { place: "مهرجان صحار", note: "أمسية جميلة مع العائلة عند المسرح", feel: "الشعور: سعيد", a: "#2CA6A4", b: "#7B5BA7" },
     { place: "مطعم شريك", note: "أول مرة نجرب الحلوى العُمانية هنا", feel: "الشعور: مستمتع", a: "#E4573D", b: "#F5A623" },
     { place: "ركن الألعاب", note: "أول فوز للصغار اليوم", feel: "الشعور: فخور", a: "#7B5BA7", b: "#E4573D" },
-    { place: "مهرجان صحار", note: "الأضواء في المساء تستحق الصورة", feel: "الشعور: هادئ", a: "#1A2E28", b: "#2CA6A4" }
+    { place: "مهرجان صحار", note: "الأضواء في المساء تستحق الصورة", feel: "الشعور: هادئ", a: "#2A1E40", b: "#2CA6A4" }
   ];
 
   /* ---------- أدوات ---------- */
@@ -112,7 +112,7 @@
         const url = stores[box.dataset.qr];
         if (!url || !window.QRCode) return;
         box.innerHTML = "";
-        new window.QRCode(box, { text: url, width: 220, height: 220, colorDark: "#1A2E28", colorLight: "#FAF6F0", correctLevel: window.QRCode.CorrectLevel.M });
+        new window.QRCode(box, { text: url, width: 220, height: 220, colorDark: "#2A1E40", colorLight: "#F6F4F0", correctLevel: window.QRCode.CorrectLevel.M });
         box.setAttribute("title", "امسح الرمز لتحميل التطبيق");
       });
     };

@@ -36,7 +36,7 @@
     const card = (ev) => {
       const st = EVENT_STATUS[ev.status] || EVENT_STATUS.soon;
       const c = ev.colors || {};
-      const style = `--ev-from:${esc(c.from || "#1A2E28")};--ev-to:${esc(c.to || "#2E5148")};--ev-ac:${esc(c.accent || "#F5A623")}`;
+      const style = `--ev-from:${esc(c.from || "#2A1E40")};--ev-to:${esc(c.to || "#4A3870")};--ev-ac:${esc(c.accent || "#F5A623")}`;
       const href = ev.url && ev.status !== "ended" ? esc(ev.url) : "";
       const cover = ev.image
         ? `<img src="${esc(ev.image)}" alt="${esc(ev.name)}" loading="lazy"${ev.imagePosition ? ` style="object-position:${esc(ev.imagePosition)}"` : ""}>`
@@ -183,7 +183,7 @@
     const extra = (e.detail || []).filter((x) => x && x.visible !== false && !known.has(x.id)).map((x) => ({
       id: x.id, name: x.name, summary: x.summary || "", location: x.location || "", date: x.date || "", status: x.status || "available",
       url: "app/?e=" + encodeURIComponent(x.id), image: x.image || "", logo: x.logo || "",
-      colors: { from: x.color_from || "#1A2E28", to: x.color_to || "#2E5148", accent: "#F5A623" },
+      colors: { from: x.color_from || "#2A1E40", to: x.color_to || "#4A3870", accent: "#F5A623" },
       tags: x.active ? [x.price_baisa ? "الجواز الرقمي" : "الجواز الرقمي مجانًا"] : [], sort: x.sort || 100 }));
     if (extra.length) DATA.events = [...extra.sort((a, b) => a.sort - b.sort), ...(DATA.events || [])];
     renderEvents();

@@ -100,7 +100,7 @@
   function qr(el, text, size = 220) {
     el.innerHTML = "";
     if (!window.QRCode) { el.textContent = text; return; }
-    new window.QRCode(el, { text, width: size, height: size, colorDark: "#1A2E28", colorLight: "#FFFFFF", correctLevel: window.QRCode.CorrectLevel.M });
+    new window.QRCode(el, { text, width: size, height: size, colorDark: "#2A1E40", colorLight: "#FFFFFF", correctLevel: window.QRCode.CorrectLevel.M });
   }
 
   /* بطاقة الولاء: موقع الزائر في الدورة الحالية */

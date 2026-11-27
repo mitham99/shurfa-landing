@@ -36,7 +36,7 @@
     compass: "M12 3a9 9 0 1 0 0 18a9 9 0 0 0 0-18zM15.5 8.5l-2 5-5 2 2-5z", box: "M3 7l9-4 9 4v10l-9 4-9-4zM3 7l9 4 9-4M12 11v10", eye: "M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12zM12 9a3 3 0 1 0 0 6a3 3 0 0 0 0-6z", ext: "M14 4h6v6M20 4l-9 9M18 14v6H4V6h6"
   };
   // أيقونات هوية شُرفة (Shurfah Icon Pack) — اللون الأساسي currentColor ولون التمييز --ia
-  const bi = (n, cls = "bico") => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="brand-icons.svg#b-${n}"></use></svg>`;
+  const bi = (n, cls = "bico") => `<svg class="${cls}" aria-hidden="true" focusable="false"><use href="brand-icons.svg?v=3#b-${n}"></use></svg>`;
   const ic = (n, s = 20, w = 1.8) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round"><path d="${P[n] || P.star}"></path></svg>`;
 
   /* ---------- أدوات ---------- */
@@ -118,7 +118,7 @@
     }[st] || ["شُرفة", ""];
     const topBg = st === "who" ? "" : R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : R === "admin" ? "linear-gradient(150deg,#5F4486,#7B5BA7)" : "";
     const badge = st === "who" ? "" : R === "admin" ? "إدارة المنصة" : (R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر") + (evName ? " · " + evName : "");
-    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-160.png" alt="">${badge ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["who", "login", "signup", "forgot", "code"].includes(st) && R !== "admin" ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
+    const top = `<div class="auth-top"${topBg ? ` style="background:${topBg}"` : ""}><div class="between"><img src="../assets/img/brand/monogram-white-160.png?v=2" alt="">${badge ? `<span class="st st-glass">${badge}</span>` : ""}</div><h1>${T[0]}</h1><p>${T[1]}</p>${["who", "login", "signup", "forgot", "code"].includes(st) && R !== "admin" ? `<button type="button" class="linkbtn" data-a="browse" style="color:var(--cream);align-self:flex-start;padding:0;opacity:.9">تصفّح شُرفة بدون تسجيل ←</button>` : ""}</div>`;
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
       <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="6" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
@@ -127,7 +127,7 @@
       const pick = !!A.session.get("pick");
       const evs = allEvents();
       const roles = [
-        ["visitor", "زائر", "award", "#1A2E28", "#2E5148", isOffers() ? (evName ? `اشترِ جواز ${evName} واستمتع بخصومات الأكشاك` : "اشترِ الجواز الرقمي واستمتع بالخصومات") : evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
+        ["visitor", "زائر", "award", "#2A1E40", "#4A3870", isOffers() ? (evName ? `اشترِ جواز ${evName} واستمتع بخصومات الأكشاك` : "اشترِ الجواز الرقمي واستمتع بالخصومات") : evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
         ["partner", "شريك", "users", "#7A4F00", "#B07400", isOffers() ? (evName ? `سجّل كشكك في ${evName} وحدد خصمك` : "سجّل مشروعك وحدد خصمك") : evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
         ["organizer", "منظم", "scan", "#14524F", "#1E7C7A", evName ? `اعتمد جوازات الزوار في ${evName}` : "اعتمد جوازات زوار فعاليتك"]
       ];
@@ -441,7 +441,7 @@
   /* ---------------- الرئيسية ---------------- */
   function renderHome() {
     const ev = evById(EV) || {};
-    const c = ev.colors || { from: "#1A2E28", to: "#2E5148" };
+    const c = ev.colors || { from: "#2A1E40", to: "#4A3870" };
     const others = allEvents().filter((e) => e.id !== EV);
     const prog = (ev.page && ev.page.program && ev.page.program.items) || [];
     const ref = myPassRef();
@@ -557,7 +557,7 @@
   }
 
   const eventCard = (e, full) => `<button class="evc${full ? " full" : ""}" data-a="sub" data-name="event" data-id="${esc(e.id)}">
-    <span class="img" style="background-image:url('${esc(img(e.image))}');background-color:${esc((e.colors || {}).from || "#1A2E28")};background-position:${esc(e.imagePosition || "center")}">${statusChip(e.status)}</span>
+    <span class="img" style="background-image:url('${esc(img(e.image))}');background-color:${esc((e.colors || {}).from || "#2A1E40")};background-position:${esc(e.imagePosition || "center")}">${statusChip(e.status)}</span>
     <span class="b"><b style="font-size:15px">${esc(e.name)}</b>
       <span class="sub row" style="gap:6px">${ic("pin", 14)}${esc(e.location || "")}</span>
       <span class="sub row" style="gap:6px">${ic("cal", 14)}${esc(e.date || e.dateNote || "يُعلن قريبًا")}</span></span></button>`;
@@ -910,7 +910,7 @@
     const s = ok.find((x) => x.id === W.stall), OF = isOffers(s.event);
     onScan = addVisit;
     scr.innerHTML = `<div class="ohead">${sw}
-        <div class="between"><div><div style="font-size:12.5px;opacity:.85">${s.role === "manager" ? "مدير الكشك" : "موظف الكشك"} · ${esc(firstName(myName()))}</div><h2>${esc(s.name)}</h2></div><span class="row" style="gap:6px;font-size:12px"><span style="width:9px;height:9px;border-radius:5px;background:#5BD6A8;display:inline-block"></span>متصل</span></div>
+        <div class="between"><div><div style="font-size:12.5px;opacity:.85">${s.role === "manager" ? "مدير الكشك" : "موظف الكشك"} · ${esc(firstName(myName()))}</div><h2>${esc(s.name)}</h2></div><span class="row" style="gap:6px;font-size:12px"><span style="width:9px;height:9px;border-radius:5px;background:#8FE3E1;display:inline-block"></span>متصل</span></div>
         ${ok.length > 1 ? `<select data-c="work-stall" aria-label="الكشك">${ok.map((x) => `<option value="${esc(x.id)}" ${x.id === s.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}</select>` : ""}
         <span style="font-size:13px;opacity:.9">${OF ? "عرضك لحاملي الجواز: " + esc(s.reward1) : "بطاقة الولاء: " + esc(A.offerText(s))}</span>
       </div>
@@ -1082,8 +1082,8 @@
           <div class="field"><span>الشعار</span><label class="media-box" style="aspect-ratio:1/1;max-width:9rem">${prev("logo", media.logo || e.logo)}<input type="file" accept="image/png,image/jpeg,image/webp" data-c="ev-media" data-k="logo" hidden></label></div>
         </div>
         <div class="grid2">
-          <div class="field"><label for="ev-c1">لون الهوية 1</label><input class="input" id="ev-c1" name="color_from" type="color" value="${esc(x.color_from || (e.colors || {}).from || "#1A2E28")}" style="padding:4px"></div>
-          <div class="field"><label for="ev-c2">لون الهوية 2</label><input class="input" id="ev-c2" name="color_to" type="color" value="${esc(x.color_to || (e.colors || {}).to || "#2E5148")}" style="padding:4px"></div>
+          <div class="field"><label for="ev-c1">لون الهوية 1</label><input class="input" id="ev-c1" name="color_from" type="color" value="${esc(x.color_from || (e.colors || {}).from || "#2A1E40")}" style="padding:4px"></div>
+          <div class="field"><label for="ev-c2">لون الهوية 2</label><input class="input" id="ev-c2" name="color_to" type="color" value="${esc(x.color_to || (e.colors || {}).to || "#4A3870")}" style="padding:4px"></div>
         </div>
         <div class="field"><label for="ev-sort">ترتيب الظهور</label><input class="input" id="ev-sort" name="sort" type="number" min="0" max="999" value="${esc(x.sort != null ? x.sort : 100)}"></div>
       </div>
@@ -1353,7 +1353,7 @@
       const ref = isCur && myPassRef();
       return `${head(e.name || "", true, S.me ? "" : loginBtn())}
         <div class="pad stack">
-          <div class="evc full" style="cursor:default"><span class="img" style="height:180px;background-image:url('${esc(img(e.image))}');background-color:${esc((e.colors || {}).from || "#1A2E28")};background-position:${esc(e.imagePosition || "center")}">${statusChip(e.status)}</span>
+          <div class="evc full" style="cursor:default"><span class="img" style="height:180px;background-image:url('${esc(img(e.image))}');background-color:${esc((e.colors || {}).from || "#2A1E40")};background-position:${esc(e.imagePosition || "center")}">${statusChip(e.status)}</span>
             <span class="b"><span class="sub row" style="gap:6px">${ic("pin", 14)}${esc(e.location || "")}</span><span class="sub row" style="gap:6px">${ic("cal", 14)}${esc(e.date || e.dateNote || "يُعلن قريبًا")}</span>
             <p style="font-size:14.5px;margin-top:4px">${esc(e.summary || "")}</p></span></div>
           ${svcs.length ? `<h3 class="sec-t">خدماتك في هذه الفعالية</h3><div class="feat-grid">${featList(e).map((k) => { const f = feat(k, e, isCur); return `<button class="feat" ${f.a} style="--c1:${f.c1};--c2:${f.c2}">

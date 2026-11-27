@@ -6,7 +6,7 @@
 .app-search { display: flex; align-items: center; gap: 8px; background: #fff; border-radius: 12px; padding: 9px 12px; font-size: 11.5px; color: var(--muted); box-shadow: var(--shadow-sm); }
 .app-search .ico { width: 15px; height: 15px; }
 .app-event { position: relative; border-radius: 18px; padding: 14px; color: var(--cream); overflow: hidden;
-  background: radial-gradient(circle at 90% 10%, rgba(245, 166, 35, .45), transparent 55%), linear-gradient(135deg, #1A2E28, #2E5148); }
+  background: radial-gradient(circle at 90% 10%, rgba(245, 166, 35, .45), transparent 55%), linear-gradient(135deg, #2A1E40, #4A3870); }
 .app-event small { display: block; font-size: 10.5px; opacity: .7; }
 .app-event strong { display: block; font-family: var(--font-head); font-size: 17px; margin-block: 2px 6px; }
 .ae-loc { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; opacity: .85; }
@@ -19,7 +19,7 @@
 .st-live { background: rgba(44, 166, 164, .14); color: #17716F; }
 .st-event { background: rgba(123, 91, 167, .12); color: var(--purple); }
 .st-soon { background: rgba(245, 166, 35, .18); color: #9A6200; }
-.st-ended { background: rgba(26, 46, 40, .08); color: var(--muted); }
+.st-ended { background: rgba(42, 30, 64, .08); color: var(--muted); }
 
 .sec-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 32px; margin-bottom: 28px; }
 .sec-row h2 { font-size: clamp(30px, 4.2vw, 46px); font-weight: 800; margin-top: 12px; line-height: 1.2; }
@@ -86,7 +86,7 @@
 .ev-cover { position: relative; aspect-ratio: 16 / 10; overflow: hidden;
   background: radial-gradient(circle at 85% 15%, color-mix(in srgb, var(--ev-ac) 55%, transparent), transparent 55%), linear-gradient(135deg, var(--ev-from), var(--ev-to)); }
 .ev-cover::before { content: ""; position: absolute; inset: 0; opacity: .9;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23FAF6F0' stroke-opacity='.08' stroke-width='1.2'%3E%3Cpath d='M36 14l6.4 15.6L58 36l-15.6 6.4L36 58l-6.4-15.6L14 36l15.6-6.4z'/%3E%3Crect x='20.5' y='20.5' width='31' height='31' transform='rotate(45 36 36)'/%3E%3C/g%3E%3C/svg%3E"); }
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Cg fill='none' stroke='%23F6F4F0' stroke-opacity='.08' stroke-width='1.2'%3E%3Cpath d='M36 14l6.4 15.6L58 36l-15.6 6.4L36 58l-6.4-15.6L14 36l15.6-6.4z'/%3E%3Crect x='20.5' y='20.5' width='31' height='31' transform='rotate(45 36 36)'/%3E%3C/g%3E%3C/svg%3E"); }
 .ev-cover::after { content: ""; position: absolute; width: 150px; height: 210px; inset-inline-start: 24px; bottom: -40px; border-radius: 75px 75px 0 0; border: 2px solid rgba(250, 246, 240, .16); }
 .ev-cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
 .event-card:hover .ev-cover img { transform: scale(1.05); }
@@ -108,8 +108,8 @@
 .ev-btn.is-disabled { background: var(--sand); color: var(--muted); cursor: default; }
 .ev-btn.is-disabled:hover { transform: none; }
 .event-card.is-ended { opacity: .75; }
-.event-card.is-coming { align-items: flex-start; justify-content: center; gap: 12px; padding: 28px; background: transparent; border: 2px dashed rgba(26, 46, 40, .16); box-shadow: none; }
-.event-card.is-coming:hover { transform: none; box-shadow: none; border-color: rgba(26, 46, 40, .3); }
+.event-card.is-coming { align-items: flex-start; justify-content: center; gap: 12px; padding: 28px; background: transparent; border: 2px dashed rgba(42, 30, 64, .16); box-shadow: none; }
+.event-card.is-coming:hover { transform: none; box-shadow: none; border-color: rgba(42, 30, 64, .3); }
 .ec-ico { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; background: #fff; color: var(--brick); }
 .event-card.is-coming h3 { font-size: 19px; }
 .event-card.is-coming p { color: var(--muted); font-size: 14.5px; }
@@ -263,7 +263,7 @@ a.svc-card:hover .svc-go { transform: translateX(-4px); color: var(--green); }
 }
 
 /* صور أغلفة الفعاليات: بدون زخارف فوق الصورة، مع تدرّج خفيف أسفلها */
-.ev-cover:has(img)::after { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; background: linear-gradient(to top, rgba(26, 46, 40, .35), transparent 55%); z-index: 1; }
+.ev-cover:has(img)::after { inset: 0; width: auto; height: auto; border: 0; border-radius: 0; background: linear-gradient(to top, rgba(42, 30, 64, .35), transparent 55%); z-index: 1; }
 .ev-cover:has(img) .st { z-index: 2; }
 
 /* شعار المهرجان على بطاقته */

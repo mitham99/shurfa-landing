@@ -10,16 +10,21 @@
 .brand-word { font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; font-weight: 600; font-size: 31px; line-height: 1; color: var(--green); padding-bottom: 4px; }
 .brand-mono { width: 40px; height: 40px; object-fit: contain; flex-shrink: 0; }
 .brand-light .brand-word { color: #fff; }
+/* الهوية الجديدة (نوفمبر 2026): الكلمة تُرسم بشعار «شُرفة» بدل النص، والنص يبقى للقارئات */
+.brand-word { display: block; flex: none; width: 86px; height: 31px; font-size: 0 !important; color: transparent !important; padding: 0 !important;
+  background: url(../img/brand/shurfah-word-deep.svg?v=1) center / contain no-repeat; }
+.brand-light .brand-word { background-image: url(../img/brand/shurfah-word-white.svg?v=1); }
+.brand-mono { width: 46px; height: 40px; }
 .brand-img, .brand-fallback { display: none !important; }
 
 /* التبدّل: اللوحي = القفل الأفقي مصغّرًا (32 بكسل)، الهاتف = المونوغرام منفردًا */
 @media (max-width: 1439px) {
-  .site-header .brand-mono { width: 34px; height: 34px; }
-  .site-header .brand-word { font-size: 27px; }
+  .site-header .brand-mono { width: 40px; height: 34px; }
+  .site-header .brand-word { width: 76px; height: 27px; }
   .site-header .brand { gap: 8px; }
 }
 @media (max-width: 767px) {
-  .site-header .brand-mono { width: 32px; height: 32px; }
+  .site-header .brand-mono { width: 38px; height: 32px; }
   .site-header .brand-word { display: none; }
 }
 

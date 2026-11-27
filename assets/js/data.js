@@ -72,7 +72,7 @@ window.SHURFA_DATA = {
       image: "assets/img/events/sohar-festival.jpg",
       imagePosition: "center 60%",
       icon: "i-festival",
-      colors: { from: "#1A2E28", to: "#2E5148", accent: "#F5A623" },
+      colors: { from: "#2A1E40", to: "#4A3870", accent: "#F5A623" },
       tags: ["تذاكر الألعاب", "الباقات", "الجواز الرقمي", "سوار الأمان"],
       logo: "assets/img/events/sohar-festival-logo.png",
       /* هوية المهرجان داخل إطار شُرفة (ألوان مأخوذة من شعار المهرجان) */
@@ -81,7 +81,7 @@ window.SHURFA_DATA = {
         secondary: "#2F5DA6", // أزرق الشعار
         ink: "#1E3A6E",       // أزرق داكن للعناصر الداكنة
         soft: "#FFF6E0",
-        accents: [ { c: "#FCAE10", ink: "#1A2E28" }, { c: "#2F5DA6", ink: "#fff" } ]
+        accents: [ { c: "#FCAE10", ink: "#2A1E40" }, { c: "#2F5DA6", ink: "#fff" } ]
       },
       /* صفحة الفعالية: الخدمات المفعّلة بالترتيب (tickets / packages / passport / safety) */
       page: {
