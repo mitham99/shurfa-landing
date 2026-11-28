@@ -73,6 +73,8 @@
     const ids = [...new Set([...(D.events || []).map((e) => e.id), ...Object.keys(EVDB)])];
     return ids.map(evById).filter((e) => e && (e.visible || isAdmin())).sort((a, b) => (a.sort - b.sort));
   };
+  // ما يراه الزائر (حتى لو كان الحساب إدارة): الفعاليات الظاهرة فقط. المخفية تبقى في لوحة الإدارة.
+  const shownEvents = () => allEvents().filter((e) => e.visible);
   const img = (p) => (!p ? "" : /^https:\/\//.test(p) ? p : "../" + p.replace(/^\/+/, ""));
   const firstName = (n) => String(n || "").trim().split(/\s+/)[0] || "";
   const greet = () => { const h = new Date().getHours(); return h < 12 ? "صباح الخير" : "مساء الخير"; };
@@ -112,17 +114,17 @@
       admin: ["إدارة شُرفة", "دخول فريق إدارة المنصة: اعتماد المنظمين والشركاء ومتابعة المؤشرات."]
     };
     const T = {
-      who: ["سجّل دخولك إلى شُرفة", evName ? "اختر صفتك في " + evName + "." : "اختر صفتك والفعالية."],
+      who: ["أهلًا بك في شُرفة", (evName ? "جديد أو عندك حساب؟ اختر صفتك في " + evName + " وكمّل." : "جديد أو عندك حساب؟ اختر صفتك والفعالية وكمّل.")],
       login: TL[R],
       signup: R === "partner" ? ["تسجيل شريك جديد", `الخطوة 1 من 2: حساب المسؤول عن المشروع. بعدها تُدخل بيانات المشروع ${isOffers() ? "وخصمك ومنتجاتك للباقات" : "وبطاقة الولاء"}.`]
         : R === "organizer" ? ["تسجيل منظم فعالية", "الخطوة 1 من 2: حساب المسؤول. بعدها تُدخل بيانات الجهة والفعالية، ويعتمدها فريق شُرفة."]
-        : ["إنشاء حساب زائر", "مرة واحدة، وتدخل بعدها بالبريد أو رقم الهاتف وكلمة المرور."],
+        : ["حساب جديد في شُرفة", "اسمك وبريدك فقط. رقم الهاتف نطلبه لاحقًا عند الحجز."],
       code: ["تأكيد البريد", R === "partner" ? (isOffers() ? "بعد التأكيد تنتقل لبيانات مشروعك وعرضك." : "بعد التأكيد تنتقل لبيانات مشروعك وبطاقة الولاء.") : R === "organizer" ? "بعد التأكيد تنتقل لبيانات الجهة والفعالية." : "خطوة أخيرة لحماية حسابك."],
       forgot: ["استعادة كلمة المرور", "نرسل لك رابطًا لتعيين كلمة مرور جديدة."],
       mfa: ["التحقق بخطوتين", "أدخل الرمز المكوّن من 6 أرقام من تطبيق المصادقة في جوالك."],
       reset: ["كلمة مرور جديدة", "اختر كلمة مرور جديدة لحسابك."],
       profile: [S.me && S.me.profile ? "تعديل بياناتي" : "أكمل بيانات حسابك",
-        R === "admin" ? "بيانات حساب إدارة شُرفة." : R === "organizer" ? "الاسم ورقم التواصل لحساب المنظم." : R === "partner" ? "الاسم ورقم التواصل لحساب الشريك." : "مرة واحدة، لاستخدامها في جوازك الرقمي."]
+        R === "admin" ? "بيانات حساب إدارة شُرفة." : R === "organizer" ? "اسم المسؤول عن حساب المنظم." : R === "partner" ? "اسم المسؤول عن حساب الشريك." : "خطوة وحدة: تأكد من اسمك ووافق على الشروط."]
     }[st] || ["شُرفة", ""];
     const topBg = st === "who" ? "" : R === "partner" ? "linear-gradient(150deg,#7A4F00,#B07400)" : R === "organizer" ? "linear-gradient(150deg,#1E7C7A,#14524F)" : R === "admin" ? "linear-gradient(150deg,#5F4486,#7B5BA7)" : "";
     const badge = st === "who" ? "" : R === "admin" ? "إدارة المنصة" : (R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر") + (evName ? " · " + evName : "");
@@ -130,10 +132,15 @@
     const pw = (name, label, ac, hint) => `<div class="field"><label for="au-${name}">${label}</label>
       <div style="position:relative"><input class="input" id="au-${name}" name="${name}" type="password" autocomplete="${ac}" dir="ltr" minlength="6" required style="padding-left:52px">
       <button type="button" class="iconbtn" data-a="pw-toggle" aria-label="إظهار كلمة المرور" style="position:absolute;left:3px;top:3px">${ic("eye", 20)}</button></div>${hint ? `<span class="sub">${hint}</span>` : ""}</div>`;
+    // تبويب واضح بين «تسجيل الدخول» و«حساب جديد» + الدخول بحساب Google (إذا كان مفعّلًا)
+    const seg = R !== "admin" ? `<div class="seg auth-seg" role="group" aria-label="نوع الدخول">
+        <button type="button" data-a="auth-go" data-k="login" aria-pressed="${st === "login"}">تسجيل الدخول</button>
+        <button type="button" data-a="auth-go" data-k="signup" aria-pressed="${st === "signup"}">${R === "partner" ? "شريك جديد" : R === "organizer" ? "منظم جديد" : "حساب جديد"}</button></div>` : "";
+    const gSlot = R !== "admin" ? `<div id="g-slot">${googleHTML(st)}</div>` : "";
     let body = "";
     if (st === "who") {
       const pick = !!A.session.get("pick");
-      const evs = allEvents();
+      const evs = shownEvents();
       const roles = [
         ["visitor", "زائر", "award", "#2A1E40", "#4A3870", isOffers() ? (evName ? `اشترِ جواز ${evName} واستمتع بخصومات الأكشاك` : "اشترِ الجواز الرقمي واستمتع بالخصومات") : evName ? `اشترِ جواز ${evName} واجمع أختام الأكشاك` : "اشترِ الجواز الرقمي واجمع الأختام"],
         ["partner", "شريك", "users", "#7A4F00", "#B07400", isOffers() ? (evName ? `سجّل كشكك في ${evName} وحدد خصمك` : "سجّل مشروعك وحدد خصمك") : evName ? `سجّل كشكك في ${evName} وصمّم بطاقة الولاء` : "سجّل مشروعك وصمّم بطاقة الولاء"],
@@ -149,8 +156,9 @@
       </div>`;
     } else if (st === "login") {
       body = `<form class="auth-body" data-f="login" novalidate>
+        ${seg}${gSlot}
         <div class="card flat between" style="padding:10px 14px"><span style="font-size:14px">${R === "admin" ? "تدخل بصفتك <b>إدارة شُرفة</b>" : `تدخل بصفتك <b>${R === "partner" ? "شريك" : R === "organizer" ? "منظم" : "زائر"}</b>${evName ? " في <b>" + evName + "</b>" : ""}`}</span><button type="button" class="linkbtn" data-a="auth-go" data-k="who" style="padding:0;min-height:auto">تغيير</button></div>
-        <div class="field"><label for="au-id">البريد الإلكتروني أو رقم الهاتف</label><input class="input" id="au-id" name="ident" autocomplete="username" dir="ltr" style="text-align:right" placeholder="name@example.com / 9xxxxxxx" value="${esc(S.email)}" required></div>
+        <div class="field"><label for="au-id">البريد الإلكتروني</label><input class="input" id="au-id" name="ident" type="email" inputmode="email" autocomplete="username" dir="ltr" placeholder="name@example.com" value="${esc(S.email)}" required></div>
         ${pw("password", "كلمة المرور", "current-password")}
         <button type="button" class="linkbtn" data-a="auth-go" data-k="forgot" style="align-self:flex-start;padding:0;min-height:30px">نسيت كلمة المرور؟</button>
         <div id="au-msg"></div>
@@ -161,17 +169,16 @@
     } else if (st === "signup") {
       const v = S.signup || {};
       body = `<form class="auth-body" data-f="signup" novalidate>
+        ${seg}${gSlot}
         ${R === "partner" ? `<div class="row" style="gap:8px"><span class="st st-warn">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 ${isOffers() ? "المشروع والعرض" : "المشروع وبطاقة الولاء"}</span></div>` : ""}
         ${R === "organizer" ? `<div class="row" style="gap:8px"><span class="st st-teal">1 الحساب</span><span class="sub">←</span><span class="st st-mute">2 الجهة والفعالية</span></div>` : ""}
         <div class="field"><label for="su-name">${R === "partner" ? "اسم المسؤول عن المشروع" : R === "organizer" ? "اسم المسؤول" : "الاسم"}</label><input class="input" id="su-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد سالم" value="${esc(v.name || "")}" required></div>
-        <div class="field"><label for="su-phone">رقم الهاتف</label><input class="input" id="su-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(v.phone || "")}" required></div>
         <div class="field"><label for="su-email">البريد الإلكتروني</label><input class="input" id="su-email" name="email" type="email" inputmode="email" autocomplete="email" dir="ltr" placeholder="name@example.com" value="${esc(v.email || "")}" required></div>
         ${pw("password", "كلمة المرور", "new-password", "6 أحرف أو أرقام على الأقل.")}
-        ${pw("password2", "تأكيد كلمة المرور", "new-password")}
         <label class="check"><input type="checkbox" name="consent"> <span>${R !== "visitor" ? "أوافق على استخدام بياناتي لإدارة حسابي والتواصل بخصوص الفعاليات." : "أوافق على استخدام بياناتي لتشغيل حسابي وجوازي الرقمي في الفعاليات فقط."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
         <div id="au-msg"></div>
         <button class="btn btn-cta" type="submit">${R === "partner" ? "التالي: بيانات المشروع" : R === "organizer" ? "التالي: بيانات الجهة" : "إنشاء الحساب"}</button>
-        <div class="row" style="justify-content:center;gap:6px"><span class="sub">لديك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="login">سجّل الدخول</button></div>
+        <div class="row" style="justify-content:center;gap:6px"><span class="sub">عندك حساب؟</span><button type="button" class="linkbtn" data-a="auth-go" data-k="login">سجّل الدخول</button></div>
       </form>`;
     } else if (st === "code") {
       const wait = Math.max(0, Math.ceil((S.resendAt - Date.now()) / 1000));
@@ -211,9 +218,9 @@
     } else {
       const p = (S.me && S.me.profile) || {};
       body = `<form class="auth-body" data-f="profile" novalidate>
-        <div class="field"><label for="pf-name">الاسم</label><input class="input" id="pf-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد" value="${esc(p.name || "")}" required></div>
-        <div class="field"><label for="pf-phone">رقم الهاتف</label><input class="input" id="pf-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(p.phone || "")}" required></div>
-        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>${R === "visitor" ? "أوافق على استخدام اسمي ورقمي لتشغيل الجواز الرقمي في الفعاليات فقط." : "أوافق على استخدام اسمي ورقمي لإدارة حسابي والتواصل بخصوص الفعاليات."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
+        <div class="field"><label for="pf-name">الاسم</label><input class="input" id="pf-name" name="name" autocomplete="name" maxlength="60" placeholder="مثال: أحمد" value="${esc(p.name || (S.me && S.me.suggest_name) || "")}" required></div>
+        <div class="field"><label for="pf-phone">رقم الواتساب <small class="sub">(اختياري)</small></label><input class="input" id="pf-phone" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" value="${esc(p.phone || "")}"><span class="sub">نطلبه عند حجز الجواز أو التذاكر أو السوار، لتأكيد حجزك والتواصل معك.</span></div>
+        <label class="check"><input type="checkbox" name="consent" ${p.name ? "checked" : ""}> <span>${R === "visitor" ? "أوافق على استخدام بياناتي لتشغيل حسابي وحجوزاتي في الفعاليات فقط." : "أوافق على استخدام بياناتي لإدارة حسابي والتواصل بخصوص الفعاليات."} <a href="privacy.html">سياسة الخصوصية</a></span></label>
         <div id="au-msg"></div>
         <button class="btn btn-cta" type="submit">${S.me && S.me.profile ? "حفظ" : "متابعة"}</button>
         ${S.me && S.me.profile ? `<button type="button" class="btn btn-line" data-a="go-tab" data-tab="account">إلغاء</button>`
@@ -223,7 +230,8 @@
     scr.innerHTML = top + body;
     window.scrollTo(0, 0);
     const f = scr.querySelector(".auth-body input:not([type=radio]):not([type=checkbox])");
-    if (f && !f.value && st !== "login") setTimeout(() => f.focus(), 50);
+    if (f && !f.value && !["login", "signup"].includes(st)) setTimeout(() => f.focus(), 50);
+    if (R !== "admin" && ["login", "signup"].includes(st)) loadProviders();
     if (st === "code") tickResend();
   }
   let resendTimer;
@@ -236,6 +244,34 @@
   }
   const authMsg = (t, k = "err") => { const m = $("#au-msg"); if (m) m.innerHTML = t ? `<div class="msg ${k}">${esc(t)}</div>` : ""; };
   const goAuth = (step) => { S.authStep = step; renderAuth(); };
+  // أول مرة على هذا الجهاز ⇐ نفتح «حساب جديد»، وبعد أول دخول ⇐ «تسجيل الدخول»
+  const entryStep = () => (A.local.get("known") ? "login" : "signup");
+  /* الدخول بحساب Google: يظهر فقط إذا كان مفعّلًا في Supabase */
+  const G_LOGO = `<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-7.9l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
+  const googleHTML = (st) => S.google ? `<button type="button" class="btn btn-google" data-a="google">${G_LOGO}<span>${st === "signup" ? "التسجيل بحساب Google" : "الدخول بحساب Google"}</span></button>
+      <div class="or-sep"><span>أو بالبريد الإلكتروني</span></div>` : "";
+  function loadProviders() {
+    if (S.google !== undefined) return;
+    S.google = false;
+    A.call("/auth/v1/settings", { method: "GET" }).then((d) => {
+      S.google = !!(d && d.external && d.external.google);
+      const slot = $("#g-slot"); if (slot && S.google) slot.innerHTML = googleHTML(S.authStep);
+    }).catch(() => { /* بدون Google */ });
+  }
+  /* رقم الواتساب: يُطلب مرة وحدة قبل أول حجز (جواز، تذاكر، سوار) */
+  const hasPhone = () => !!(S.me && S.me.profile && S.me.profile.phone);
+  let phoneNext = null;
+  function needPhone(next) {
+    if (!S.me || hasPhone()) return next();
+    phoneNext = next;
+    overlay({ k: "gold", icon: "phone", title: "رقم الواتساب",
+      body: "مرة وحدة بس: نستخدم رقمك لتأكيد حجوزاتك والتواصل معك بخصوصها.",
+      extra: `<form class="stack" data-f="phonegate" novalidate style="width:100%;gap:10px">
+        <input class="input" name="phone" inputmode="tel" autocomplete="tel" dir="ltr" style="text-align:right" placeholder="9xxxxxxx" aria-label="رقم الواتساب" required>
+        <div id="pg-msg"></div><button class="btn btn-cta" type="submit">حفظ ومتابعة</button></form>`,
+      onClose: () => { phoneNext = null; } });
+    setTimeout(() => { const i = $("#ovl input[name=phone]"); if (i) i.focus(); }, 60);
+  }
 
   /* التحقق بخطوتين: هل للحساب عامل مفعّل؟ إن نعم نطلب الرمز */
   async function needMfa() {
@@ -273,11 +309,13 @@
     if (hp.get("access_token") && hp.get("refresh_token")) {
       A.auth._save({ access_token: hp.get("access_token"), refresh_token: hp.get("refresh_token"), expires_in: +hp.get("expires_in") || 3600 }, A.session.get("pending-email") || "");
       recovery = hp.get("type") === "recovery";
-      A.session.del("pending-email");
+      A.session.del("pending-email"); A.session.del("oauth");
       history.replaceState(null, "", location.pathname + location.search);
-    } else if (hp.get("error")) {
-      history.replaceState(null, "", location.pathname + location.search);
-      toast("انتهت صلاحية الرابط. اطلب رابطًا جديدًا.", "err");
+    } else if (hp.get("error") || new URLSearchParams(location.search).get("error")) {
+      const oauth = A.session.get("oauth"); A.session.del("oauth");
+      const q2 = new URLSearchParams(location.search); q2.delete("error"); q2.delete("error_code"); q2.delete("error_description");
+      history.replaceState(null, "", location.pathname + (q2.toString() ? "?" + q2 : ""));
+      toast(oauth ? "تعذّر الدخول بحساب Google. حاول مرة ثانية أو ادخل بالبريد." : "انتهت صلاحية الرابط. اطلب رابطًا جديدًا.", "err");
     }
     if (recovery) { S.authOpen = true; goAuth("reset"); return; }
 
@@ -291,6 +329,7 @@
     } else if (A.session.get("pending-email")) {
       S.email = A.session.get("pending-email"); S.authOpen = true; goAuth("code"); return;
     }
+    if (S.me) A.local.set("known", 1);
     if (S.me && !S.me.profile) { S.authOpen = true; goAuth("profile"); return; }
     S.myGames = [];
     if (S.me) { try { S.myGames = await A.urpc("my_games"); } catch (e) { S.myGames = []; } }
@@ -357,7 +396,7 @@
   function requireLogin(intent, role) {
     if (role) setRole(role); else if (intent === "partner") setRole("partner"); else if (intent === "buy") setRole("visitor");
     S.after = intent; A.session.set("after", intent || null); S.authOpen = true;
-    S.authStep = (role || intent) ? "login" : "who"; renderAuth();
+    S.authStep = (role || intent) ? (role === "admin" ? "login" : entryStep()) : "who"; renderAuth();
   }
   function setRole(r) { S.role = r; A.session.set("role", r); }
 
@@ -458,7 +497,7 @@
   function renderHome() {
     const ev = evById(EV) || {};
     const c = ev.colors || { from: "#2A1E40", to: "#4A3870" };
-    const others = allEvents().filter((e) => e.id !== EV);
+    const others = shownEvents().filter((e) => e.id !== EV);
     const prog = (ev.page && ev.page.program && ev.page.program.items) || [];
     const ref = myPassRef();
     const services = [];
@@ -1298,7 +1337,7 @@
 
   /* ---------------- الفعاليات ---------------- */
   function renderEvents() {
-    const list = allEvents();
+    const list = shownEvents();
     scr.innerHTML = `${head("فعاليات شُرفة", false, S.me ? "" : loginBtn())}
       <div class="pad stack"><p class="sub">الفعاليات والمهرجانات المستضافة على شُرفة. اضغط على أي فعالية لتفاصيلها وخدماتها.</p>
       ${list.map((e) => eventCard(e, true)).join("")}</div><div class="sp"></div>`;
@@ -2300,6 +2339,7 @@
     else if (a === "me-img-del") { ME.map.image = null; paintEditor(); }
     else if (a === "band-buy") {
       if (!S.me) return requireLogin("band", "visitor");
+      if (!hasPhone()) return needPhone(() => document.body.contains(b) && b.click());
       const n = +($("#q-band") || {}).textContent || 1; b.disabled = true;
       try { const d = await A.urpc("band_order", { p_event: EV, p_qty: n }); if (!d.ok) throw Object.assign(new Error(d.error), { code: d.error });
         overlay({ k: "ok", icon: "b:band", title: "تم طلب السوار", body: `ادفع <b>${fmtPrice(d.amount_baisa)}</b> في منصة المنظمين واعرض رمز الطلب لتستلمه.<br><span class="sub">تلقاه في «تذاكري» و«سوار الأمان».</span>`, auto: 6000 });
@@ -2402,6 +2442,7 @@
     else if (a === "game-book") {
       const n = +($("#q-" + b.dataset.id) || {}).textContent || +b.dataset.qty || 1;
       if (!S.me) { A.session.set("book", JSON.stringify({ id: b.dataset.id, qty: n })); return requireLogin("games", "visitor"); }
+      if (!hasPhone()) { A.session.set("book", JSON.stringify({ id: b.dataset.id, qty: n })); return needPhone(() => { S.sub = { name: "games" }; render(); }); }
       A.session.del("book"); const ov = $("#ovl"); if (ov && b.closest("#ovl")) ov.remove();
       b.disabled = true;
       try {
@@ -2450,7 +2491,14 @@
     }
     else if (a === "scan-next") { closeOverlay(false); toggleScan(); }
     else if (a === "login") requireLogin(null, null);
-    else if (a === "who") { const k = b.dataset.k; setRole(k); S.after = k === "visitor" ? null : k; A.session.set("after", S.after); goAuth("login"); }
+    else if (a === "who") { const k = b.dataset.k; setRole(k); S.after = k === "visitor" ? null : k; A.session.set("after", S.after); goAuth(k === "admin" ? "login" : entryStep()); }
+    else if (a === "google") {
+      // يرجع للتطبيق برموز الجلسة في الرابط (#access_token)، والتطبيق الأصلي يرجع عبر shurfah://
+      const native = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+      const back = native ? "shurfah://app/?e=" + EV : location.origin + location.pathname + "?e=" + EV;
+      A.session.set("oauth", "google");
+      location.href = A.SB.url.replace(/\/$/, "") + "/auth/v1/authorize?provider=google&redirect_to=" + encodeURIComponent(back);
+    }
     else if (a === "who-event") { location.href = location.pathname + "?e=" + encodeURIComponent(b.dataset.id) + "&login=1&pick=1"; }
     else if (a === "signup") { S.after = null; setRole("visitor"); S.authOpen = true; goAuth("signup"); }
     else if (a === "browse") { S.authOpen = false; S.after = null; A.session.del("after"); A.session.del("pending-email"); setRole("visitor"); render(); }
@@ -2460,6 +2508,7 @@
     else if (a === "buy") { if (!canSell()) return toast("بيع الجواز غير متاح حاليًا.", "err"); startIntent("buy"); }
     else if (a === "partner-join") startIntent("partner");
     else if (a === "confirm-buy") {
+      if (!hasPhone()) return needPhone(() => document.body.contains(b) && b.click());
       b.disabled = true;
       try {
         const d = await A.urpc("join_event", { p_event: EV });
@@ -2467,7 +2516,11 @@
         S.sub = null; S.tab = "pass"; render();
         if (d.status === "active") overlay({ k: "ok", icon: "award", title: "جوازك جاهز 🎉", body: isOffers() ? "اعرض رمزك عند الأكشاك المشاركة واحصل على خصمها أو باقتها." : "اعرض رمزك عند الأكشاك المشاركة واجمع الأختام والمكافآت.", auto: 6000 });
         else toast("تم إنشاء طلبك. أكمل الدفع لدى منصة المنظمين.", "ok");
-      } catch (e) { const m = $("#coMsg"); if (m) m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; b.disabled = false; }
+      } catch (e) {
+        b.disabled = false;
+        if (e.code === "phone_required") return needPhone(() => document.body.contains(b) && b.click());
+        const m = $("#coMsg"); if (m) m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`;
+      }
     }
     else if (a === "pass-tab") { S.passTab = b.dataset.k; S.tab = "pass"; S.sub = null; render(); }
     else if (a === "work-mode") { S.work.mode = b.dataset.k; render(); }
@@ -2578,6 +2631,19 @@
     ev.preventDefault();
     const btn = f.querySelector("button[type=submit]");
     const k = f.dataset.f;
+    if (k === "phonegate") {
+      const m = $("#pg-msg"), ph = f.phone.value.replace(/[\s-]/g, "");
+      if (!/^\+?[0-9]{8,15}$/.test(ph)) { m.innerHTML = `<div class="msg err">${esc(A.errText("bad_phone"))}</div>`; return; }
+      btn.disabled = true;
+      try {
+        await A.urpc("save_phone", { p_phone: ph });
+        S.me = await A.urpc("me");
+        const nx = phoneNext; phoneNext = null; closeOverlay(false);
+        toast("حُفظ رقمك", "ok");
+        if (nx) nx();
+      } catch (e) { btn.disabled = false; m.innerHTML = `<div class="msg err">${esc(errMsg(e))}</div>`; }
+      return;
+    }
     if (k === "mapedit" && ME) {
       const m = $("#meMsg"), bandOn = f.bandon.checked, bp = Math.round(parseFloat(f.band.value) * 1000);
       if (bandOn && !(bp >= 0 && bp <= 100000)) { m.innerHTML = `<div class="msg err">اكتب سعر السوار بالريال (مثال: 1).</div>`; return; }
@@ -2738,19 +2804,15 @@
         }
         await boot();
       } else if (k === "signup") {
-        const v = { name: f.name.value.trim(), phone: f.phone.value.replace(/[\s-]/g, ""), email: f.email.value.trim().toLowerCase(),
+        const v = { name: f.name.value.trim(), email: f.email.value.trim().toLowerCase(),
           type: (f.querySelector("input[name=type]:checked") || {}).value || "visitor" };
         S.signup = v;
         if (S.role === "partner" || S.role === "organizer") { S.after = S.role; A.session.set("after", S.role); }
         if (v.name.length < 2) throw { code: "bad_name" };
-        if (!/^\+?[0-9]{8,15}$/.test(v.phone)) throw { code: "bad_phone" };
         if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v.email)) throw { code: "bad_email" };
         if (f.password.value.length < 6) throw { code: "weak_password" };
-        if (f.password.value !== f.password2.value) throw { code: "password_mismatch" };
         if (!f.consent.checked) throw { code: "consent_required" };
-        const chk = await A.rpc("phone_available", { p_phone: v.phone });
-        if (!chk.available) throw { code: "phone_taken" };
-        const r = await A.auth.signUp(v.email, f.password.value, { name: v.name, phone: v.phone, type: v.type, consent: true });
+        const r = await A.auth.signUp(v.email, f.password.value, { name: v.name, type: v.type, consent: true });
         S.email = v.email;
         if (r.session) { S.signup = null; await boot(); }
         else { A.session.set("pending-email", v.email); S.resendAt = Date.now() + 60000; goAuth("code"); }
@@ -2781,7 +2843,7 @@
         if (!f.consent.checked) throw { code: "consent_required" };
         const phone = f.phone.value.replace(/[\s-]/g, "");
         if (f.name.value.trim().length < 2) throw { code: "bad_name" };
-        if (!/^\+?[0-9]{8,15}$/.test(phone)) throw { code: "bad_phone" };
+        if (phone && !/^\+?[0-9]{8,15}$/.test(phone)) throw { code: "bad_phone" };
         const first = !(S.me && S.me.profile);
         await A.urpc("save_profile", { p_name: f.name.value.trim(), p_phone: phone, p_type: (f.querySelector("input[name=type]:checked") || {}).value || "visitor", p_consent: true });
         S.me = await A.urpc("me");

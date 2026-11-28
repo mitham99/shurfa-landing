@@ -464,3 +464,12 @@ body { background: var(--cream); }
 #meBody .chips { flex-wrap: wrap; overflow: visible; }
 .map-wrap { padding: 22px; background: #F6F1E8; }
 .map-box { border-radius: 12px; }
+
+/* 024: دخول أوضح — تبويب «تسجيل الدخول / حساب جديد» + زر Google */
+.auth-seg { margin-bottom: 2px; }
+.auth-seg button { min-height: 46px; font-size: 15px; }
+.auth-seg button[aria-pressed="true"] { background: var(--purple); color: #fff; box-shadow: 0 4px 12px rgba(123,91,167,.28); }
+.btn-google { background: #fff; color: var(--ink); border: 1.5px solid rgba(42,30,64,.16); gap: 10px; font-weight: 700; }
+.btn-google:hover { background: #FBFAF8; }
+.or-sep { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 12.5px; margin: 2px 0; }
+.or-sep::before, .or-sep::after { content: ""; flex: 1; height: 1px; background: rgba(42,30,64,.12); }
